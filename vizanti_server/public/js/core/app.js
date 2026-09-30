@@ -5,6 +5,8 @@ import { createStorage, isLayout, STORAGE_KEY } from './storage.js';
 import { FrameNodes } from './frames.js';
 import { Scene3D, webglSupported } from './scene.js';
 import { TouchShell } from '../ui/shell_touch.js';
+import { RvizShell } from '../ui/shell_rviz.js';
+import { chooseShell, UI_KEY } from '../ui/toggle.js';
 
 const DEFAULT_LAYOUT = {
 	version: 2,
@@ -228,9 +230,45 @@ async function start() {
 	window.addEventListener("rosbridge_change", showConnection);
 	showConnection();
 
-	// TEMPORARY: shell selection arrives in Task 10
-	app.shell = new TouchShell(app);
-	app.shell.mount(root);
+	const readStoredShell = () => {
+		try {
+			return window.localStorage.getItem(UI_KEY);
+		} catch (e) {
+			return null;
+		}
+	};
+
+	const mountShell = (name) => {
+		app.shellName = name;
+		app.shell = name === "rviz" ? new RvizShell(app) : new TouchShell(app);
+		app.shell.mount(root);
+		scene.resize();
+	};
+
+	// Swaps only the chrome: the scene, displays, subscriptions and camera are untouched.
+	app.switchShell = (name) => {
+		if (name === app.shellName)
+			return;
+		app.shell.unmount();
+		try {
+			window.localStorage.setItem(UI_KEY, name);
+		} catch (e) { /* storage unavailable: the choice lasts until reload */ }
+
+		// a ?ui= parameter would override the new choice on the next reload
+		const url = new URL(window.location.href);
+		if (url.searchParams.has("ui")) {
+			url.searchParams.delete("ui");
+			window.history.replaceState(null, "", url);
+		}
+		mountShell(name);
+	};
+
+	mountShell(chooseShell({
+		query: window.location.search,
+		stored: readStoredShell(),
+		width: window.innerWidth,
+		coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+	}));
 
 	each("onCameraChange");
 	scene.requestRender();

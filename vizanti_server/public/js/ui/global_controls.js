@@ -82,4 +82,8 @@ export function buildLayoutControls(container, app) {
 			app.resetLayout();
 	}));
 	container.appendChild(comment("Clear layout and import server defaults."));
+
+	const other = app.shellName === "rviz" ? "touch" : "rviz";
+	container.appendChild(button(other === "rviz" ? "Switch to RViz UI" : "Switch to Touch UI", () => app.switchShell(other)));
+	container.appendChild(comment("Both interfaces show the same displays. The choice is remembered on this browser."));
 }
