@@ -129,7 +129,9 @@ export class Scene3D {
 	setCameraState(state) {
 		const s = sanitizeCameraState(state);
 		this.targetFrame = s.target_frame;
+		this.followYaw = s.follow_yaw;
 		this._lastTarget = null;
+		this._lastYaw = null;
 
 		this.ortho.position.set(s.topdown.x, s.topdown.y, TOPDOWN_HEIGHT);
 		this.topControls.target.set(s.topdown.x, s.topdown.y, 0);
@@ -146,6 +148,7 @@ export class Scene3D {
 		return {
 			mode: this.mode,
 			target_frame: this.targetFrame,
+			follow_yaw: this.followYaw,
 			topdown: { x: this.topControls.target.x, y: this.topControls.target.y, zoom: this.ortho.zoom },
 			orbit: { target: this.orbitControls.target.toArray(), position: this.persp.position.toArray() },
 		};
@@ -168,9 +171,16 @@ export class Scene3D {
 		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
 	}
 
+	setFollowYaw(enabled) {
+		this.followYaw = !!enabled;
+		this._lastYaw = null;
+		this._cameraChanged();
+	}
+
 	setTargetFrame(frame) {
 		this.targetFrame = frame;
 		this._lastTarget = null;
+		this._lastYaw = null;
 		this._cameraChanged();
 	}
 
@@ -210,6 +220,17 @@ export class Scene3D {
 			}
 		}
 		this._lastTarget = p.clone();
+
+		// third-person: the orbit camera also swings round as the frame turns
+		const yaw = new THREE.Euler().setFromQuaternion(node.quaternion, "ZYX").z;
+		if (this.followYaw && this._lastYaw !== null && yaw !== this._lastYaw) {
+			const offset = new THREE.Vector3().subVectors(this.persp.position, this.orbitControls.target);
+			offset.applyAxisAngle(new THREE.Vector3(0, 0, 1), yaw - this._lastYaw);
+			this.persp.position.copy(this.orbitControls.target).add(offset);
+			this.orbitControls.update();
+			this._cameraChanged();
+		}
+		this._lastYaw = yaw;
 	}
 
 	// ---- size and rendering ----

@@ -5,6 +5,7 @@ export const MAX_ZOOM = 5000;
 export const DEFAULT_CAMERA = {
 	mode: "topdown",
 	target_frame: "",
+	follow_yaw: false, // turn the view with the target frame, like a third-person camera
 	topdown: { x: 0, y: 0, zoom: 50 },
 	orbit: { target: [0, 0, 0], position: [-6, -6, 5] },
 };
@@ -31,6 +32,7 @@ export function sanitizeCameraState(state) {
 	return {
 		mode: src.mode === "orbit" ? "orbit" : "topdown",
 		target_frame: typeof src.target_frame === "string" ? src.target_frame : "",
+		follow_yaw: src.follow_yaw === true,
 		topdown: {
 			x: num(td.x, DEFAULT_CAMERA.topdown.x),
 			y: num(td.y, DEFAULT_CAMERA.topdown.y),

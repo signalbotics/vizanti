@@ -14,7 +14,7 @@ test('the default is the top-down view at 50 px per metre, like the current UI',
 
 test('valid state passes through unchanged', () => {
 	const s = {
-		mode: "orbit", target_frame: "base_link",
+		mode: "orbit", target_frame: "base_link", follow_yaw: true,
 		topdown: { x: 3, y: -2, zoom: 120 },
 		orbit: { target: [1, 2, 0], position: [4, 5, 6] },
 	};

@@ -352,3 +352,20 @@
 	cursor: default;
 	color: #9aa8b8;
 }
+
+.saved_view {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 3px 0;
+}
+
+.saved_view span {
+	flex: 1;
+}
+
+.saved_view_name {
+	width: 100%;
+	box-sizing: border-box;
+	margin: 4px 0;
+}

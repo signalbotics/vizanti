@@ -1,5 +1,6 @@
 import { renderProperties } from './property_editor.js';
 import { TOOLS } from '../core/tools.js';
+import { saveView, removeView, sanitizeViews } from '../core/views.js';
 
 function button(text, onClick, className = "") {
 	const element = document.createElement("button");
@@ -32,9 +33,12 @@ export function buildCameraControls(container, app) {
 			options: [{ value: "topdown", label: "Top-down (orthographic)" }, { value: "orbit", label: "Orbit" }],
 		},
 		target_frame: { type: "frame", label: "Target Frame" },
+		follow_yaw: { type: "bool", label: "Turn with target frame", help: "With a target frame set, the orbit camera swings round as the frame turns (a third-person view)." },
 	}, scene.getCameraState(), (key, raw) => {
 		if (key === "mode")
 			scene.setCameraMode(raw);
+		else if (key === "follow_yaw")
+			scene.setFollowYaw(raw);
 		else
 			scene.setTargetFrame(raw);
 		return { ok: true, value: raw };
@@ -49,6 +53,63 @@ export function buildCameraControls(container, app) {
 
 	container.appendChild(button("Reset Camera View", () => scene.resetCamera()));
 	container.appendChild(comment("Reset only the camera to its default pose (zero relative to the fixed frame link)."));
+
+	// ---- saved views ----
+	const heading = document.createElement("h4");
+	heading.textContent = "Saved views";
+	const list = document.createElement("div");
+	const views = () => sanitizeViews(app.registry.ui.saved_views);
+	const render = () => {
+		list.replaceChildren();
+		for (const view of views()) {
+			const row = document.createElement("div");
+			row.className = "saved_view";
+			const name = document.createElement("span");
+			name.textContent = view.name + ` (${view.camera.mode === "orbit" ? "orbit" : "top-down"})`;
+			row.append(
+				name,
+				button("Go", () => scene.setCameraState(view.camera)),
+				button("✕", () => {
+					app.registry.setUi("saved_views", removeView(views(), view.name));
+					render();
+				})
+			);
+			list.appendChild(row);
+		}
+	};
+	const nameInput = document.createElement("input");
+	nameInput.type = "text";
+	nameInput.placeholder = "View name";
+	nameInput.className = "saved_view_name";
+	const save = () => {
+		try {
+			const name = nameInput.value.trim() || "view " + (views().length + 1);
+			app.registry.setUi("saved_views", saveView(views(), name, scene.getCameraState()));
+			nameInput.value = "";
+			render();
+		} catch (e) {
+			app.notify(e.message);
+		}
+	};
+	nameInput.addEventListener("keydown", (event) => {
+		if (event.key === "Enter")
+			save();
+	});
+	container.append(heading, list, nameInput, button("Save current view", save));
+	render();
+
+	// a loaded config or layout brings its own views; stop listening once the panel is gone
+	const onChange = (event) => {
+		if (!list.isConnected) {
+			app.registry.removeEventListener("ui", onChange);
+			app.registry.removeEventListener("loaded", onChange);
+			return;
+		}
+		if (event.type === "loaded" || event.detail.key === "saved_views")
+			render();
+	};
+	app.registry.addEventListener("ui", onChange);
+	app.registry.addEventListener("loaded", onChange);
 }
 
 // Buttons for the built-in pointer tools and the topics they publish to.
