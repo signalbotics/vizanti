@@ -90,6 +90,18 @@
 	outline: 2px solid rgb(255, 60, 60);
 }
 
+.icon-switch {
+	border: 1px solid #6c8ebf;
+}
+
+.icon-switch .icon-text {
+	font-size: 0.8em;
+	color: white;
+	text-align: center;
+	line-height: 1.1;
+	width: 100%;
+}
+
 .icon-disabled {
 	opacity: 0.4;
 }

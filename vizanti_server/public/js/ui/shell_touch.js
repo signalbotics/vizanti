@@ -59,7 +59,7 @@ export class TouchShell {
 
 		this.settingsIcon = this.staticIcon("settingsbutton", "assets/settings.svg", "Global Settings", () => this.openSettings());
 		this.addIcon = this.staticIcon("addbutton", "assets/add.svg", "Add", () => openAddDialog(this.app));
-		this.icons.append(this.settingsIcon, this.addIcon);
+		this.icons.append(this.settingsIcon, this.addIcon, this.switchIcon());
 
 		let saved = null;
 		try { saved = window.localStorage.getItem(BAR_HEIGHT_KEY); } catch (e) { /* storage blocked */ }
@@ -137,6 +137,22 @@ export class TouchShell {
 		image.data = item.icon;
 		icon.appendChild(image);
 		icon.addEventListener("click", () => this.openItem(item));
+		wrapper.appendChild(icon);
+		return wrapper;
+	}
+
+	// the way back to the desktop interface, always visible at the end of the bar
+	switchIcon() {
+		const wrapper = document.createElement("div");
+		wrapper.dataset.uniqueid = "switchbutton";
+		const icon = document.createElement("div");
+		icon.className = "icon noselect icon-switch";
+		icon.title = "Switch to the RViz-style interface";
+		const text = document.createElement("p");
+		text.className = "icon-text";
+		text.textContent = "RViz UI";
+		icon.appendChild(text);
+		icon.addEventListener("click", () => this.app.switchShell("rviz"));
 		wrapper.appendChild(icon);
 		return wrapper;
 	}
