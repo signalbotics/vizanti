@@ -2,6 +2,8 @@ import { buildItemEditor } from './item_editor.js';
 import { buildGlobalOptions, buildCameraControls, buildLayoutControls } from './global_controls.js';
 import { openAddDialog } from './add_dialog.js';
 
+const BAR_HEIGHT_KEY = "iconBarHeight";
+
 function hr() {
 	const element = document.createElement("hr");
 	element.className = "dark_hr";
@@ -9,11 +11,15 @@ function hr() {
 }
 
 // The icon bar UI for phones and tablets: one icon per display, a modal per icon.
+// Displays get a generated icon and modal; widgets that still run from their original
+// template bring their own icon element and modal.
 export class TouchShell {
 
 	constructor(app) {
 		this.app = app;
 		this.handlers = [];
+		this.windowHandlers = [];
+		this.wrappers = new Map(); // item id -> icon wrapper element
 		this.modal = null;
 	}
 
@@ -22,28 +28,48 @@ export class TouchShell {
 		this.handlers.push([name, fn]);
 	}
 
+	listenWindow(name, fn) {
+		window.addEventListener(name, fn);
+		this.windowHandlers.push([name, fn]);
+	}
+
 	mount(root) {
 		this.root = root;
 
-		const bar = document.createElement("div");
-		bar.id = "icon_bar";
+		this.bar = document.createElement("div");
+		this.bar.id = "icon_bar";
 		this.icons = document.createElement("div");
 		this.icons.id = "icon_container";
-		bar.appendChild(this.icons);
-		bar.addEventListener("wheel", (event) => { bar.scrollLeft += event.deltaY * 0.5; });
+		const handle = document.createElement("div");
+		handle.id = "icon_bar_handle";
+		this.bar.append(this.icons, handle);
+		this.bar.addEventListener("wheel", (event) => { this.bar.scrollLeft += event.deltaY * 0.5; });
+		this.bar.addEventListener("contextmenu", (event) => event.preventDefault());
+		this.setupBarDragging(handle);
 
 		const view = document.createElement("div");
-		view.id = "view_container";
+		view.id = "view_host";
 		view.appendChild(this.app.sceneElement);
 
 		this.modals = document.createElement("div");
 		this.modals.id = "modal_container";
 
-		root.append(bar, view, this.modals);
+		root.append(this.bar, view, this.modals);
 
-		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "property"])
+		this.settingsIcon = this.staticIcon("settingsbutton", "assets/settings.svg", "Global Settings", () => this.openSettings());
+		this.addIcon = this.staticIcon("addbutton", "assets/add.svg", "Add", () => openAddDialog(this.app));
+		this.icons.append(this.settingsIcon, this.addIcon);
+
+		let saved = null;
+		try { saved = window.localStorage.getItem(BAR_HEIGHT_KEY); } catch (e) { /* storage blocked */ }
+		if (saved)
+			this.setBarHeight(saved);
+
+		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
 			this.listen(name, () => this.renderIcons());
+		this.listen("property", (event) => this.paintIcon(event.detail.item));
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
+		this.listenWindow("resize", () => this.calculateWidth());
 
 		this.renderIcons();
 	}
@@ -51,45 +77,143 @@ export class TouchShell {
 	unmount() {
 		for (const [name, fn] of this.handlers)
 			this.app.registry.removeEventListener(name, fn);
+		for (const [name, fn] of this.windowHandlers)
+			window.removeEventListener(name, fn);
 		this.handlers = [];
+		this.windowHandlers = [];
 		this.closeModal();
+
+		// template widgets keep their icon and modal elements across shells
+		for (const item of this.app.registry.items) {
+			if (item.iconElement)
+				this.app.legacy.icons.appendChild(item.iconElement);
+			if (item.modalElement)
+				item.modalElement.style.display = "none";
+		}
+		for (const wrapper of this.wrappers.values())
+			wrapper.remove();
+		this.wrappers.clear();
+
 		this.app.sceneElement.remove();
 		this.root.replaceChildren();
 	}
 
-	iconButton(src, title, onClick) {
-		const element = document.createElement("div");
-		element.className = "icon noselect";
-		element.title = title;
+	// ---- icon bar ----
+
+	staticIcon(id, src, title, onClick) {
+		const wrapper = document.createElement("div");
+		wrapper.dataset.uniqueid = id;
+		const icon = document.createElement("div");
+		icon.className = "icon noselect";
+		icon.title = title;
 		const image = document.createElement("img");
 		image.src = src;
 		image.alt = title;
-		element.appendChild(image);
-		element.addEventListener("click", onClick);
-		return element;
+		icon.appendChild(image);
+		icon.addEventListener("click", onClick);
+		wrapper.appendChild(icon);
+		return wrapper;
+	}
+
+	wrapperFor(item) {
+		let wrapper = this.wrappers.get(item.id);
+		if (!wrapper) {
+			wrapper = item.iconElement ?? this.staticIcon(item.id, item.icon, item.name, () => this.openItem(item));
+			this.wrappers.set(item.id, wrapper);
+		}
+		return wrapper;
 	}
 
 	renderIcons() {
-		this.icons.replaceChildren();
-		this.icons.appendChild(this.iconButton("assets/settings.svg", "Global Settings", () => this.openSettings()));
-
+		const seen = new Set();
 		for (const item of this.app.registry.items) {
-			const element = this.iconButton(item.icon, item.name, () => this.openItem(item));
-			element.dataset.id = item.id;
-			element.classList.toggle("icon-disabled", !item.enabled);
-			this.icons.appendChild(element);
+			seen.add(item.id);
+			const wrapper = this.wrapperFor(item);
+			// an item created inside a folder lives in that folder's container
+			const target = (item.container && document.getElementById(item.container)) || this.icons;
+			const add = [...target.children].find((child) => child.dataset.uniqueid === "addbutton") ?? null;
+			target.insertBefore(wrapper, add);
+			this.paintIcon(item);
 			this.paintStatus(item);
 		}
+		for (const [id, wrapper] of this.wrappers) {
+			if (!seen.has(id)) {
+				wrapper.remove();
+				this.wrappers.delete(id);
+			}
+		}
+		this.calculateWidth();
+		window.dispatchEvent(new Event("icons_changed"));
+	}
 
-		this.icons.appendChild(this.iconButton("assets/add.svg", "Add", () => openAddDialog(this.app)));
+	paintIcon(item) {
+		const wrapper = this.wrappers.get(item.id);
+		if (!wrapper || item.iconElement)
+			return;
+		const icon = wrapper.firstElementChild;
+		icon.classList.toggle("icon-disabled", !item.enabled);
+		const image = icon.querySelector("img");
+		if (image.getAttribute("src") !== item.icon)
+			image.src = item.icon;
 	}
 
 	paintStatus(item) {
-		const element = [...this.icons.children].find((child) => child.dataset.id === item.id);
-		if (!element)
-			return;
-		element.classList.toggle("icon-warn", item.status.level === "warn");
-		element.classList.toggle("icon-error", item.status.level === "error");
+		const wrapper = this.wrappers.get(item.id);
+		if (!wrapper || item.iconElement)
+			return; // template widgets colour their own icon
+		const icon = wrapper.firstElementChild;
+		icon.classList.toggle("icon-warn", item.status.level === "warn");
+		icon.classList.toggle("icon-error", item.status.level === "error");
+	}
+
+	setBarHeight(height) {
+		this.bar.style.height = height;
+		this.icons.style.height = height;
+	}
+
+	calculateWidth() {
+		if (this.bar.style.height === "")
+			this.setBarHeight("75px");
+		const rows = Math.max(1, Math.ceil(parseInt(this.bar.style.height) / 60) - 1);
+		const width = Math.max(window.innerWidth, Math.ceil(this.icons.children.length / rows) * 60 + 10);
+		this.icons.style.width = width + "px";
+		this.bar.querySelector("#icon_bar_handle").style.width = width + "px";
+		window.dispatchEvent(new Event("iconbar_height_change"));
+	}
+
+	// dragging the handle under the bar makes room for more rows of icons
+	setupBarDragging(handle) {
+		const move = (event) => {
+			let y = event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY;
+			y = Math.min(360, Math.max(60, Math.floor(y / 60) * 60));
+			this.setBarHeight((y + 15) + "px");
+			this.calculateWidth();
+		};
+		const stop = () => {
+			document.removeEventListener("mousemove", move);
+			document.removeEventListener("touchmove", move);
+			document.removeEventListener("mouseup", stop);
+			document.removeEventListener("touchend", stop);
+			try { window.localStorage.setItem(BAR_HEIGHT_KEY, this.bar.style.height); } catch (e) { /* storage blocked */ }
+		};
+		const start = (event) => {
+			event.preventDefault();
+			document.addEventListener("mousemove", move);
+			document.addEventListener("touchmove", move);
+			document.addEventListener("mouseup", stop);
+			document.addEventListener("touchend", stop);
+		};
+		handle.addEventListener("mousedown", start);
+		handle.addEventListener("touchstart", start, { passive: false });
+	}
+
+	// ---- modals ----
+
+	// a template widget shows its own modal
+	openLegacy(id) {
+		const item = this.app.registry.get(id);
+		if (item && item.modalElement)
+			item.modalElement.style.display = "flex";
 	}
 
 	// build(inner) fills the modal and may return a cleanup function

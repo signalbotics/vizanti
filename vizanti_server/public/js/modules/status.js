@@ -23,6 +23,14 @@ export class Status {
     }
 
     _applyStatus(status, message) {
+        // also report to the display registry, so the RViz-style tree can show it
+        const item = window.vizanti?.registry.get(this.icon.id.replace(/_icon$/, ""));
+        if (item) {
+            if (status === "ok") item.status.ok(message || "Ok");
+            else if (status === "warn") item.status.warn(message);
+            else if (status === "error") item.status.error(message);
+        }
+
         // Reset classes
         this.icon.classList.remove("icon-error", "icon-warn");
         this.message.classList.remove("status-error", "status-warn");

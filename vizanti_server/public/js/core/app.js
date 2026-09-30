@@ -8,6 +8,12 @@ import { Scene3D, webglSupported } from './scene.js';
 import { TouchShell } from '../ui/shell_touch.js';
 import { RvizShell } from '../ui/shell_rviz.js';
 import { chooseShell, UI_KEY } from '../ui/toggle.js';
+import { makeTemplateClass } from '../legacy/template_item.js';
+import { installLegacyGlobals } from '../legacy/globals.js';
+import { CATALOG } from '../legacy/catalog.js';
+
+// template folders that are not widgets of their own in the new UI
+const TEMPLATE_SKIP = new Set(["add", "settings"]);
 
 const DEFAULT_LAYOUT = {
 	version: 2,
@@ -52,6 +58,36 @@ async function loadDisplayTypes() {
 	return types;
 }
 
+// Widgets without a native display still run from their original template. Every template
+// category that no display module claims becomes a template-backed type.
+async function loadTemplateTypes(types) {
+	const files = (await import(`${base_url}/templates/files`)).default;
+	const templates = {};
+	for (const file of files) {
+		const name = file.path.split("/").pop();
+		const split = name.lastIndexOf("_");
+		if (split === -1)
+			continue;
+		const category = name.slice(0, split);
+		const part = name.slice(split + 1).split(".")[0];
+		if (!["icon", "modal", "view", "script"].includes(part))
+			continue;
+		(templates[category] ??= {})[part] = file.content;
+	}
+	for (const [category, template] of Object.entries(templates)) {
+		if (types.has(category) || TEMPLATE_SKIP.has(category) || !template.icon)
+			continue;
+		types.set(category, makeTemplateClass(category, template, CATALOG[category]));
+	}
+}
+
+function legacyHost(id) {
+	const element = document.createElement("div");
+	element.id = id;
+	document.body.appendChild(element);
+	return element;
+}
+
 function subscribe(topic, msgType, throttleMs, callback) {
 	const rosTopic = new ROSLIB.Topic({
 		ros: rosbridge.ros,
@@ -78,10 +114,19 @@ async function start() {
 	}
 
 	const types = await loadDisplayTypes();
+	await loadTemplateTypes(types);
+
+	const legacy = {
+		icons: legacyHost("legacy_icons"),
+		modals: legacyHost("legacy_modals"),
+		views: legacyHost("legacy_views"),
+		scripts: legacyHost("legacy_scripts"),
+	};
 
 	const frames = new FrameNodes(tf);
 	const sceneElement = document.createElement("div");
 	sceneElement.className = "scene_container";
+	sceneElement.id = "view_container"; // template widgets attach their pointer listeners to this id
 	const scene = new Scene3D(sceneElement, frames);
 
 	const context = {
@@ -89,7 +134,14 @@ async function start() {
 		frames,
 		scene,
 		subscribe,
+		legacy,
 		requestRender: () => scene.requestRender(),
+		// message type of a topic as rosapi reports it, or null when it is not being published
+		resolveType: async (topic) => {
+			const all = await rosbridge.get_all_topics();
+			const index = all.topics.indexOf(topic);
+			return index === -1 ? null : all.types[index];
+		},
 		setProperty: (id, key, value) => registry.setProperty(id, key, value),
 	};
 	const registry = new Registry({ types, context });
@@ -105,7 +157,9 @@ async function start() {
 		types,
 		tf,
 		notify,
+		legacy,
 		shellName: "touch",
+		requestSave: () => {},
 
 		envFor(item) {
 			return {
@@ -151,6 +205,8 @@ async function start() {
 	};
 	window.vizanti = app;
 
+	installLegacyGlobals(app);
+
 	// ---- load the saved layout ----
 
 	const stored = storage.load();
@@ -182,6 +238,7 @@ async function start() {
 		}
 	}, 400);
 	registry.addEventListener("changed", save);
+	app.requestSave = save;
 
 	registry.addEventListener("global", (event) => {
 		if (event.detail.key === "fixed_frame")
@@ -211,9 +268,24 @@ async function start() {
 	});
 
 	const saveCamera = throttled(() => registry.setUi("camera", scene.getCameraState()), 400);
+	// The template widgets' overlays live in a window-level layer that is kept over the 3D view.
+	app.syncLegacyViews = () => {
+		const rect = sceneElement.getBoundingClientRect();
+		const style = legacy.views.style;
+		style.left = rect.left + "px";
+		style.top = rect.top + "px";
+		style.width = rect.width + "px";
+		style.height = rect.height + "px";
+		style.setProperty("--vx", rect.left + "px");
+		style.setProperty("--vy", rect.top + "px");
+	};
+	window.addEventListener("resize", app.syncLegacyViews);
+
 	scene.onCameraChange(() => {
 		each("onCameraChange");
 		saveCamera();
+		app.syncLegacyViews();
+		window.dispatchEvent(new Event("view_changed"));
 	});
 	scene.onContextRestored(() => each("onContextRestored"));
 	stopSaving = () => {
@@ -246,6 +318,7 @@ async function start() {
 		app.shell = name === "rviz" ? new RvizShell(app) : new TouchShell(app);
 		app.shell.mount(root);
 		scene.resize();
+		app.syncLegacyViews();
 	};
 
 	// Swaps only the chrome: the scene, displays, subscriptions and camera are untouched.

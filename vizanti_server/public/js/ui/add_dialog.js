@@ -1,4 +1,4 @@
-export function openAddDialog(app) {
+export function openAddDialog(app, { container = "" } = {}) {
 	const outer = document.createElement("div");
 	outer.className = "modal_outer noselect";
 	outer.style.display = "flex";
@@ -49,7 +49,7 @@ export function openAddDialog(app) {
 		card.append(name, desc);
 		row.append(icon, card);
 		row.addEventListener("click", () => {
-			app.registry.add(Cls.type, props);
+			app.registry.add(Cls.type, props, { container });
 			close();
 		});
 		return row;

@@ -189,3 +189,74 @@
 	gap: 6px;
 	margin-top: 6px;
 }
+
+/* ---- hosts for widgets that still run from their original template ---- */
+#legacy_icons,
+#legacy_scripts {
+	display: none;
+}
+
+#legacy_modals {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 20;
+}
+
+/* sits exactly over the 3D view; app.syncLegacyViews() keeps it there */
+#legacy_views {
+	position: fixed;
+	overflow: hidden;
+	pointer-events: none;
+	z-index: 5;
+}
+
+/* tool canvases draw in window coordinates, whatever part of the window the view occupies */
+#legacy_views canvas.legacy_fullscreen {
+	width: 100vw;
+	height: 100vh;
+	left: calc(-1 * var(--vx, 0px));
+	top: calc(-1 * var(--vy, 0px));
+}
+
+#view_container.scene_container {
+	position: absolute;
+	inset: 0;
+	width: auto;
+	height: auto;
+}
+
+#view_host {
+	position: fixed;
+	inset: 0;
+	overflow: hidden;
+	z-index: 0;
+}
+
+/* template widgets in the RViz-style shell */
+.rviz_widgets {
+	display: flex;
+	align-items: center;
+	zoom: 0.55;
+}
+
+.rviz_widgets .icon {
+	margin: 2px 4px;
+}
+
+.rviz_panel_legacy .modal_outer {
+	position: static;
+	width: auto;
+	height: auto;
+	min-height: 0;
+	overflow: visible;
+	background: none;
+}
+
+.rviz_panel_legacy .modal_inner {
+	margin: 0;
+	border: none;
+	border-radius: 0;
+	max-width: none;
+	min-width: 0;
+}

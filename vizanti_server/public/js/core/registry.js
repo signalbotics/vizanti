@@ -58,6 +58,7 @@ export class Registry extends EventTarget {
 
 		const item = new Cls(id, this.context);
 		item.name = opts.name ?? Cls.label;
+		item.container = typeof opts.container === "string" ? opts.container : ""; // folder the icon lives in
 		item.status.onChange = () => this._notify("status", { item });
 		item.onInfo = () => this._notify("info", { item });
 
@@ -146,6 +147,7 @@ export class Registry extends EventTarget {
 					type: item.constructor.type,
 					name: item.name,
 					enabled: item.enabled,
+					container: item.container,
 					props: { ...item.props },
 				})),
 				...this.orphans,
@@ -183,7 +185,7 @@ export class Registry extends EventTarget {
 						continue;
 					}
 					try {
-						this.add(entry.type, entry.props, { id: entry.id, name: entry.name, enabled: entry.enabled });
+						this.add(entry.type, entry.props, { id: entry.id, name: entry.name, enabled: entry.enabled, container: entry.container });
 					} catch (e) {
 						console.warn(`Display "${entry.id}" could not be restored:`, e);
 						this.orphans.push(entry);

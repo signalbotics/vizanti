@@ -158,3 +158,14 @@ test('load keeps going past items that are not objects, and keeps them out of th
 	assert.equal(reg.items.length, 1);
 	assert.equal(reg.toJSON().items.length, 1);
 });
+
+test('an item remembers which folder its icon lives in', () => {
+	const a = make();
+	a.reg.add("fake", {}, { container: "folder_0_widget_container" });
+	a.reg.add("fake");
+	const json = JSON.parse(JSON.stringify(a.reg.toJSON()));
+	assert.deepEqual(json.items.map((i) => i.container), ["folder_0_widget_container", ""]);
+	const b = make();
+	b.reg.load(json);
+	assert.deepEqual(b.reg.items.map((i) => i.container), ["folder_0_widget_container", ""]);
+});

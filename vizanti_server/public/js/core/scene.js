@@ -38,6 +38,9 @@ export class Scene3D {
 		this._overlayDrawers = [];
 		this._lineMaterials = new Set();
 		this._v = new THREE.Vector3();
+		this._raycaster = new THREE.Raycaster();
+		this._ground = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+		this._inputEnabled = true;
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio(window.devicePixelRatio || 1);
@@ -143,11 +146,18 @@ export class Scene3D {
 	setCameraMode(mode) {
 		this.mode = mode === "orbit" ? "orbit" : "topdown";
 		this.camera = this.mode === "orbit" ? this.persp : this.ortho;
-		this.orbitControls.enabled = this.mode === "orbit";
-		this.topControls.enabled = this.mode === "topdown";
+		this.orbitControls.enabled = this._inputEnabled && this.mode === "orbit";
+		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
 		this.orbitControls.update();
 		this.topControls.update();
 		this._cameraChanged();
+	}
+
+	// Tools that take over the pointer switch camera movement off while they are active.
+	setInputEnabled(enabled) {
+		this._inputEnabled = !!enabled;
+		this.orbitControls.enabled = this._inputEnabled && this.mode === "orbit";
+		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
 	}
 
 	setTargetFrame(frame) {
@@ -291,6 +301,20 @@ export class Scene3D {
 			y: (1 - v.y) / 2 * this.height,
 			visible: v.z > -1 && v.z < 1,
 		};
+	}
+
+	// window (client) coordinates -> point on the fixed frame's z = 0 plane, or null when the
+	// view ray does not reach it
+	groundPoint(clientX, clientY) {
+		const rect = this.container.getBoundingClientRect();
+		const ndc = new THREE.Vector2(
+			((clientX - rect.left) / this.width) * 2 - 1,
+			-((clientY - rect.top) / this.height) * 2 + 1
+		);
+		this.camera.updateMatrixWorld();
+		this._raycaster.setFromCamera(ndc, this.camera);
+		const hit = this._raycaster.ray.intersectPlane(this._ground, new THREE.Vector3());
+		return hit ? { x: hit.x, y: hit.y, z: 0 } : null;
 	}
 
 	// ---- fat lines (WebGL lines are always 1px wide) ----

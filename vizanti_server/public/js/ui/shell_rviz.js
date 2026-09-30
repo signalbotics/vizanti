@@ -57,6 +57,17 @@ export class RvizShell {
 		spacer.className = "spacer_flex";
 		toolbar.appendChild(spacer);
 
+		// widgets that run from their original template keep their own live icon; it goes here
+		this.widgets = document.createElement("div");
+		this.widgets.className = "rviz_widgets";
+		toolbar.insertBefore(this.widgets, spacer);
+
+		// some template widgets measure the old icon bar; it has no height in this shell
+		const bar = document.createElement("div");
+		bar.id = "icon_bar";
+		bar.style.display = "none";
+		shell.appendChild(bar);
+
 		// a closed panel can be brought back from here
 		for (const id of Object.keys(PANELS))
 			toolbar.appendChild(button(PANELS[id].title, () => this.showPanel(id)));
@@ -64,8 +75,9 @@ export class RvizShell {
 
 		this.api = dockview.createDockview(dock, {
 			theme: dockview.themeDark,
-			createComponent: (options) => this.component(options.name),
+			createComponent: (options) => this.component(options.name, options.id),
 		});
+		this.removeListener = this.api.onDidRemovePanel((panel) => this.releaseLegacy(panel.id));
 
 		let restored = false;
 		if (registry.ui.rviz_layout) {
@@ -81,10 +93,10 @@ export class RvizShell {
 			for (const id of Object.keys(PANELS))
 				this.showPanel(id);
 		}
+		// dockview measures its container lazily; do it now so a restored layout has its real size
+		this.api.layout(dock.clientWidth, dock.clientHeight);
 		if (!restored) {
-			// dockview does not apply initialWidth/initialHeight when splitting an existing group,
-			// and it has not measured its container yet at this point
-			this.api.layout(dock.clientWidth, dock.clientHeight);
+			// dockview does not apply initialWidth/initialHeight when splitting an existing group
 			this.api.getPanel("displays")?.api.setSize({ width: PANELS.displays.initialWidth });
 			this.api.getPanel("views")?.api.setSize({ height: PANELS.views.initialHeight });
 		}
@@ -93,6 +105,7 @@ export class RvizShell {
 
 		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
 			this.listen(name, () => this.renderTree());
+		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
 	}
@@ -106,7 +119,17 @@ export class RvizShell {
 		this.editors = [];
 		this.tree = null;
 
+		// template widgets keep their icon and modal elements across shells
+		if (this.legacyObserver)
+			this.legacyObserver.disconnect();
+		for (const item of this.app.registry.items) {
+			if (item.iconElement)
+				this.app.legacy.icons.appendChild(item.iconElement);
+			this.releaseLegacy("legacy:" + item.id);
+		}
+
 		this.app.sceneElement.remove();
+		this.removeListener.dispose();
 		this.layoutListener.dispose();
 		this.api.dispose();
 		this.api = null;
@@ -126,13 +149,73 @@ export class RvizShell {
 		this.api.addPanel(spec);
 	}
 
-	component(name) {
+	// ---- panels for widgets that run from their original template ----
+
+	openLegacy(id) {
+		const item = this.app.registry.get(id);
+		if (!item || !item.modalElement)
+			return;
+		const panelId = "legacy:" + id;
+		const existing = this.api.getPanel(panelId);
+		if (existing) {
+			existing.api.setActive();
+			item.modalElement.style.display = "flex";
+			return;
+		}
+		// open beside another widget panel as a tab, or to the right of the 3D view
+		const sibling = this.api.panels.find((panel) => panel.id.startsWith("legacy:"));
+		const position = sibling ? { referencePanel: sibling.id }
+			: (this.api.getPanel("view") ? { referencePanel: "view", direction: "right" } : undefined);
+		this.api.addPanel({ id: panelId, component: "legacy", title: item.name, position });
+		if (!sibling)
+			this.api.getPanel(panelId)?.api.setSize({ width: 420 });
+	}
+
+	// puts a widget's modal back where it lives when its panel goes away
+	releaseLegacy(panelId) {
+		if (!panelId.startsWith("legacy:"))
+			return;
+		const item = this.app.registry.get(panelId.slice("legacy:".length));
+		if (item && item.modalElement && item.modalHolder && item.modalElement.parentElement !== item.modalHolder) {
+			item.modalElement.style.display = "none";
+			item.modalHolder.appendChild(item.modalElement);
+		}
+	}
+
+	attachLegacy(element, panelId) {
+		const item = this.app.registry.get(panelId.slice("legacy:".length));
+		if (!item || !item.modalElement) {
+			// a saved layout can name a widget that no longer exists
+			setTimeout(() => this.api?.getPanel(panelId)?.api.close(), 0);
+			return;
+		}
+		element.appendChild(item.modalElement);
+		item.modalElement.style.display = "flex";
+
+		// the widget's own scripts close their modal by hiding it; close the panel with it
+		if (!this.legacyObserver) {
+			this.legacyObserver = new MutationObserver((mutations) => {
+				for (const mutation of mutations) {
+					const modal = mutation.target;
+					if (modal.style.display === "none" && modal.closest(".rviz_panel_legacy")) {
+						const id = modal.id.replace(/_modal$/, "");
+						this.api?.getPanel("legacy:" + id)?.api.close();
+					}
+				}
+			});
+		}
+		this.legacyObserver.observe(item.modalElement, { attributes: true, attributeFilter: ["style"] });
+	}
+
+	component(name, id) {
 		const element = document.createElement("div");
 		element.className = "rviz_panel rviz_panel_" + name;
 		return {
 			element,
 			init: () => {
-				if (name === "view") {
+				if (name === "legacy") {
+					this.attachLegacy(element, id);
+				} else if (name === "view") {
 					element.appendChild(this.app.sceneElement);
 				} else if (name === "displays") {
 					this.tree = element;
@@ -144,7 +227,15 @@ export class RvizShell {
 		};
 	}
 
+	renderWidgets() {
+		for (const item of this.app.registry.items) {
+			if (item.iconElement && item.constructor.type !== "folder" && item.iconElement.parentElement !== this.widgets)
+				this.widgets.appendChild(item.iconElement);
+		}
+	}
+
 	renderTree() {
+		this.renderWidgets();
 		if (!this.tree)
 			return;
 
@@ -194,9 +285,15 @@ export class RvizShell {
 
 			const body = document.createElement("div");
 			body.className = "tree_body";
-			const editor = buildItemEditor(item, this.app);
-			this.editors.push(editor);
-			body.appendChild(editor.element);
+			if (item.constructor.kind === "template") {
+				// its settings live in its own panel
+				if (item.modalElement)
+					body.appendChild(button("Open panel", () => this.openLegacy(item.id)));
+			} else {
+				const editor = buildItemEditor(item, this.app);
+				this.editors.push(editor);
+				body.appendChild(editor.element);
+			}
 
 			const buttons = document.createElement("div");
 			buttons.className = "tree_buttons";
