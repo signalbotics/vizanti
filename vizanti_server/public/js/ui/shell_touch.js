@@ -1,6 +1,7 @@
 import { buildItemEditor } from './item_editor.js';
 import { buildGlobalOptions, buildCameraControls, buildLayoutControls } from './global_controls.js';
 import { openAddDialog } from './add_dialog.js';
+import { setIconColor } from '../modules/util.js';
 
 const BAR_HEIGHT_KEY = "iconBarHeight";
 
@@ -115,10 +116,33 @@ export class TouchShell {
 		return wrapper;
 	}
 
+	// A display's icon is an inline SVG document, so it can be tinted with the display's colour.
+	displayIcon(item) {
+		const wrapper = document.createElement("div");
+		wrapper.dataset.uniqueid = item.id;
+		const icon = document.createElement("div");
+		icon.className = "icon noselect";
+		icon.title = item.name;
+		const image = document.createElement("object");
+		image.type = "image/svg+xml";
+		image.width = 50;
+		image.height = 50;
+		image.style.pointerEvents = "none";
+		image.addEventListener("load", () => {
+			if (item.iconColor)
+				setIconColor(image, item.iconColor);
+		});
+		image.data = item.icon;
+		icon.appendChild(image);
+		icon.addEventListener("click", () => this.openItem(item));
+		wrapper.appendChild(icon);
+		return wrapper;
+	}
+
 	wrapperFor(item) {
 		let wrapper = this.wrappers.get(item.id);
 		if (!wrapper) {
-			wrapper = item.iconElement ?? this.staticIcon(item.id, item.icon, item.name, () => this.openItem(item));
+			wrapper = item.iconElement ?? this.displayIcon(item);
 			this.wrappers.set(item.id, wrapper);
 		}
 		return wrapper;
@@ -152,9 +176,11 @@ export class TouchShell {
 			return;
 		const icon = wrapper.firstElementChild;
 		icon.classList.toggle("icon-disabled", !item.enabled);
-		const image = icon.querySelector("img");
-		if (image.getAttribute("src") !== item.icon)
-			image.src = item.icon;
+		const image = icon.querySelector("object");
+		if (image.getAttribute("data") !== item.icon)
+			image.data = item.icon; // recoloured by its load handler
+		else if (item.iconColor && image.dataset.color !== item.iconColor)
+			setIconColor(image, item.iconColor);
 	}
 
 	paintStatus(item) {

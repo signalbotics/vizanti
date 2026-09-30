@@ -40,6 +40,19 @@ export class MapDisplay extends Display {
 		throttle: { type: "int", label: "Socket throttle (ms)", default: 1000, min: 0, max: 10000 },
 	};
 
+	// the old widget stored the colour scheme as the index of its dropdown
+	static fromLegacy(state) {
+		const schemes = ["map", "costmap", "raw", "raw_transparent", "raw_transparent_black", "sonar"];
+		let scheme = "map";
+		if (state.costmap_mode !== undefined)
+			scheme = state.costmap_mode ? "costmap" : "map";
+		else if (Number.isInteger(state.colour_scheme) && schemes[state.colour_scheme])
+			scheme = schemes[state.colour_scheme];
+		else if (schemes.includes(state.colour_scheme))
+			scheme = state.colour_scheme;
+		return { ...state, colour_scheme: scheme };
+	}
+
 	static propsForTopic(topic) {
 		return { topic, colour_scheme: topic.includes("cost") ? "costmap" : "map" };
 	}

@@ -11,6 +11,7 @@ import { chooseShell, UI_KEY } from '../ui/toggle.js';
 import { makeTemplateClass } from '../legacy/template_item.js';
 import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
+import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
 
 // template folders that are not widgets of their own in the new UI
 const TEMPLATE_SKIP = new Set(["add", "settings"]);
@@ -210,11 +211,37 @@ async function start() {
 	// ---- load the saved layout ----
 
 	const stored = storage.load();
+
+	// First run of this UI: carry over the layout of the old 2D UI if this browser has one,
+	// otherwise start from the server's default config (either format).
+	let initial = stored.data;
+	if (!initial) {
+		initial = DEFAULT_LAYOUT;
+		const parse = (text) => {
+			const data = JSON.parse(text);
+			if (isLegacyLayout(data))
+				return convertLegacyLayout(data, types);
+			return isLayout(data) ? data : null;
+		};
+		try {
+			const old = resolveBackend(() => window.localStorage).getItem("settings");
+			const converted = old ? parse(old) : null;
+			if (converted) {
+				initial = converted;
+				notify("Your widget layout from the previous version of Vizanti was carried over.");
+			} else {
+				const text = (await import(`${base_url}/default_widget_config`)).default;
+				initial = parse(text) ?? DEFAULT_LAYOUT;
+			}
+		} catch (e) {
+			console.warn("No earlier layout or default config could be read, using the built-in default:", e);
+		}
+	}
 	if (stored.corrupt)
 		notify("The saved layout could not be read, so the default layout was loaded. "
 			+ `The old data is kept in browser storage under "${STORAGE_KEY}_backup".`, { sticky: true });
 	try {
-		registry.load(stored.data ?? DEFAULT_LAYOUT);
+		registry.load(initial);
 	} catch (e) {
 		console.error("The saved layout could not be loaded:", e);
 		notify("The saved layout could not be loaded, so the default layout was loaded instead.", { sticky: true });

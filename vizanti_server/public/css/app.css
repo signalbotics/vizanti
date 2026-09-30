@@ -94,11 +94,12 @@
 	opacity: 0.4;
 }
 
-.icon img {
+.icon img,
+.icon > object {
 	width: 50px;
 	height: 50px;
-	pointer-events: none;
 }
+
 
 /* ---- rviz shell ---- */
 .rviz_shell {
@@ -196,11 +197,12 @@
 	display: none;
 }
 
+/* below the generated modals (z 20), so a display opened from inside a folder shows above the folder */
 #legacy_modals {
 	position: fixed;
 	inset: 0;
 	pointer-events: none;
-	z-index: 20;
+	z-index: 19;
 }
 
 /* sits exactly over the 3D view; app.syncLegacyViews() keeps it there */
