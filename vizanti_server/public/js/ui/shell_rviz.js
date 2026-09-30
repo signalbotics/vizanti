@@ -68,9 +68,13 @@ export class RvizShell {
 		bar.style.display = "none";
 		shell.appendChild(bar);
 
-		// a closed panel can be brought back from here
-		for (const id of Object.keys(PANELS))
-			toolbar.appendChild(button(PANELS[id].title, () => this.showPanel(id)));
+		// each panel has a toggle: lit while the panel is open, click to close or bring it back
+		this.panelButtons = {};
+		for (const id of Object.keys(PANELS)) {
+			this.panelButtons[id] = button(PANELS[id].title, () => this.togglePanel(id));
+			this.panelButtons[id].classList.add("panel_toggle");
+			toolbar.appendChild(this.panelButtons[id]);
+		}
 		toolbar.appendChild(button("Touch UI", () => this.app.switchShell("touch")));
 
 		this.api = dockview.createDockview(dock, {
@@ -101,7 +105,11 @@ export class RvizShell {
 			this.api.getPanel("views")?.api.setSize({ height: PANELS.views.initialHeight });
 		}
 
-		this.layoutListener = this.api.onDidLayoutChange(() => registry.setUi("rviz_layout", this.api.toJSON()));
+		this.layoutListener = this.api.onDidLayoutChange(() => {
+			registry.setUi("rviz_layout", this.api.toJSON());
+			this.paintPanelButtons();
+		});
+		this.paintPanelButtons();
 
 		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
 			this.listen(name, () => this.renderTree());
@@ -135,6 +143,23 @@ export class RvizShell {
 		this.api.dispose();
 		this.api = null;
 		this.root.replaceChildren();
+	}
+
+	togglePanel(id) {
+		const panel = this.api.getPanel(id);
+		if (panel)
+			panel.api.close();
+		else
+			this.showPanel(id);
+		this.paintPanelButtons();
+	}
+
+	paintPanelButtons() {
+		for (const [id, element] of Object.entries(this.panelButtons)) {
+			const open = !!this.api.getPanel(id);
+			element.classList.toggle("panel_open", open);
+			element.title = open ? `Hide the ${PANELS[id].title} panel` : `Show the ${PANELS[id].title} panel`;
+		}
 	}
 
 	showPanel(id) {

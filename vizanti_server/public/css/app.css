@@ -140,6 +140,15 @@
 	border-radius: 4px;
 }
 
+.rviz_toolbar .panel_toggle {
+	opacity: 0.55;
+}
+
+.rviz_toolbar .panel_toggle.panel_open {
+	opacity: 1;
+	border-color: #6c8ebf;
+}
+
 .rviz_dock {
 	flex: 1;
 	min-height: 0;
