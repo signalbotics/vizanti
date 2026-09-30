@@ -4,6 +4,7 @@ import { Registry } from './registry.js';
 import { createStorage, isLayout, STORAGE_KEY } from './storage.js';
 import { FrameNodes } from './frames.js';
 import { Scene3D, webglSupported } from './scene.js';
+import { TouchShell } from '../ui/shell_touch.js';
 
 const DEFAULT_LAYOUT = {
 	version: 2,
@@ -227,8 +228,9 @@ async function start() {
 	window.addEventListener("rosbridge_change", showConnection);
 	showConnection();
 
-	// TEMPORARY: replaced by a shell in Task 9
-	root.appendChild(sceneElement);
+	// TEMPORARY: shell selection arrives in Task 10
+	app.shell = new TouchShell(app);
+	app.shell.mount(root);
 
 	each("onCameraChange");
 	scene.requestRender();

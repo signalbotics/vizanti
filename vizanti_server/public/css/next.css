@@ -37,7 +37,7 @@
 /* ---- notices ---- */
 #notices {
 	position: fixed;
-	right: 10px;
+	left: 10px;
 	bottom: 10px;
 	z-index: 50;
 	display: flex;
@@ -69,6 +69,10 @@
 .prop_row > :last-child {
 	flex: 1;
 	min-width: 0;
+}
+
+.prop_row > input[type="checkbox"] {
+	flex: 0 0 auto;
 }
 
 .prop_slider {
