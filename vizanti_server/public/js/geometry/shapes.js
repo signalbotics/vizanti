@@ -8,9 +8,13 @@ const finitePoint = (p) => p && finite(p.x) && finite(p.y) && finite(p.z);
 export function normalizeQuat(q) {
 	if (!q || ![q.x, q.y, q.z, q.w].every(finite))
 		return { ...IDENTITY };
-	if (q.x === 0 && q.y === 0 && q.z === 0 && q.w === 0)
+	const length = Math.hypot(q.x, q.y, q.z, q.w);
+	if (length === 0)
 		return { ...IDENTITY };
-	return { x: q.x, y: q.y, z: q.z, w: q.w };
+	if (Math.abs(length - 1) < 1e-9)
+		return { x: q.x, y: q.y, z: q.z, w: q.w };
+	// interactive marker controls are commonly written unnormalised, e.g. w=1, x=1
+	return { x: q.x / length, y: q.y / length, z: q.z / length, w: q.w / length };
 }
 
 // Flat arrows lying in each pose's own XY plane, pointing along its x axis.

@@ -178,6 +178,16 @@ async function start() {
 		legacy,
 		requestRender: () => scene.requestRender(),
 		// message type of a topic as rosapi reports it, or null when it is not being published
+		publish: (topic, type, msg) => publish(topic, type, msg, false),
+		// resolves with the response, rejects on failure or after 5 s
+		callService: (name, type, request) => new Promise((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error("no answer within 5 s")), 5000);
+			new ROSLIB.Service({ ros: rosbridge.ros, name, serviceType: type }).callService(
+				new ROSLIB.ServiceRequest(request),
+				(response) => { clearTimeout(timer); resolve(response); },
+				(error) => { clearTimeout(timer); reject(new Error(String(error))); }
+			);
+		}),
 		resolveType: async (topic) => {
 			const all = await rosbridge.get_all_topics();
 			const index = all.topics.indexOf(topic);
@@ -190,6 +200,9 @@ async function start() {
 
 	// a save still pending when the page reloads would overwrite an import or a reset
 	let stopSaving = () => {};
+
+	// set up with the tools below; displays can publish from the start
+	let publish = () => {};
 
 	const app = {
 		registry,
@@ -420,12 +433,14 @@ async function start() {
 	// ---- built-in pointer tools ----
 
 	const publishers = new Map();
-	const publish = (topic, type, msg) => {
+
+	publish = (topic, type, msg, announce = true) => {
 		const key = topic + "|" + type;
 		if (!publishers.has(key))
 			publishers.set(key, new ROSLIB.Topic({ ros: rosbridge.ros, name: topic, messageType: type }));
 		publishers.get(key).publish(new ROSLIB.Message(msg));
-		notify(`Published to ${topic}`);
+		if (announce)
+			notify(`Published to ${topic}`);
 	};
 
 	const tools = new ToolManager({
@@ -451,6 +466,38 @@ async function start() {
 				tools.pointer(kind, event);
 		});
 	}
+
+	// Interactive objects (interactive markers) take a press that starts on them, before the
+	// camera sees it; the camera is paused until the pointer is released.
+	let interaction = null;
+	sceneElement.addEventListener("pointerdown", (event) => {
+		if (tools.active !== "move" || event.button !== 0 || !scene.inputEnabled)
+			return;
+		const hit = scene.pickInteractive(event.clientX, event.clientY);
+		if (!hit)
+			return;
+		const display = hit.interactive.display;
+		const ray = scene.ray(event.clientX, event.clientY);
+		if (!display.enabled || !display._safe("onPointer", "down", { ray, hit, event, interactive: hit.interactive }))
+			return;
+		event.stopPropagation();
+		interaction = { display };
+		scene.setInputEnabled(false);
+		sceneElement.setPointerCapture?.(event.pointerId);
+	}, true);
+	sceneElement.addEventListener("pointermove", (event) => {
+		if (interaction)
+			interaction.display._safe("onPointer", "move", { ray: scene.ray(event.clientX, event.clientY), event });
+	});
+	const release = (event) => {
+		if (!interaction)
+			return;
+		interaction.display._safe("onPointer", "up", { ray: scene.ray(event.clientX, event.clientY), event });
+		interaction = null;
+		scene.setInputEnabled(true);
+	};
+	sceneElement.addEventListener("pointerup", release);
+	sceneElement.addEventListener("pointercancel", release);
 	window.addEventListener("keydown", (event) => {
 		const target = event.target;
 		if (event.ctrlKey || event.metaKey || event.altKey)

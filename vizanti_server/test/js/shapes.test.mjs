@@ -98,3 +98,8 @@ test('the four displays keep the options and defaults of the widgets they replac
 	assert.deepEqual(defaultsOf(GridCellsDisplay.properties), { topic: "", opacity: 1, color: "#74ce6c", throttle: 500, use_timestamp: false });
 	assert.deepEqual([PathDisplay.type, PoseArrayDisplay.type, RangeDisplay.type, GridCellsDisplay.type], ["path", "posearray", "range", "gridcells"]);
 });
+
+test('normalizeQuat normalises quaternions that are not unit length', () => {
+	const q = normalizeQuat({ x: 1, y: 0, z: 0, w: 1 });
+	assert.ok(near(q.x, Math.SQRT1_2) && near(q.w, Math.SQRT1_2) && q.y === 0 && q.z === 0);
+});

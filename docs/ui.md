@@ -54,7 +54,8 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 ## What is drawn how
 
 **Native 3D displays** (`js/displays/`): Grid, TF, Map, Laser Scan, Point Cloud, Marker Array,
-Marker, Path, Pose, Pose Array, Pose Tracker, Point, Polygon, Wrench / Twist / Accel, Axes,
+Marker, Interactive Markers, Path, Pose, Pose Array, Pose Tracker, Point, Polygon,
+Wrench / Twist / Accel, Axes,
 Range, Grid Cells, Image (uncompressed), Camera, Satellite Tiles, Robot Model (sprite),
 Robot Model (URDF).
 
@@ -67,6 +68,12 @@ which is smaller and faster to decode; the template widgets keep the server's de
 Each declares its properties as data, and both interfaces generate their controls from that.
 Marker and Marker Array draw every marker type as real 3D geometry; mesh markers need
 `package://` paths to `.stl`, `.dae` or `.obj` files.
+
+**Interactive Markers** connect to an `interactive_markers` server by its namespace (for
+example `/basic_controls`): the markers are drawn in 3D, and in the Move Camera tool a press on
+a control drags it along its axis or plane, turns it around its axis, clicks a button, or opens
+its menu. Feedback goes to `<namespace>/feedback`. Controls without markers get the usual arrows
+and rings. `ROTATE_3D` and view-facing controls are drawn but only moved in the view plane.
 
 **Built-in tools** (toolbar in the RViz UI; Global Settings → Tools in the touch UI), with the
 RViz keyboard shortcuts:

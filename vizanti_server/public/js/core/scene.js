@@ -381,6 +381,46 @@ export class Scene3D {
 		return best ? { x: best.x, y: best.y, z: best.z } : null;
 	}
 
+	// the pointer's ray in the fixed frame, as THREE vectors
+	ray(clientX, clientY) {
+		const rect = this.container.getBoundingClientRect();
+		const ndc = new THREE.Vector2(
+			((clientX - rect.left) / this.width) * 2 - 1,
+			-((clientY - rect.top) / this.height) * 2 + 1
+		);
+		this.camera.updateMatrixWorld();
+		this._raycaster.setFromCamera(ndc, this.camera);
+		return { origin: this._raycaster.ray.origin.clone(), direction: this._raycaster.ray.direction.clone() };
+	}
+
+	// The nearest visible solid object under the pointer that carries userData.interactive,
+	// as { object, point, interactive }, or null.
+	pickInteractive(clientX, clientY) {
+		const ray = this.ray(clientX, clientY);
+		this._raycaster.set(ray.origin, ray.direction);
+		let hits = [];
+		try {
+			hits = this._raycaster.intersectObject(this.frames.root, true);
+		} catch (e) {
+			return null;
+		}
+		for (const hit of hits) {
+			const o = hit.object;
+			if (!o.isMesh || o.isLineSegments2)
+				continue;
+			let visible = true;
+			for (let p = o; p; p = p.parent) {
+				if (!p.visible)
+					visible = false;
+			}
+			if (!visible)
+				continue;
+			// the first solid thing in the way decides: an ordinary object blocks what is behind it
+			return o.userData.interactive ? { object: o, point: hit.point, interactive: o.userData.interactive } : null;
+		}
+		return null;
+	}
+
 	// moves the camera so it looks at a point, keeping its distance and direction
 	focusOn(point) {
 		const orbit = this.orbitControls.target;
