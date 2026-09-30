@@ -1,5 +1,5 @@
 // intrinsics from a sensor_msgs/CameraInfo (ROS 2 uses k, ROS 1 used K)
-function intrinsics(info) {
+export function intrinsics(info) {
 	const k = info?.k ?? info?.K;
 	if (!k || k.length < 9)
 		return null;

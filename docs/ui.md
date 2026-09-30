@@ -56,8 +56,12 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 **Native 3D displays** (`js/displays/`): Grid, TF, Map, Laser Scan, Point Cloud, Marker Array,
 Marker, Interactive Markers, Path, Pose, Pose Array, Pose Tracker, Point, Polygon,
 Wrench / Twist / Accel, Axes,
-Range, Grid Cells, Image (uncompressed), Camera, Satellite Tiles, Robot Model (sprite),
-Robot Model (URDF).
+Range, Grid Cells, Image (uncompressed), Camera, Depth Cloud, Sensor Value, Satellite Tiles,
+Robot Model (sprite), Robot Model (URDF).
+
+**Depth Cloud** turns a `16UC1` (millimetres) or `32FC1` (metres) depth image into points using
+CameraInfo, taking every n-th pixel. **Sensor Value** writes the reading of a Temperature,
+FluidPressure, Illuminance or RelativeHumidity message at the sensor's frame.
 
 **Camera** places an image (raw or compressed) on the image plane of the camera's frustum in
 3D, sized from `sensor_msgs/CameraInfo`, optionally with the frustum outline and a copy in a
