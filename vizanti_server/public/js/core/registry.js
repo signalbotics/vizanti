@@ -175,6 +175,9 @@ export class Registry extends EventTarget {
 					this.uid = data.uid;
 
 				for (const entry of Array.isArray(data.items) ? data.items : []) {
+					// a hand-edited or damaged file can hold anything; only objects are entries
+					if (entry === null || typeof entry !== "object" || Array.isArray(entry))
+						continue;
 					if (!this.types.has(entry.type)) {
 						this.orphans.push(entry);
 						continue;

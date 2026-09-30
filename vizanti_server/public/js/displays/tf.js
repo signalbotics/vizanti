@@ -40,6 +40,7 @@ export class TfDisplay extends Display {
 		this.frames = result.frames;
 		if (result.changed)
 			this.props.frame_visibility = visibility; // saved with the next change
+		this.refreshEditor();
 		this.rebuild();
 	}
 
@@ -119,6 +120,22 @@ export class TfDisplay extends Display {
 		const visibility = { ...this.props.frame_visibility };
 		change(visibility);
 		this.setProp("frame_visibility", visibility);
+	}
+
+	// An editor built before TF arrived (the RViz tree builds them up front) lists no frames,
+	// so the list is redrawn whenever the set of frames differs from what it shows.
+	refreshEditor() {
+		if (!this.editor)
+			return;
+		if (!this.editor.list.isConnected) {
+			this.editor = null;
+			return;
+		}
+		const key = Object.keys(this.ctx.tf.transforms).join("|");
+		if (key !== this.editor.key) {
+			this.editor.key = key;
+			this.editor.render();
+		}
 	}
 
 	buildCustomEditor(container) {
@@ -214,5 +231,6 @@ export class TfDisplay extends Display {
 		};
 
 		renderList();
+		this.editor = { list, render: renderList, key: Object.keys(tf.transforms).join("|") };
 	}
 }

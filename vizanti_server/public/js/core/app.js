@@ -1,7 +1,8 @@
 import { rosbridge } from '../modules/rosbridge.js';
 import { tf } from '../modules/tf.js';
 import { Registry } from './registry.js';
-import { createStorage, isLayout, STORAGE_KEY } from './storage.js';
+import { createStorage, resolveBackend, isLayout, STORAGE_KEY } from './storage.js';
+import { throttled } from './throttle.js';
 import { FrameNodes } from './frames.js';
 import { Scene3D, webglSupported } from './scene.js';
 import { TouchShell } from '../ui/shell_touch.js';
@@ -29,19 +30,6 @@ function notify(text, { sticky = false } = {}) {
 	if (!sticky)
 		setTimeout(() => notice.remove(), 8000);
 	return notice;
-}
-
-// runs fn at most once per `ms`, after the burst
-function throttled(fn, ms) {
-	let timer = null;
-	return () => {
-		if (timer !== null)
-			return;
-		timer = setTimeout(() => {
-			timer = null;
-			fn();
-		}, ms);
-	};
 }
 
 // Every .js file under js/displays is a display module; each exported class with a
@@ -105,7 +93,10 @@ async function start() {
 		setProperty: (id, key, value) => registry.setProperty(id, key, value),
 	};
 	const registry = new Registry({ types, context });
-	const storage = createStorage(window.localStorage, STORAGE_KEY);
+	const storage = createStorage(resolveBackend(() => window.localStorage), STORAGE_KEY);
+
+	// a save still pending when the page reloads would overwrite an import or a reset
+	let stopSaving = () => {};
 
 	const app = {
 		registry,
@@ -147,11 +138,13 @@ async function start() {
 				return false;
 			if (!storage.save(data))
 				return false;
+			stopSaving();
 			window.location.reload();
 			return true;
 		},
 
 		resetLayout() {
+			stopSaving();
 			storage.clear();
 			window.location.reload();
 		},
@@ -164,7 +157,13 @@ async function start() {
 	if (stored.corrupt)
 		notify("The saved layout could not be read, so the default layout was loaded. "
 			+ `The old data is kept in browser storage under "${STORAGE_KEY}_backup".`, { sticky: true });
-	registry.load(stored.data ?? DEFAULT_LAYOUT);
+	try {
+		registry.load(stored.data ?? DEFAULT_LAYOUT);
+	} catch (e) {
+		console.error("The saved layout could not be loaded:", e);
+		notify("The saved layout could not be loaded, so the default layout was loaded instead.", { sticky: true });
+		registry.load(DEFAULT_LAYOUT);
+	}
 
 	tf.setFixedFrame(registry.global.fixed_frame);
 	scene.setBackground(registry.global.background);
@@ -217,6 +216,10 @@ async function start() {
 		saveCamera();
 	});
 	scene.onContextRestored(() => each("onContextRestored"));
+	stopSaving = () => {
+		save.cancel();
+		saveCamera.cancel();
+	};
 
 	let connectionNotice = null;
 	const showConnection = () => {
@@ -274,4 +277,10 @@ async function start() {
 	scene.requestRender();
 }
 
-start();
+start().catch((e) => {
+	console.error("Vizanti failed to start:", e);
+	const message = document.createElement("div");
+	message.className = "fatal_message";
+	message.textContent = "Vizanti failed to start: " + e.message + " See the browser console for details.";
+	document.getElementById("app_root").replaceChildren(message);
+});

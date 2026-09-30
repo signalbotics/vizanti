@@ -151,3 +151,10 @@ test('load replaces what was there and tolerates null and partial data', () => {
 	reg.load(null);
 	assert.equal(reg.items.length, 0);
 });
+
+test('load keeps going past items that are not objects, and keeps them out of the live list', () => {
+	const { reg } = make();
+	assert.doesNotThrow(() => reg.load({ version: 2, items: [null, 5, "x", [1], { type: "fake" }] }));
+	assert.equal(reg.items.length, 1);
+	assert.equal(reg.toJSON().items.length, 1);
+});

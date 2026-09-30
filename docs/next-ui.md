@@ -104,3 +104,28 @@ Only Grid, TF, Laser Scan and Map exist in the new UI. The other displays, the t
 widgets (node manager, rosbag, reconfigure, diagnostics and so on), folders and icon reordering
 in the touch UI, and conversion of old saved layouts come in the following plans. Until then,
 use `/` for anything not listed here.
+
+## Verification status (2026-09-30)
+
+Checked in a browser: the scene, both interfaces, the toggle, the property editor, saving and
+restoring, and WebGL context loss. TF, Laser Scan and Map were checked with transforms and
+messages injected from the browser console, because rosbridge could not start on the development
+machine (its system ROS packages were older than the installed rosbridge; `sudo apt upgrade`
+fixes that).
+
+Still to be checked against a live rosbridge: subscribing to real topics, the topic and frame
+dropdowns, Add → By Topic, throttling, reconnecting after the tab was hidden, and frame rate with
+large scans and maps.
+
+Known small issues, left for a later pass:
+
+- A display that was disabled while the camera or TF moved is not redrawn until the next camera
+  or TF change after it is enabled again.
+- With a map of the wrong size arriving repeatedly, the status alternates between Ok and the error.
+- A map conversion still running when the topic is changed can show the old topic's map once.
+- Changing the throttle shows "No data received." until the next message.
+- "Loading topics..." never ends when rosbridge is down.
+- In the orbit view the grid reaches far enough to alias into dots near the horizon.
+- The top-down camera does not show anything more than 1000 m above the fixed frame origin.
+- The existing `js/modules/tf.js` reads `stamp.secs/nsecs`, which ROS 2 does not send, so
+  "nearest the message stamp" lookups return the latest transform. This affects the old UI too.

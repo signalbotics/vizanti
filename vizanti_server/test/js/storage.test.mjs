@@ -63,3 +63,16 @@ test('clear removes the stored layout', () => {
 	s.clear();
 	assert.deepEqual(s.load(), { data: null, corrupt: false });
 });
+
+test('resolveBackend falls back to memory when the browser refuses access to storage', async () => {
+	const { resolveBackend } = await import('../../public/js/core/storage.js');
+	const backend = resolveBackend(() => { throw new Error("SecurityError"); });
+	const s = createStorage(backend);
+	assert.equal(s.save(layout), true);
+	assert.deepEqual(s.load(), { data: layout, corrupt: false });
+	s.clear();
+	assert.deepEqual(s.load(), { data: null, corrupt: false });
+	assert.equal(resolveBackend(() => null).getItem("x"), null);
+	const real = memory();
+	assert.equal(resolveBackend(() => real), real);
+});

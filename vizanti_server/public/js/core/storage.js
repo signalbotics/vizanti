@@ -5,6 +5,24 @@ export function isLayout(data) {
 		&& data.version === 2 && Array.isArray(data.items);
 }
 
+// Browsers throw on the localStorage getter itself when site data is blocked.
+// get() returns the real backend; if it throws or yields nothing, state lives in memory
+// for this page only.
+export function resolveBackend(get) {
+	try {
+		const backend = get();
+		if (backend)
+			return backend;
+	} catch (e) { /* storage blocked */ }
+
+	const data = new Map();
+	return {
+		getItem: (key) => (data.has(key) ? data.get(key) : null),
+		setItem: (key, value) => { data.set(key, String(value)); },
+		removeItem: (key) => { data.delete(key); },
+	};
+}
+
 // backend has the shape of localStorage: getItem, setItem, removeItem.
 export function createStorage(backend, key = STORAGE_KEY) {
 	return {
