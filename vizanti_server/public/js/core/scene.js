@@ -81,6 +81,9 @@ export class Scene3D {
 		this.canvas.addEventListener("webglcontextrestored", () => {
 			for (const fn of this._restoreListeners)
 				fn();
+			// the clear colour is GL state, which a restored context does not keep
+			if (this._background)
+				this.renderer.setClearColor(new THREE.Color(this._background));
 			this.requestRender();
 		});
 		this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -246,6 +249,7 @@ export class Scene3D {
 	}
 
 	setBackground(hex) {
+		this._background = hex;
 		this.renderer.setClearColor(new THREE.Color(hex));
 		this.requestRender();
 	}
