@@ -12,6 +12,8 @@ import { makeTemplateClass } from '../legacy/template_item.js';
 import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
 import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
+import { ToolManager, TOOLS } from './tools.js';
+import { formatDistance } from '../geometry/shapes.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
 const LEGACY_DONE_KEY = "vizanti_legacy_done";
@@ -343,6 +345,109 @@ async function start() {
 		window.dispatchEvent(new Event("view_changed"));
 	});
 	scene.onContextRestored(() => each("onContextRestored"));
+
+	// ---- built-in pointer tools ----
+
+	const publishers = new Map();
+	const publish = (topic, type, msg) => {
+		const key = topic + "|" + type;
+		if (!publishers.has(key))
+			publishers.set(key, new ROSLIB.Topic({ ros: rosbridge.ros, name: topic, messageType: type }));
+		publishers.get(key).publish(new ROSLIB.Message(msg));
+		notify(`Published to ${topic}`);
+	};
+
+	const tools = new ToolManager({
+		pick: (x, y) => scene.pick(x, y),
+		ground: (x, y) => scene.groundPoint(x, y),
+		focus: (point) => scene.focusOn(point),
+		setInputEnabled: (enabled) => scene.setInputEnabled(enabled),
+		publish,
+		fixedFrame: () => tf.fixed_frame,
+		now: () => Date.now(),
+		requestRender: () => scene.requestRender(),
+	}, registry.ui.tools);
+	app.tools = tools;
+	tools.onChange = () => {
+		sceneElement.style.cursor = tools.active === "move" ? "" : "crosshair";
+		window.dispatchEvent(new Event("vizanti_tool_changed"));
+	};
+	tools.onOptions = (options) => registry.setUi("tools", options);
+
+	for (const [type, kind] of [["pointerdown", "down"], ["pointermove", "move"], ["pointerup", "up"]]) {
+		scene.canvas.addEventListener(type, (event) => {
+			if (tools.active !== "move")
+				tools.pointer(kind, event);
+		});
+	}
+	window.addEventListener("keydown", (event) => {
+		const target = event.target;
+		if (event.ctrlKey || event.metaKey || event.altKey)
+			return;
+		if (target && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)))
+			return;
+		tools.key(event.key);
+	});
+
+	// what the active tool is doing, drawn over the view
+	scene.addOverlayDrawer((ctx, view) => {
+		const at = (p) => view.project(p.x, p.y, p.z);
+		if (tools.active !== "move") {
+			const hint = TOOLS.find((tool) => tool.id === tools.active).hint + "  (Esc to cancel)";
+			ctx.font = "13px Monospace";
+			ctx.textAlign = "center";
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = "#161B21";
+			ctx.fillStyle = "white";
+			ctx.strokeText(hint, view.width / 2, 22);
+			ctx.fillText(hint, view.width / 2, 22);
+		}
+
+		const m = tools.measurement;
+		if (m) {
+			const a = at(m.a), b = at(m.b);
+			ctx.strokeStyle = "#ffd23f";
+			ctx.fillStyle = "#ffd23f";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(a.x, a.y);
+			ctx.lineTo(b.x, b.y);
+			ctx.stroke();
+			for (const p of [a, b]) {
+				ctx.beginPath();
+				ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+				ctx.fill();
+			}
+			const label = formatDistance(m.distance);
+			ctx.font = "bold 15px Monospace";
+			ctx.textAlign = "center";
+			ctx.lineWidth = 4;
+			ctx.strokeStyle = "#161B21";
+			ctx.strokeText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
+			ctx.fillText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
+		}
+
+		const pose = tools.preview;
+		if (pose) {
+			// an arrow about 70 px long on the ground, from the pressed point along the heading
+			const length = 70 / view.pixelsPerMeter();
+			const tail = at(pose.start);
+			const tip = at({ x: pose.start.x + Math.cos(pose.yaw) * length, y: pose.start.y + Math.sin(pose.yaw) * length, z: 0 });
+			const angle = Math.atan2(tip.y - tail.y, tip.x - tail.x);
+			ctx.strokeStyle = tools.active === "goal" ? "#b04cff" : "#2ecc71";
+			ctx.fillStyle = ctx.strokeStyle;
+			ctx.lineWidth = 5;
+			ctx.beginPath();
+			ctx.moveTo(tail.x, tail.y);
+			ctx.lineTo(tip.x, tip.y);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(tip.x + 14 * Math.cos(angle), tip.y + 14 * Math.sin(angle));
+			ctx.lineTo(tip.x + 10 * Math.cos(angle + 2.4), tip.y + 10 * Math.sin(angle + 2.4));
+			ctx.lineTo(tip.x + 10 * Math.cos(angle - 2.4), tip.y + 10 * Math.sin(angle - 2.4));
+			ctx.fill();
+		}
+	});
 	stopSaving = () => {
 		save.cancel();
 		saveCamera.cancel();

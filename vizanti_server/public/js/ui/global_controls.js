@@ -1,4 +1,5 @@
 import { renderProperties } from './property_editor.js';
+import { TOOLS } from '../core/tools.js';
 
 function button(text, onClick, className = "") {
 	const element = document.createElement("button");
@@ -41,6 +42,39 @@ export function buildCameraControls(container, app) {
 
 	container.appendChild(button("Reset Camera View", () => scene.resetCamera()));
 	container.appendChild(comment("Reset only the camera to its default pose (zero relative to the fixed frame link)."));
+}
+
+// Buttons for the built-in pointer tools and the topics they publish to.
+// onSelect runs after a tool was chosen (the touch UI closes its modal there).
+export function buildToolControls(container, app, onSelect = () => {}) {
+	const row = document.createElement("div");
+	row.className = "tool_buttons";
+	const paint = () => {
+		for (const element of row.children)
+			element.classList.toggle("tool_active", element.dataset.tool === app.tools.active);
+	};
+	for (const tool of TOOLS) {
+		const element = button(tool.label, () => {
+			app.tools.select(tool.id);
+			paint();
+			onSelect(tool.id);
+		});
+		element.dataset.tool = tool.id;
+		element.title = `${tool.hint} Shortcut: ${tool.key}`;
+		row.appendChild(element);
+	}
+	paint();
+	container.appendChild(row);
+
+	renderProperties(container, {
+		point_topic: { type: "string", label: "Publish Point topic" },
+		goal_topic: { type: "string", label: "Goal Pose topic" },
+		estimate_topic: { type: "string", label: "Pose Estimate topic" },
+	}, app.tools.options, (key, raw) => {
+		app.tools.setOption(key, raw);
+		return { ok: true, value: app.tools.options[key] };
+	}, app.envFor(null));
+	return paint;
 }
 
 export function buildLayoutControls(container, app) {

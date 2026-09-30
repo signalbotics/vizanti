@@ -1,5 +1,6 @@
 import { buildItemEditor } from './item_editor.js';
-import { buildGlobalOptions, buildCameraControls, buildLayoutControls } from './global_controls.js';
+import { buildGlobalOptions, buildCameraControls, buildLayoutControls, buildToolControls } from './global_controls.js';
+import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
 
 const dockview = globalThis["dockview-core"];
@@ -48,10 +49,21 @@ export class RvizShell {
 		root.appendChild(shell);
 
 		toolbar.appendChild(button("Add", () => openAddDialog(this.app)));
-		const tool = document.createElement("span");
-		tool.className = "tool_active";
-		tool.textContent = "Move Camera";
-		toolbar.appendChild(tool);
+		// the pointer tools; the lit one is active
+		this.toolButtons = [];
+		for (const tool of TOOLS) {
+			const element = button(tool.label, () => this.app.tools.select(tool.id));
+			element.dataset.tool = tool.id;
+			element.title = `${tool.hint} Shortcut: ${tool.key}`;
+			toolbar.appendChild(element);
+			this.toolButtons.push(element);
+		}
+		this.paintTools = () => {
+			for (const element of this.toolButtons)
+				element.classList.toggle("tool_active", element.dataset.tool === this.app.tools.active);
+		};
+		window.addEventListener("vizanti_tool_changed", this.paintTools);
+		this.paintTools();
 
 		const spacer = document.createElement("span");
 		spacer.className = "spacer_flex";
@@ -120,6 +132,9 @@ export class RvizShell {
 	}
 
 	unmount() {
+		window.removeEventListener("vizanti_tool_changed", this.paintTools);
+		if (this.toolPanelPaint)
+			window.removeEventListener("vizanti_tool_changed", this.toolPanelPaint);
 		for (const [name, fn] of this.handlers)
 			this.app.registry.removeEventListener(name, fn);
 		this.handlers = [];
@@ -248,6 +263,12 @@ export class RvizShell {
 					this.renderTree();
 				} else if (name === "views") {
 					buildCameraControls(element, this.app);
+					const heading = document.createElement("h4");
+					heading.textContent = "Tool topics";
+					element.appendChild(heading);
+					const paint = buildToolControls(element, this.app);
+					window.addEventListener("vizanti_tool_changed", paint);
+					this.toolPanelPaint = paint;
 				}
 			},
 		};

@@ -1,5 +1,5 @@
 import { buildItemEditor } from './item_editor.js';
-import { buildGlobalOptions, buildCameraControls, buildLayoutControls } from './global_controls.js';
+import { buildGlobalOptions, buildCameraControls, buildLayoutControls, buildToolControls } from './global_controls.js';
 import { openAddDialog } from './add_dialog.js';
 import { setIconColor } from '../modules/util.js';
 
@@ -330,6 +330,11 @@ export class TouchShell {
 			buildGlobalOptions(inner, this.app);
 			inner.appendChild(hr());
 			buildCameraControls(inner, this.app);
+			inner.appendChild(hr());
+			const tools = document.createElement("h4");
+			tools.textContent = "Tools";
+			inner.appendChild(tools);
+			buildToolControls(inner, this.app, () => this.closeModal());
 			inner.appendChild(hr());
 			const heading = document.createElement("h4");
 			heading.textContent = "Manage settings";

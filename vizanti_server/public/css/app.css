@@ -297,3 +297,17 @@
 	pointer-events: none;
 	z-index: 2;
 }
+
+/* pointer tools */
+.rviz_toolbar button.tool_active,
+.tool_buttons button.tool_active {
+	border-color: #6c8ebf;
+	background-color: #2c4a6e;
+}
+
+.tool_buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 6px 0;
+}

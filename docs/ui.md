@@ -46,10 +46,27 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 ## What is drawn how
 
 **Native 3D displays** (`js/displays/`): Grid, TF, Map, Laser Scan, Point Cloud, Marker Array,
-Path, Pose, Pose Array, Pose Tracker, Range, Grid Cells, Satellite Tiles, Robot Model (sprite),
-Robot Model (URDF).
+Marker, Path, Pose, Pose Array, Pose Tracker, Point, Polygon, Wrench / Twist / Accel, Axes,
+Range, Grid Cells, Image (uncompressed), Satellite Tiles, Robot Model (sprite), Robot Model (URDF).
 Each declares its properties as data, and both interfaces generate their controls from that.
-Marker Array draws every marker type as real 3D geometry except `MESH_RESOURCE`.
+Marker and Marker Array draw every marker type as real 3D geometry; mesh markers need
+`package://` paths to `.stl`, `.dae` or `.obj` files.
+
+**Built-in tools** (toolbar in the RViz UI; Global Settings → Tools in the touch UI), with the
+RViz keyboard shortcuts:
+
+| Tool | Key | What it does |
+|---|---|---|
+| Move Camera | m | The default. Esc returns to it. |
+| Measure | n | Click two points; the distance is shown on the line. |
+| Publish Point | c | Click a point; publishes `geometry_msgs/PointStamped` on `/clicked_point`. |
+| Focus Camera | f | Click a point; the camera centres on it. |
+| 2D Goal Pose | g | Press and drag for heading; publishes `geometry_msgs/PoseStamped` on `/goal_pose`. |
+| 2D Pose Estimate | p | Same gesture; publishes `PoseWithCovarianceStamped` on `/initialpose`. |
+
+Measure, Publish Point and Focus pick the nearest solid object or point-cloud point under the
+pointer, falling back to the ground plane. The pose tools work on the ground plane (z = 0) of
+the fixed frame. The three topics can be changed under Views → Tool topics.
 
 **Robot Model (URDF)** reads the description from `/robot_description` (published by
 `robot_state_publisher`) and draws every link's boxes, cylinders, spheres and meshes at the
@@ -157,7 +174,6 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
 
 - The tools and other template widgets draw on a 2D overlay projected onto the ground plane.
   They are not yet native 3D tools (no picking of 3D objects, no editing above z = 0).
-- `MESH_RESOURCE` markers are not drawn.
 - The URDF robot model needs the package that holds the meshes to be installed on the machine
   running the Vizanti server. It was checked with the Panda arm (Collada visuals, STL
   collisions) at rest; it was not checked with moving joints, `.obj` meshes or textured meshes.

@@ -325,6 +325,67 @@ export class Scene3D {
 		return hit ? { x: hit.x, y: hit.y, z: 0 } : null;
 	}
 
+	// The nearest thing under the pointer: a point on a solid object or point cloud, or else
+	// the ground plane. Lines and hidden objects are ignored. Returns { x, y, z } or null.
+	pick(clientX, clientY) {
+		const rect = this.container.getBoundingClientRect();
+		const ndc = new THREE.Vector2(
+			((clientX - rect.left) / this.width) * 2 - 1,
+			-((clientY - rect.top) / this.height) * 2 + 1
+		);
+		this.camera.updateMatrixWorld();
+		this._raycaster.setFromCamera(ndc, this.camera);
+		this._raycaster.params.Points.threshold = 4 / this.pixelsPerMeter(); // about 4 px
+
+		const shown = (object) => {
+			for (let o = object; o; o = o.parent) {
+				if (!o.visible)
+					return false;
+			}
+			return true;
+		};
+
+		let best = null;
+		let bestDistance = Infinity;
+		let hits = [];
+		try {
+			hits = this._raycaster.intersectObject(this.frames.root, true);
+		} catch (e) {
+			// a geometry that cannot be ray-tested must not break the tools
+		}
+		for (const hit of hits) {
+			const o = hit.object;
+			if (o.isLineSegments2 || !(o.isMesh || o.isPoints) || !shown(o))
+				continue;
+			best = hit.point;
+			bestDistance = hit.distance;
+			break; // hits are sorted nearest first
+		}
+
+		const ground = this._raycaster.ray.intersectPlane(this._ground, new THREE.Vector3());
+		if (ground && this._raycaster.ray.origin.distanceTo(ground) < bestDistance)
+			best = ground;
+		return best ? { x: best.x, y: best.y, z: best.z } : null;
+	}
+
+	// moves the camera so it looks at a point, keeping its distance and direction
+	focusOn(point) {
+		const orbit = this.orbitControls.target;
+		const dx = point.x - orbit.x, dy = point.y - orbit.y, dz = point.z - orbit.z;
+		this.persp.position.x += dx;
+		this.persp.position.y += dy;
+		this.persp.position.z += dz;
+		orbit.set(point.x, point.y, point.z);
+
+		this.ortho.position.x = point.x;
+		this.ortho.position.y = point.y;
+		this.topControls.target.set(point.x, point.y, 0);
+
+		this.orbitControls.update();
+		this.topControls.update();
+		this._cameraChanged();
+	}
+
 	// ---- fat lines (WebGL lines are always 1px wide) ----
 
 	// linewidth is in pixels, or in metres when worldUnits is set
