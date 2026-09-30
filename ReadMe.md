@@ -28,7 +28,7 @@ colcon build
 
 ### Debian packages
 
-To build installable `ros-<distro>-vizanti-*` .deb packages instead, run `packaging/build_debs.sh`; see [docs/packaging.md](docs/packaging.md).
+To build installable `ros-<distro>-vizanti-*` .deb packages instead, run `packaging/build_debs.sh` (this machine's ROS) or `packaging/build_debs_docker.sh jazzy` (any distro, in Docker); see [docs/packaging.md](docs/packaging.md).
 
 ### Docker
 

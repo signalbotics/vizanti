@@ -24,18 +24,41 @@ Then, from the repository root:
 ```bash
 packaging/build_debs.sh                       # all five packages, for the distro in /opt/ros
 packaging/build_debs.sh vizanti_msgs vizanti_server vizanti   # only these (any order)
-packaging/build_debs.sh --distro jazzy --out /tmp/debs
+packaging/build_debs.sh --out /tmp/debs
 packaging/build_debs.sh --keep-work           # keep the temporary build tree for debugging
 ```
 
-The .deb files land in `packaging/debs/` (ignored by git). The packages are built for the
-machine's Ubuntu release and architecture (for example `_0.1.1-0resolute_amd64.deb`); build
-on the release you deploy to, or in a container of it.
+The .deb files land in `packaging/debs/<distro>/` (ignored by git). They are built for this
+machine's ROS distro, Ubuntu release and architecture, for example
+`ros-lyrical-vizanti-server_0.1.1-0resolute_amd64.deb`.
 
-Install them with apt, which pulls in their dependencies:
+### Other distros (Jazzy, Humble, ...)
+
+`packaging/build_debs_docker.sh` builds for any ROS 2 distro that has an official
+`ros:<distro>-ros-base` Docker image. That image also sets the Ubuntu release: Jazzy gives
+24.04 (`noble`) and Humble gives 22.04 (`jammy`). It needs Docker and network access.
 
 ```bash
-sudo apt install ./packaging/debs/*.deb
+packaging/build_debs_docker.sh jazzy                  # -> packaging/debs/jazzy/
+packaging/build_debs_docker.sh humble vizanti_msgs vizanti_server vizanti
+```
+
+It builds a builder image `vizanti-deb-builder:<distro>` from `packaging/Dockerfile.build`,
+which contains the ROS base, bloom and the packages' dependencies. It then runs `build_debs.sh`
+inside that image with the repository mounted read-only. The .deb files are owned by your user.
+The first run for a distro takes a few minutes; later runs reuse the image. Remove the image
+with `docker rmi vizanti-deb-builder:<distro>`.
+
+Checked for Jazzy (2026-10-01): all five packages built, then `apt install`ed into a clean
+`ros:jazzy-ros-base` container. The server started there and served the web UI.
+
+### Install
+
+Install them on a machine with the matching distro and Ubuntu release, using apt, which pulls
+in their dependencies:
+
+```bash
+sudo apt install ./packaging/debs/jazzy/*.deb     # or lyrical/, ...
 ```
 
 and run as usual: `ros2 launch vizanti_server vizanti_server.launch.py`.

@@ -5,13 +5,14 @@
 # directory so later packages can build against them.
 #
 # Usage: packaging/build_debs.sh [--distro NAME] [--out DIR] [--keep-work] [PACKAGE...]
+# Builds for the ROS installed here; for another distro use build_debs_docker.sh.
 # See docs/packaging.md.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 META="$REPO/packaging/debian_meta.py"
 DISTRO="${ROS_DISTRO:-}"
-OUT="$REPO/packaging/debs"
+OUT=""  # default: packaging/debs/<distro>
 KEEP_WORK=0
 PACKAGES=()
 # dependency order: each package only needs the ones before it
@@ -22,7 +23,7 @@ while [ $# -gt 0 ]; do
 		--distro) DISTRO="$2"; shift 2 ;;
 		--out) OUT="$2"; shift 2 ;;
 		--keep-work) KEEP_WORK=1; shift ;;
-		-h|--help) sed -n '2,8p' "$0"; exit 0 ;;
+		-h|--help) sed -n '2,9p' "$0"; exit 0 ;;
 		-*) echo "Unknown option $1" >&2; exit 2 ;;
 		*) PACKAGES+=("$1"); shift ;;
 	esac
@@ -68,6 +69,7 @@ set +u
 # shellcheck disable=SC1090
 source "/opt/ros/$DISTRO/setup.bash"
 set -u
+[ -n "$OUT" ] || OUT="$REPO/packaging/debs/$DISTRO"
 mkdir -p "$OUT" "$WORK/src" "$WORK/stage" "$WORK/rosdep" "$WORK/ros_home"
 OUT="$(cd "$OUT" && pwd)"
 
