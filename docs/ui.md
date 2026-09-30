@@ -33,6 +33,13 @@ remembered per browser (storage key `vizanti_ui`).
 The RViz UI opens in the 3D orbit camera (left-drag rotates, right-drag pans, wheel zooms); the
 touch UI opens top-down. Change it under Views / Global Settings → Camera.
 
+- **Target frame:** the camera moves with that TF frame. Tick "Turn with target frame" and the
+  orbit camera also swings round as the frame turns (a third-person view behind the robot).
+- **Saved views:** type a name under "Saved views" and press "Save current view" (Enter works
+  too; an empty name becomes "view N"). "Go" jumps back to it and ✕ deletes it. Saving a name
+  that exists replaces it. Views are part of the layout (`ui.saved_views`), so they are exported
+  and saved to the robot with it.
+
 ## Saved layouts, configs on the robot, screenshots, time
 
 The layout (widgets, their settings, global options, camera, panel arrangement) is saved in
