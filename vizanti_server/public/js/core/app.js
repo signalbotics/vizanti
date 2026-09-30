@@ -95,13 +95,23 @@ function legacyHost(id) {
 	return element;
 }
 
+// Large array-heavy messages travel as CBOR: the arrays arrive as typed arrays instead of JSON
+// text or base64, which is smaller on the wire and much cheaper to decode. The native displays
+// read both forms; template widgets keep the server's default.
+const BINARY_TYPES = new Set([
+	"sensor_msgs/msg/PointCloud2",
+	"sensor_msgs/msg/Image",
+	"sensor_msgs/msg/LaserScan",
+	"nav_msgs/msg/OccupancyGrid",
+]);
+
 function subscribe(topic, msgType, throttleMs, callback) {
 	const rosTopic = new ROSLIB.Topic({
 		ros: rosbridge.ros,
 		name: topic,
 		messageType: msgType,
 		throttle_rate: throttleMs,
-		compression: rosbridge.compression,
+		compression: BINARY_TYPES.has(msgType) ? "cbor" : rosbridge.compression,
 		queue_length: 1,
 	});
 	rosTopic.subscribe(callback);
