@@ -1,0 +1,8 @@
+{
+	"name": "vizanti-server-frontend-tests",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "node --test \"test/js/*.test.mjs\""
+	}
+}

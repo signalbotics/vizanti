@@ -1,0 +1,187 @@
+/* ---- scene ---- */
+#app_root {
+	position: fixed;
+	inset: 0;
+}
+
+.scene_container {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+}
+
+.scene_canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.scene_overlay {
+	position: absolute;
+	left: 0;
+	top: 0;
+	pointer-events: none;
+}
+
+.fatal_message {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 30px;
+	text-align: center;
+	font-size: 1.2rem;
+}
+
+/* ---- notices ---- */
+#notices {
+	position: fixed;
+	right: 10px;
+	bottom: 10px;
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 420px;
+}
+
+.notice {
+	background-color: rgba(0, 0, 0, 0.8);
+	border-left: 4px solid rgb(255, 205, 42);
+	padding: 8px 12px;
+	font-size: 0.85rem;
+	cursor: pointer;
+}
+
+/* ---- property rows (both shells) ---- */
+.prop_row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 6px 0;
+}
+
+.prop_row > label {
+	flex: 0 0 45%;
+}
+
+.prop_row > :last-child {
+	flex: 1;
+	min-width: 0;
+}
+
+.prop_slider {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.prop_slider input {
+	flex: 1;
+	min-width: 0;
+}
+
+.prop_invalid {
+	outline: 2px solid rgb(255, 60, 60);
+}
+
+.icon-disabled {
+	opacity: 0.4;
+}
+
+.icon img {
+	width: 50px;
+	height: 50px;
+	pointer-events: none;
+}
+
+/* ---- rviz shell ---- */
+.rviz_shell {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.rviz_toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	background-color: rgba(0, 0, 0, 0.7);
+}
+
+.rviz_toolbar .spacer_flex {
+	flex: 1;
+}
+
+.rviz_toolbar .tool_active {
+	padding: 2px 8px;
+	border: 1px solid #6c8ebf;
+	border-radius: 4px;
+}
+
+.rviz_dock {
+	flex: 1;
+	min-height: 0;
+	position: relative;
+}
+
+.rviz_panel {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	box-sizing: border-box;
+}
+
+.rviz_panel_displays,
+.rviz_panel_views {
+	padding: 6px 8px;
+	font-size: 0.85rem;
+}
+
+.rviz_panel_view {
+	overflow: hidden;
+}
+
+.tree_item {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+	padding: 3px 0;
+}
+
+.tree_item > summary {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+}
+
+.tree_item > summary img {
+	width: 20px;
+	height: 20px;
+}
+
+.tree_item > summary .tree_name {
+	flex: 1;
+}
+
+.tree_item > summary .tree_status {
+	font-size: 0.75rem;
+	max-width: 50%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tree_body {
+	padding: 4px 0 8px 22px;
+}
+
+.tree_buttons {
+	display: flex;
+	gap: 6px;
+	margin-top: 6px;
+}
