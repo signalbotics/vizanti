@@ -107,15 +107,22 @@ use `/` for anything not listed here.
 
 ## Verification status (2026-09-30)
 
-Checked in a browser: the scene, both interfaces, the toggle, the property editor, saving and
-restoring, and WebGL context loss. TF, Laser Scan and Map were checked with transforms and
-messages injected from the browser console, because rosbridge could not start on the development
-machine (its system ROS packages were older than the installed rosbridge; `sudo apt upgrade`
-fixes that).
+Checked in a browser against a live rosbridge, with two static transforms, a 2 Hz LaserScan and
+an OccupancyGrid being published:
 
-Still to be checked against a live rosbridge: subscribing to real topics, the topic and frame
-dropdowns, Add → By Topic, throttling, reconnecting after the tab was hidden, and frame rate with
-large scans and maps.
+- TF, Laser Scan and Map draw at the right poses; Add → By Topic, the topic dropdown and the
+  frame dropdowns list what is being published; a costmap topic starts with the Costmap scheme.
+- Socket throttle changes the message rate (about 2 per second at 0 ms, one per 2 s at 2000 ms).
+- Changing the fixed frame moves everything consistently.
+- After the rosbridge connection drops, it reconnects and the displays keep receiving data.
+- Drawing a frame with a 20,000-point scan and a 2000 x 2000 map takes under 15 ms on the
+  development desktop (median under 1 ms).
+
+Also checked: the scene, both interfaces, the toggle, the property editor, saving and restoring,
+and WebGL context loss.
+
+Not checked: a phone or tablet (touch gestures, frame rate), docking panels by mouse drag, and
+returning to a tab that was in the background.
 
 Known small issues, left for a later pass:
 
@@ -125,6 +132,8 @@ Known small issues, left for a later pass:
 - A map conversion still running when the topic is changed can show the old topic's map once.
 - Changing the throttle shows "No data received." until the next message.
 - "Loading topics..." never ends when rosbridge is down.
+- Handing a very large map to the colour-conversion worker blocks the page briefly (about
+  150 ms for 2000 x 2000 cells), as the current UI does.
 - In the orbit view the grid reaches far enough to alias into dots near the horizon.
 - The top-down camera does not show anything more than 1000 m above the fixed frame origin.
 - The existing `js/modules/tf.js` reads `stamp.secs/nsecs`, which ROS 2 does not send, so
