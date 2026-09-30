@@ -266,12 +266,19 @@ async function start() {
 		mountShell(name);
 	};
 
-	mountShell(chooseShell({
+	const initialShell = chooseShell({
 		query: window.location.search,
 		stored: readStoredShell(),
 		width: window.innerWidth,
 		coarsePointer: window.matchMedia("(pointer: coarse)").matches,
-	}));
+	});
+
+	// The RViz UI opens in the 3D orbit view; the touch UI keeps the top-down view it always had.
+	// Only applies until the user has a saved camera of their own. Set before the shell is
+	// built so its camera control shows the right mode.
+	if (!registry.ui.camera && initialShell === "rviz")
+		scene.setCameraMode("orbit");
+	mountShell(initialShell);
 
 	each("onCameraChange");
 	scene.requestRender();
