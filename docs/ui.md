@@ -156,6 +156,28 @@ export class MyDisplay extends Display {
   unit tested without a browser.
 - An exception in any hook is caught and shown as that display's error status.
 
+## Display plugins from other packages
+
+Any ROS package can add displays without touching Vizanti:
+
+1. Put display modules in `vizanti/displays/*.js` in the package, written as in "Add a display"
+   but importing the framework three directories up, e.g.
+   `import { Display } from '../../../js/core/display.js';`
+2. In its `CMakeLists.txt`, install that folder and register the resource:
+
+   ```cmake
+   install(DIRECTORY vizanti DESTINATION share/${PROJECT_NAME}/)
+   ament_index_register_resource(vizanti_displays)
+   ```
+
+3. Build and source the workspace, then restart the Vizanti server.
+
+The server lists every package with the `vizanti_displays` resource at `/plugins/paths` and
+serves its `share/<package>/vizanti/` folder at `/plugins/<package>/` (only `.js`, `.css`,
+`.svg`, `.png` and `.json` files). A plugin type with the same name as a built-in display is not
+loaded. `vizanti_demos` ships a working example, "Frame Label (plugin example)", in
+`vizanti_demos/vizanti/displays/frame_label.js`.
+
 ## Where things are
 
 | Path (under `vizanti_server/public/js/`) | What |

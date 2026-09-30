@@ -12,6 +12,7 @@ import rclpy
 from flask import Flask, render_template, send_from_directory, make_response, request, abort
 from waitress.server import create_server
 from ament_index_python.packages import get_package_share_directory
+from ament_index_python.resources import get_resources
 
 from pathlib import Path
 
@@ -181,6 +182,34 @@ def config_file(name):
 		return json_response({'error': f'The config could not be written: {e.strerror}.'}, 507)
 	return json_response({'saved': name})
 
+# Display plugins: any package that registers the ament resource "vizanti_displays" and
+# installs share/<package>/vizanti/displays/*.js contributes displays.
+PLUGIN_EXTENSIONS = {'.js', '.css', '.svg', '.png', '.json'}
+
+def plugin_dir(package):
+	resources = get_resources('vizanti_displays')
+	if package not in resources:
+		return None
+	return os.path.join(resources[package], 'share', package, 'vizanti')
+
+def list_plugin_displays():
+	paths = []
+	for package, prefix in sorted(get_resources('vizanti_displays').items()):
+		folder = os.path.join(prefix, 'share', package, 'vizanti', 'displays')
+		if os.path.isdir(folder):
+			for file in sorted(os.listdir(folder)):
+				if file.endswith('.js'):
+					paths.append(f'{package}/displays/{file}')
+	response = make_response(f"const paths = {json.dumps(paths)};\nexport default paths;")
+	response.headers['Content-Type'] = 'application/javascript'
+	return response
+
+def serve_plugin_file(package, path):
+	folder = plugin_dir(package)
+	if folder is None or os.path.splitext(path)[1].lower() not in PLUGIN_EXTENSIONS:
+		abort(404)
+	return send_from_directory(folder, path)
+
 # files a robot description may refer to with package:// URIs
 MESH_EXTENSIONS = {'.stl', '.dae', '.obj', '.mtl', '.png', '.jpg', '.jpeg', '.tga', '.bmp'}
 
@@ -312,6 +341,8 @@ def main(args=None):
 	app.add_url_rule(param_base_url + '/ros_launch_params', 'ros_launch_params', list_ros_launch_params)
 	app.add_url_rule(param_base_url + '/default_widget_config', 'get_default_widget_config', get_default_widget_config)
 	app.add_url_rule(param_base_url + '/displays/paths', 'list_display_files', list_display_files)
+	app.add_url_rule(param_base_url + '/plugins/paths', 'list_plugin_displays', list_plugin_displays)
+	app.add_url_rule(param_base_url + '/plugins/<package>/<path:path>', 'serve_plugin_file', serve_plugin_file)
 	app.add_url_rule(param_base_url + '/configs', 'list_configs', list_configs)
 	app.add_url_rule(param_base_url + '/configs/<name>', 'config_file', config_file, methods=['GET', 'PUT', 'DELETE'])
 	app.add_url_rule(param_base_url + '/package/<package>/<path:path>', 'serve_package_file', serve_package_file)

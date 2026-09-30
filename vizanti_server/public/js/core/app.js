@@ -62,6 +62,30 @@ async function loadDisplayTypes() {
 			notify(`Display module ${path} failed to load. See the browser console.`, { sticky: true });
 		}
 	}
+
+	// display plugins installed by other ROS packages; built-in types win a name clash
+	try {
+		const plugins = (await import(`${base_url}/plugins/paths`)).default;
+		for (const path of plugins) {
+			try {
+				const module = await import(`${base_url}/plugins/${path}`);
+				for (const value of Object.values(module)) {
+					if (typeof value !== "function" || typeof value.type !== "string" || value.type === "")
+						continue;
+					if (types.has(value.type)) {
+						notify(`Plugin ${path} defines the display type "${value.type}", which already exists; it was not loaded.`, { sticky: true });
+						continue;
+					}
+					types.set(value.type, value);
+				}
+			} catch (e) {
+				console.error(`Display plugin ${path} failed to load:`, e);
+				notify(`Display plugin ${path} failed to load. See the browser console.`, { sticky: true });
+			}
+		}
+	} catch (e) {
+		console.warn("The list of display plugins could not be read:", e);
+	}
 	return types;
 }
 

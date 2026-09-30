@@ -26,8 +26,12 @@ find_package(visualization_msgs REQUIRED)
 install(DIRECTORY
   launch
   assets
+  vizanti
   DESTINATION share/${PROJECT_NAME}/
 )
+
+# an example Vizanti display plugin (vizanti/displays/frame_label.js)
+ament_index_register_resource(vizanti_displays)
 
 install(PROGRAMS
   scripts/_test_button.py
