@@ -46,9 +46,18 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 ## What is drawn how
 
 **Native 3D displays** (`js/displays/`): Grid, TF, Map, Laser Scan, Point Cloud, Marker Array,
-Path, Pose, Pose Array, Pose Tracker, Range, Grid Cells, Satellite Tiles, Robot Model (sprite).
+Path, Pose, Pose Array, Pose Tracker, Range, Grid Cells, Satellite Tiles, Robot Model (sprite),
+Robot Model (URDF).
 Each declares its properties as data, and both interfaces generate their controls from that.
 Marker Array draws every marker type as real 3D geometry except `MESH_RESOURCE`.
+
+**Robot Model (URDF)** reads the description from `/robot_description` (published by
+`robot_state_publisher`) and draws every link's boxes, cylinders, spheres and meshes at the
+link's TF frame, so the joints move with TF. Options: visual and collision geometry, alpha, a
+TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>` (`.stl`,
+`.dae`, `.obj`) are served by the Vizanti server from that package's share directory at
+`/package/<pkg>/<path>`; only mesh and texture file types are served, and paths cannot leave
+the package. `file://` mesh paths are not supported.
 
 **Template widgets** (`templates/`): the tools (2D Pose Estimate, 2D Nav Goal, Waypoint Mission,
 Survey Mission, Bounding Box), Teleop, Button, and the panels (Node Manager, Bag Recorder,
@@ -148,7 +157,10 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
 
 - The tools and other template widgets draw on a 2D overlay projected onto the ground plane.
   They are not yet native 3D tools (no picking of 3D objects, no editing above z = 0).
-- `MESH_RESOURCE` markers are not drawn. There is no URDF robot model yet, only the sprite.
+- `MESH_RESOURCE` markers are not drawn.
+- The URDF robot model needs the package that holds the meshes to be installed on the machine
+  running the Vizanti server. It was checked with the Panda arm (Collada visuals, STL
+  collisions) at rest; it was not checked with moving joints, `.obj` meshes or textured meshes.
 - In the orbit view the grid reaches far enough to alias into dots near the horizon, and
   Satellite Tiles pick a coarser zoom than needed.
 - A display that was disabled while the camera or TF moved is not redrawn until the next camera

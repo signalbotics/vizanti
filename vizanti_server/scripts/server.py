@@ -8,7 +8,7 @@ import gzip
 import hashlib
 import rclpy
 
-from flask import Flask, render_template, send_from_directory, make_response, request
+from flask import Flask, render_template, send_from_directory, make_response, request, abort
 from waitress.server import create_server
 from ament_index_python.packages import get_package_share_directory
 
@@ -122,6 +122,19 @@ def list_ros_launch_params():
 	response = make_response(js_module)
 	response.headers['Content-Type'] = 'application/javascript'
 	return response
+
+# files a robot description may refer to with package:// URIs
+MESH_EXTENSIONS = {'.stl', '.dae', '.obj', '.mtl', '.png', '.jpg', '.jpeg', '.tga', '.bmp'}
+
+def serve_package_file(package, path):
+	if os.path.splitext(path)[1].lower() not in MESH_EXTENSIONS:
+		abort(404)
+	try:
+		share_dir = get_package_share_directory(package)
+	except Exception:
+		abort(404)
+	# send_from_directory refuses paths that step outside the package's share directory
+	return send_from_directory(share_dir, path)
 
 def serve_static(path):
 	return send_from_directory(app.static_folder, path)
@@ -237,6 +250,7 @@ def main(args=None):
 	app.add_url_rule(param_base_url + '/ros_launch_params', 'ros_launch_params', list_ros_launch_params)
 	app.add_url_rule(param_base_url + '/default_widget_config', 'get_default_widget_config', get_default_widget_config)
 	app.add_url_rule(param_base_url + '/displays/paths', 'list_display_files', list_display_files)
+	app.add_url_rule(param_base_url + '/package/<package>/<path:path>', 'serve_package_file', serve_package_file)
 	app.add_url_rule(param_base_url + '/<path:path>', 'serve_static', serve_static)
 
 	server = ServerThread(app, param_host, param_port)
