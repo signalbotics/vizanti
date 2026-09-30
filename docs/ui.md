@@ -55,7 +55,15 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 
 **Native 3D displays** (`js/displays/`): Grid, TF, Map, Laser Scan, Point Cloud, Marker Array,
 Marker, Path, Pose, Pose Array, Pose Tracker, Point, Polygon, Wrench / Twist / Accel, Axes,
-Range, Grid Cells, Image (uncompressed), Satellite Tiles, Robot Model (sprite), Robot Model (URDF).
+Range, Grid Cells, Image (uncompressed), Camera, Satellite Tiles, Robot Model (sprite),
+Robot Model (URDF).
+
+**Camera** places an image (raw or compressed) on the image plane of the camera's frustum in
+3D, sized from `sensor_msgs/CameraInfo`, optionally with the frustum outline and a copy in a
+corner of the view. Adding it from a topic fills in the neighbouring `camera_info` topic.
+
+Laser scans, point clouds, images and maps are received as CBOR (binary) rather than JSON,
+which is smaller and faster to decode; the template widgets keep the server's default.
 Each declares its properties as data, and both interfaces generate their controls from that.
 Marker and Marker Array draw every marker type as real 3D geometry; mesh markers need
 `package://` paths to `.stl`, `.dae` or `.obj` files.
