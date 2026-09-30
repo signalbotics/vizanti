@@ -164,12 +164,12 @@ export function buildLayoutControls(container, app) {
 	row.appendChild(button("⇓ Import", () => {
 		const picker = document.createElement("input");
 		picker.type = "file";
-		picker.accept = ".json";
+		picker.accept = ".json,.rviz";
 		picker.onchange = () => {
 			const reader = new FileReader();
 			reader.onload = () => {
 				if (!app.importLayout(reader.result))
-					app.notify("That file is not a layout this version of Vizanti can read, so nothing was changed.");
+					app.notify("That file is not a Vizanti layout or RViz config this version can read, so nothing was changed.");
 			};
 			reader.readAsText(picker.files[0]);
 		};
@@ -177,7 +177,7 @@ export function buildLayoutControls(container, app) {
 	}, "export_button"));
 
 	container.appendChild(row);
-	container.appendChild(comment("Exporting the current configuration will save the widget layout, settings, camera pose, and other info, so it can be imported later."));
+	container.appendChild(comment("Exporting the current configuration will save the widget layout, settings, camera pose, and other info, so it can be imported later. Import also takes RViz .rviz configs."));
 
 	// ---- layouts kept on the robot ----
 	const robot = document.createElement("div");

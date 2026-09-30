@@ -45,6 +45,16 @@ touch UI opens top-down. Change it under Views / Global Settings → Camera.
 The layout (widgets, their settings, global options, camera, panel arrangement) is saved in
 browser storage under `vizanti_v2`. Export and import it from Global Options.
 
+- **RViz configs:** Import also takes an RViz 1 or RViz 2 `.rviz` file. Its displays replace the
+  current ones (groups are flattened; displays in a disabled group come in disabled), and its
+  fixed frame, background colour and current view (Orbit, XYOrbit, ThirdPersonFollower,
+  TopDownOrtho) are applied. Widgets such as the rosbridge connection, teleop and tools are
+  kept. A notice lists the RViz displays Vizanti has no equivalent for (MoveIt, IMU,
+  `sensor_msgs/PointCloud`, vendor plugins…); they are left out. Topics, colours, alpha, sizes
+  and the common per-display options carry over; the rest takes Vizanti defaults. The
+  converter is `public/js/core/rviz_import.js`; it was run over the 409 `.rviz` files on the
+  development machine without a parse failure.
+
 - A browser that still has a layout from the old 2D UI (storage key `settings`) has it converted
   on first load. The old data is left in place.
 - The `default_widget_config` launch parameter accepts both the old format and the new one.
@@ -238,3 +248,6 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
 - The Point Cloud "RGB Colour Count" option is gone: per-point colours are drawn directly.
 - `Contributing.md` still describes the old page structure (`main.js`, `setup.js`).
 - In the orbit view, a tool ignores clicks above the horizon (there is no ground there) and says so.
+- Maps and satellite tiles are ground layers: they always draw beneath the other displays,
+  whatever the display order, so an opaque map never hides a scan or TF at the same height.
+  Display order still decides which of two maps is on top.

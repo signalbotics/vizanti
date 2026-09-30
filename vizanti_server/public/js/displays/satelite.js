@@ -12,6 +12,7 @@ export class SatelliteDisplay extends Display {
 	static type = "satelite";
 	static label = "Satellite Tiles";
 	static icon = "assets/satelite.svg";
+	static drawLayer = -2;
 	static description = "sensor_msgs/NavSatFix";
 	static msgTypes = ["sensor_msgs/msg/NavSatFix"];
 
@@ -266,7 +267,8 @@ export class SatelliteDisplay extends Display {
 			]), 3));
 			geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(8), 2));
 			geometry.setIndex([0, 2, 1, 1, 2, 3]);
-			const material = new THREE.MeshBasicMaterial({ transparent: true, opacity: this.props.opacity, depthWrite: false, side: THREE.DoubleSide });
+			const material = new THREE.MeshBasicMaterial({ transparent: true, opacity: this.props.opacity, depthWrite: false, side: THREE.DoubleSide,
+				polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }); // below maps and everything else at z=0
 			mesh = new THREE.Mesh(geometry, material);
 			mesh.frustumCulled = false;
 			mesh.renderOrder = this.order;

@@ -15,9 +15,13 @@ import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
 import { ToolManager, TOOLS } from './tools.js';
 import { createConfigClient } from './configs.js';
 import { formatDistance } from '../geometry/shapes.js';
+import { parseYaml, isRvizConfig, convertRvizConfig } from './rviz_import.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
 const LEGACY_DONE_KEY = "vizanti_legacy_done";
+
+// a message to show once after the reload that applies an imported layout
+const NOTICE_KEY = "vizanti_notice";
 
 // template folders that are not widgets of their own in the new UI
 const TEMPLATE_SKIP = new Set(["add", "settings"]);
@@ -204,6 +208,31 @@ async function start() {
 	// set up with the tools below; displays can publish from the start
 	let publish = () => {};
 
+	// An RViz config replaces the displays, fixed frame, background and camera; the widgets
+	// (connection, teleop, tools, ...) of the current layout stay as they are.
+	const layoutFromRviz = (text) => {
+		let doc;
+		try {
+			doc = parseYaml(text);
+		} catch (e) {
+			return null;
+		}
+		if (!isRvizConfig(doc))
+			return null;
+		const { items, global, camera, skipped } = convertRvizConfig(doc, types);
+		const current = registry.toJSON();
+		const data = {
+			...current,
+			global: { ...current.global, ...global },
+			ui: camera ? { ...current.ui, camera } : current.ui,
+			items: [...current.items.filter((item) => types.get(item.type)?.kind !== "display"), ...items],
+		};
+		let notice = `Imported ${items.length} display${items.length === 1 ? "" : "s"} from the RViz config.`;
+		if (skipped.length)
+			notice += ` Not available in Vizanti, so left out: ${skipped.join(", ")}.`;
+		return { data, notice };
+	};
+
 	const app = {
 		registry,
 		scene,
@@ -263,10 +292,14 @@ async function start() {
 		// Returns false when the text is not a layout this version can read.
 		importLayout(text) {
 			let data;
+			let notice = "";
 			try {
 				data = JSON.parse(text);
 			} catch (e) {
-				return false;
+				const rviz = layoutFromRviz(text);
+				if (!rviz)
+					return false;
+				({ data, notice } = rviz);
 			}
 			if (isLegacyLayout(data))
 				data = convertLegacyLayout(data, types); // a file exported by the old 2D UI
@@ -274,6 +307,9 @@ async function start() {
 				return false;
 			if (!storage.save(data))
 				return false;
+			if (notice) {
+				try { window.sessionStorage.setItem(NOTICE_KEY, notice); } catch (e) { /* storage blocked */ }
+			}
 			stopSaving();
 			window.location.reload();
 			return true;
@@ -355,6 +391,14 @@ async function start() {
 	tf.setFixedFrame(registry.global.fixed_frame);
 	scene.setBackground(registry.global.background);
 	scene.setCameraState(registry.ui.camera);
+
+	try {
+		const pending = window.sessionStorage.getItem(NOTICE_KEY);
+		if (pending) {
+			window.sessionStorage.removeItem(NOTICE_KEY);
+			notify(pending, { sticky: true });
+		}
+	} catch (e) { /* storage blocked */ }
 
 	// ---- wiring ----
 

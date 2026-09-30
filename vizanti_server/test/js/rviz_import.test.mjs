@@ -1,0 +1,213 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { parseYaml, rvizColor, isRvizConfig, convertRvizConfig } from '../../public/js/core/rviz_import.js';
+
+const SAMPLE = `Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 2
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Name: Grid
+      Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Color: 255; 0; 0
+      Color Transformer: FlatColor
+      Enabled: true
+      Name: Front laser
+      Size (m): 0.05
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Value: /scan
+      Value: true
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_default_plugins/Map
+          Alpha: 0.7
+          Enabled: true
+          Name: Map
+          Topic:
+            Value: /map
+          Value: true
+        - Class: rviz_default_plugins/Pose
+          Color: 0; 255; 0
+          Enabled: false
+          Name: Goal
+          Topic: /goal_pose
+          Value: false
+      Enabled: false
+      Name: Nav
+      Value: false
+    - Class: some_pkg/FancyThing
+      Enabled: true
+      Name: Fancy
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+      TF Prefix: ""
+      Value: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 10
+      Focal Point:
+        X: 1
+        Y: 2
+        Z: 0
+      Name: Current View
+      Pitch: 0.5
+      Target Frame: <Fixed Frame>
+      Yaw: 0.785
+    Saved: ~
+Window Geometry:
+  Height: 800
+`;
+
+test("parseYaml reads nested maps, lists of maps and scalars", () => {
+	const doc = parseYaml(SAMPLE);
+	assert.equal(doc.Panels[0].Class, "rviz_common/Displays");
+	const vm = doc["Visualization Manager"];
+	assert.equal(vm.Class, "");
+	assert.equal(vm.Displays.length, 5);
+	assert.equal(vm.Displays[0]["Cell Size"], 2);
+	assert.equal(vm.Displays[0].Alpha, 0.5);
+	assert.equal(vm.Displays[0].Enabled, true);
+	assert.equal(vm.Displays[1].Topic.Value, "/scan");
+	assert.equal(vm.Displays[2].Displays[1].Topic, "/goal_pose");
+	assert.equal(vm.Displays[2].Displays[1].Enabled, false);
+	assert.equal(vm["Global Options"]["Fixed Frame"], "map");
+	assert.equal(vm.Views.Current["Focal Point"].Y, 2);
+	assert.equal(vm.Views.Saved, null);
+	assert.equal(doc["Window Geometry"].Height, 800);
+});
+
+test("parseYaml handles quotes, comments, flow collections and list scalars", () => {
+	const doc = parseYaml(`# a comment
+a: 'it''s'
+b: "x: y"
+c: []
+d: {}
+e:
+- one
+- 2
+f: [1, two]
+g: true # trailing note
+h: 1e3
+`);
+	assert.equal(doc.a, "it's");
+	assert.equal(doc.b, "x: y");
+	assert.deepEqual(doc.c, []);
+	assert.deepEqual(doc.d, {});
+	assert.deepEqual(doc.e, ["one", 2]);
+	assert.deepEqual(doc.f, [1, "two"]);
+	assert.equal(doc.g, true);
+	assert.equal(doc.h, 1000);
+});
+
+test("rvizColor turns 'r; g; b' into hex and rejects anything else", () => {
+	assert.equal(rvizColor("255; 0; 16"), "#ff0010");
+	assert.equal(rvizColor("300; 0; 0"), "#ff0000");
+	assert.equal(rvizColor("red"), undefined);
+	assert.equal(rvizColor(undefined), undefined);
+});
+
+test("isRvizConfig spots an RViz file", () => {
+	assert.equal(isRvizConfig(parseYaml(SAMPLE)), true);
+	assert.equal(isRvizConfig({ version: 2, items: [] }), false);
+	assert.equal(isRvizConfig(null), false);
+});
+
+test("convertRvizConfig maps displays, globals and the view", () => {
+	const types = new Set(["grid", "scan", "map", "posewithcovariancestamped", "urdf"]);
+	const { items, global, camera, skipped } = convertRvizConfig(parseYaml(SAMPLE), types);
+
+	assert.deepEqual(global, { fixed_frame: "map", background: "#303030" });
+
+	assert.deepEqual(items.map((i) => i.type), ["grid", "scan", "map", "posewithcovariancestamped", "urdf"]);
+	const [grid, scan, map, pose, urdf] = items;
+	assert.deepEqual(grid.props, { size: 2, colour: "#a0a0a4" });
+	assert.equal(scan.name, "Front laser");
+	assert.deepEqual(scan.props, { topic: "/scan", color: "#ff0000", thickness: 0.05 });
+	// the group was disabled, so its children come in disabled
+	assert.equal(map.enabled, false);
+	assert.deepEqual(map.props, { topic: "/map", opacity: 0.7 });
+	assert.deepEqual(pose.props, { topic: "/goal_pose", topic_type: "geometry_msgs/msg/PoseStamped", color: "#00ff00" });
+	assert.deepEqual(urdf.props, { topic: "/robot_description" });
+	assert.equal(new Set(items.map((i) => i.id)).size, items.length);
+	for (const item of items)
+		assert.match(item.id, /^[\w-]+$/);
+
+	assert.deepEqual(skipped, ["Fancy (some_pkg/FancyThing)"]);
+
+	assert.equal(camera.mode, "orbit");
+	assert.equal(camera.target_frame, "");
+	assert.deepEqual(camera.orbit.target, [1, 2, 0]);
+	const [x, y, z] = camera.orbit.position;
+	assert.ok(Math.abs(Math.hypot(x - 1, y - 2, z) - 10) < 1e-9);
+	assert.ok(Math.abs(z - 10 * Math.sin(0.5)) < 1e-9);
+	assert.ok(Math.abs(Math.atan2(y - 2, x - 1) - 0.785) < 1e-9);
+});
+
+test("convertRvizConfig skips types this Vizanti does not have and reads top-down views", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Topic: /map
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Scale: 80
+      X: 3
+      Y: -1
+      Target Frame: base_link
+`);
+	const { items, camera, skipped } = convertRvizConfig(doc, new Set(["grid"]));
+	assert.deepEqual(items, []);
+	assert.deepEqual(skipped, ["Map (rviz_default_plugins/Map)"]);
+	assert.deepEqual(camera, { mode: "topdown", target_frame: "base_link", topdown: { x: 3, y: -1, zoom: 80 } });
+});
+
+test("convertRvizConfig tolerates a file with nothing in it", () => {
+	const out = convertRvizConfig({ "Visualization Manager": {} }, new Set());
+	assert.deepEqual(out, { items: [], global: {}, camera: undefined, skipped: [] });
+});
+
+test("convertRvizConfig rounds float32 noise and keeps cloud colours only when flat", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Name: Cloud
+      Size (m): 0.009999999776482582
+      Topic:
+        Value: /points
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 0; 0; 255
+      Color Transformer: FlatColor
+      Name: Flat
+      Topic: /flat
+`);
+	const { items } = convertRvizConfig(doc, new Set(["pointcloud"]));
+	assert.deepEqual(items[0].props, { topic: "/points", thickness: 0.01 });
+	assert.deepEqual(items[1].props, { topic: "/flat", color: "#0000ff", colour_override: true });
+});

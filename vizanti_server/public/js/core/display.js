@@ -36,6 +36,9 @@ export class Display {
 	static description = "";
 	static msgTypes = [];
 	static properties = {};
+	// Transparent objects draw in list order, so a flat ground layer (map, satellite) lower
+	// in the list would paint over scans and TF. Lower layers always draw first.
+	static drawLayer = 0;
 
 	// Initial properties for a display added from the "By Topic" list.
 	static propsForTopic(topic, type) {
@@ -52,7 +55,7 @@ export class Display {
 		this.props = {};
 		this.enabled = true;
 		this.info = {};
-		this.order = 0;
+		this.order = this.constructor.drawLayer * 100000;
 		this.lastMsg = null;
 		this.status = new DisplayStatus();
 		this.onInfo = null;
@@ -297,8 +300,8 @@ export class Display {
 	}
 
 	_setOrder(index) {
-		this.order = index;
-		this.root.traverse((object) => { object.renderOrder = index; });
+		this.order = this.constructor.drawLayer * 100000 + index;
+		this.root.traverse((object) => { object.renderOrder = this.order; });
 	}
 
 	_destroy() {

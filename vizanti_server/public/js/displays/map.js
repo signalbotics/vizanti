@@ -16,6 +16,7 @@ export class MapDisplay extends Display {
 	static type = "map";
 	static label = "Map";
 	static icon = "assets/map.svg";
+	static drawLayer = -1;
 	static description = "Display a nav_msgs/OccupancyGrid message that typically represents a 2D map or navigational costmap.";
 	static msgTypes = ["nav_msgs/msg/OccupancyGrid"];
 
@@ -67,6 +68,10 @@ export class MapDisplay extends Display {
 			opacity: this.props.opacity,
 			depthWrite: false,
 			side: THREE.DoubleSide,
+			// a ground layer: scans, TF and markers at the same height stay on top of it
+			polygonOffset: true,
+			polygonOffsetFactor: 1,
+			polygonOffsetUnits: 1,
 		});
 		this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.material);
 		this.mesh.visible = false;
