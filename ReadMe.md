@@ -26,6 +26,10 @@ rosdep install -i --from-path src/vizanti -y
 colcon build
 ```
 
+### Debian packages
+
+To build installable `ros-<distro>-vizanti-*` .deb packages instead, run `packaging/build_debs.sh`; see [docs/packaging.md](docs/packaging.md).
+
 ### Docker
 
 Alternatively, you can also containerize Vizanti. For that you need to [install Docker](https://docs.docker.com/engine/install/ubuntu/) and build the container:
@@ -89,3 +93,8 @@ docker run --rm -it --net=host --name vizanti-ros2 -e ROS_DOMAIN_ID=$ROS_DOMAIN_
 ## Contributing
 
 Please see [Contributing.md](Contributing.md) for more information.
+
+## Authors and maintainers
+
+- Vizanti was created by Vid Rijavec ([MoffKalast](https://github.com/MoffKalast)), vid.rijavec@gmail.com, with Alastair Bradford as co-maintainer.
+- The 3D RViz-style interface and the Debian packaging are by Bruk (Signalbotics), bruk@signalbotics.com, who also maintains the packages.
