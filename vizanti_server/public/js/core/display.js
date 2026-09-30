@@ -36,8 +36,12 @@ export class Display {
 	static msgTypes = [];
 	static properties = {};
 
-	static propsForTopic(topic) {
-		return { topic };
+	// Initial properties for a display added from the "By Topic" list.
+	static propsForTopic(topic, type) {
+		const props = { topic };
+		if (this.msgTypes.length > 1)
+			props.topic_type = type ?? "";
+		return props;
 	}
 
 	constructor(id, ctx) {
@@ -57,11 +61,23 @@ export class Display {
 
 		this._alive = false;
 		this._unsubscribe = null;
+		this._subscribeSeq = 0;
 		this._overlayFn = null;
 	}
 
 	get icon() {
 		return this.constructor.icon;
+	}
+
+	// colour the shells tint this display's icon with, or null to leave it as drawn
+	get iconColor() {
+		return this.props.color ?? this.props.colour ?? null;
+	}
+
+	// the message type being received; displays that accept several declare a hidden
+	// `topic_type` property, which the framework fills in
+	get topicType() {
+		return this.props.topic_type || this.constructor.msgTypes[0];
 	}
 
 	// ---- hooks ----
@@ -173,17 +189,46 @@ export class Display {
 			this._unsubscribe();
 			this._unsubscribe = null;
 		}
+		this._subscribeSeq++;
 		if (!("topic" in this.props) || !this._alive || !this.enabled)
 			return;
 		if (this.props.topic === "") {
 			this.status.error("Empty topic.");
 			return;
 		}
+
+		const types = this.constructor.msgTypes;
+		if (types.length <= 1 || types.includes(this.props.topic_type)) {
+			this._subscribeAs(this.topicType);
+			return;
+		}
+
+		// several message types are accepted and this topic's is not known yet: ask
+		const seq = ++this._subscribeSeq;
+		const topic = this.props.topic;
+		this.status.warn("Looking up the topic type...");
+		this.ctx.resolveType(topic).then((type) => {
+			if (seq !== this._subscribeSeq || !this._alive || !this.enabled || this.props.topic !== topic)
+				return;
+			if (!type) {
+				this.status.error(`Topic "${topic}" is not being published, so its message type is unknown.`);
+				return;
+			}
+			if (!types.includes(type)) {
+				this.status.error(`Topic type ${type} is not supported by this display.`);
+				return;
+			}
+			this.props.topic_type = type;
+			this._subscribeAs(type);
+		});
+	}
+
+	_subscribeAs(type) {
 		this.status.warn("No data received.");
 		const throttle = Number.isFinite(this.props.throttle) ? this.props.throttle : 0;
 		this._unsubscribe = this.ctx.subscribe(
 			this.props.topic,
-			this.constructor.msgTypes[0],
+			type,
 			throttle,
 			(msg) => this._message(msg)
 		);
@@ -202,8 +247,11 @@ export class Display {
 
 	_setProperty(key, value) {
 		this.props[key] = value;
-		if (key === "topic")
+		if (key === "topic") {
 			this.lastMsg = null;
+			if ("topic_type" in this.props)
+				this.props.topic_type = "";
+		}
 		this._safe("onPropertyChange", key, value);
 		if (key === "topic" || key === "throttle")
 			this._resubscribe();

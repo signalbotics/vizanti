@@ -69,7 +69,7 @@ export function openAddDialog(app, { container = "" } = {}) {
 		for (let i = 0; i < result.topics.length; i++) {
 			for (const Cls of app.types.values()) {
 				if (Cls.msgTypes.includes(result.types[i]))
-					topicBox.appendChild(entry(Cls, result.topics[i], `${Cls.label} (${result.types[i]})`, Cls.propsForTopic(result.topics[i])));
+					topicBox.appendChild(entry(Cls, result.topics[i], `${Cls.label} (${result.types[i]})`, Cls.propsForTopic(result.topics[i], result.types[i])));
 			}
 		}
 		if (topicBox.children.length === 0) {

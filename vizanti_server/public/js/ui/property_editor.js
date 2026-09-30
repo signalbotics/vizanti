@@ -86,6 +86,20 @@ export function createControl(def, value, commit, env) {
 		case "string": {
 			const element = input("text");
 			element.value = value;
+			if (def.suggestions) {
+				const list = document.createElement("datalist");
+				list.id = "suggestions_" + Math.random().toString(36).slice(2);
+				for (const suggestion of def.suggestions) {
+					const option = document.createElement("option");
+					option.value = suggestion;
+					list.appendChild(option);
+				}
+				element.setAttribute("list", list.id);
+				element.addEventListener("change", () => report(element, element.value));
+				const wrap = document.createElement("span");
+				wrap.append(element, list);
+				return wrap;
+			}
 			element.addEventListener("change", () => report(element, element.value));
 			return element;
 		}
@@ -142,6 +156,8 @@ export function renderProperties(container, schema, values, commit, env) {
 			continue;
 		}
 
+		if (def.hidden)
+			continue;
 		const control = createControl(def, values[key], (raw) => commit(key, raw), env);
 		if (!control)
 			continue;

@@ -193,3 +193,65 @@ test('setInfo notifies and setProp routes through the context', () => {
 test('propsForTopic defaults to the topic property', () => {
 	assert.deepEqual(Probe.propsForTopic("/a"), { topic: "/a" });
 });
+
+// ---- displays that accept several message types ----
+
+class Multi extends Display {
+	static type = "multi";
+	static label = "Multi";
+	static msgTypes = ["geometry_msgs/msg/PoseArray", "nav2_msgs/msg/ParticleCloud"];
+	static properties = {
+		topic: { type: "topic" },
+		topic_type: { type: "string", hidden: true },
+	};
+}
+
+function startMulti(props, lookup) {
+	const env = makeCtx();
+	env.ctx.resolveType = async (topic) => lookup[topic] ?? null;
+	const d = new Multi("multi_0", env.ctx);
+	d._create({ topic: "/cloud", topic_type: "", ...props }, true);
+	return { d, ...env };
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test('a saved topic type is used without asking rosapi', () => {
+	const { d, subs } = startMulti({ topic_type: "nav2_msgs/msg/ParticleCloud" }, {});
+	assert.equal(subs[0].type, "nav2_msgs/msg/ParticleCloud");
+	assert.equal(d.topicType, "nav2_msgs/msg/ParticleCloud");
+});
+
+test('an unknown topic type is looked up, remembered and then subscribed', async () => {
+	const { d, subs } = startMulti({}, { "/cloud": "nav2_msgs/msg/ParticleCloud" });
+	assert.equal(subs.length, 0);
+	await tick();
+	assert.equal(subs[0].type, "nav2_msgs/msg/ParticleCloud");
+	assert.equal(d.props.topic_type, "nav2_msgs/msg/ParticleCloud");
+});
+
+test('an unsupported or unpublished topic gives an error and no subscription', async () => {
+	const a = startMulti({}, { "/cloud": "std_msgs/msg/String" });
+	await tick();
+	assert.equal(a.subs.length, 0);
+	assert.match(a.d.status.text, /std_msgs\/msg\/String is not supported/);
+	const b = startMulti({}, {});
+	await tick();
+	assert.equal(b.subs.length, 0);
+	assert.equal(b.d.status.level, "error");
+	assert.match(b.d.status.text, /not being published/);
+});
+
+test('changing the topic forgets the old type, and a stale lookup is ignored', async () => {
+	const { d, subs } = startMulti({}, { "/cloud": "nav2_msgs/msg/ParticleCloud", "/poses": "geometry_msgs/msg/PoseArray" });
+	d._setProperty("topic", "/poses");
+	assert.equal(d.props.topic_type, "");
+	await tick();
+	assert.equal(subs.length, 1);
+	assert.deepEqual([subs[0].topic, subs[0].type], ["/poses", "geometry_msgs/msg/PoseArray"]);
+});
+
+test('propsForTopic carries the type for multi-type displays only', () => {
+	assert.deepEqual(Multi.propsForTopic("/a", "nav2_msgs/msg/ParticleCloud"), { topic: "/a", topic_type: "nav2_msgs/msg/ParticleCloud" });
+	assert.deepEqual(Probe.propsForTopic("/a", "std_msgs/msg/String"), { topic: "/a" });
+});

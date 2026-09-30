@@ -56,6 +56,12 @@ export class Scene3D {
 		this.scene = new THREE.Scene();
 		this.scene.add(frames.root);
 
+		// solid shapes (markers) are shaded; flat displays use unlit materials and ignore these
+		this.scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 2.2));
+		const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+		sun.position.set(3, -5, 10);
+		this.scene.add(sun);
+
 		this.persp = new THREE.PerspectiveCamera(50, 1, 0.05, 5000);
 
 		// looks straight down -Z with +Y up on screen, so +X is right like the current 2D view
@@ -319,12 +325,14 @@ export class Scene3D {
 
 	// ---- fat lines (WebGL lines are always 1px wide) ----
 
-	makeLines({ color = "#ffffff", linewidth = 1, opacity = 1, vertexColors = false } = {}) {
+	// linewidth is in pixels, or in metres when worldUnits is set
+	makeLines({ color = "#ffffff", linewidth = 1, opacity = 1, vertexColors = false, worldUnits = false } = {}) {
 		const material = new LineMaterial({
 			color,
 			linewidth,
 			opacity,
 			vertexColors,
+			worldUnits,
 			transparent: true,
 			depthWrite: false,
 		});
