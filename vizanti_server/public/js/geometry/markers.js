@@ -246,9 +246,11 @@ export function buildMarker(m, options = {}) {
 
 export function disposeMarker(object) {
 	object.traverse((child) => {
+		if (child.isInstancedMesh)
+			child.dispose();
 		if (child.geometry)
 			child.geometry.dispose();
-		if (child.material)
-			child.material.dispose();
+		for (const material of child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [])
+			material.dispose();
 	});
 }

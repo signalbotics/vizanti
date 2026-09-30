@@ -248,7 +248,9 @@ export class Display {
 	}
 
 	_subscribeAs(type) {
-		this.status.warn("No data received.");
+		// when only the rate changed, the data already on screen is still valid
+		if (!this.lastMsg)
+			this.status.warn("No data received.");
 		const throttle = Number.isFinite(this.props.throttle) ? this.props.throttle : 0;
 		this._unsubscribe = this.ctx.subscribe(
 			this.props.topic,
@@ -286,6 +288,11 @@ export class Display {
 		this.enabled = enabled;
 		this.root.visible = enabled;
 		this._resubscribe();
+		if (enabled && this._alive) {
+			// hooks are skipped while disabled; catch up with what changed meanwhile
+			this._safe("onTfChange");
+			this._safe("onCameraChange");
+		}
 		this.requestRender();
 	}
 

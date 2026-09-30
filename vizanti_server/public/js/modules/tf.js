@@ -202,7 +202,7 @@ export class TF {
 
 			const stamp = this.frame_headerstamps[key];
 			if (stamp)
-				this.absoluteTransformBuffers[key].push(stamp.secs, stamp.nsecs, transform);
+				this.absoluteTransformBuffers[key].push(stamp.sec ?? stamp.secs ?? 0, stamp.nanosec ?? stamp.nsecs ?? 0, transform);
 		}
 	}
 
@@ -217,7 +217,12 @@ export class TF {
 		const buf = this.absoluteTransformBuffers[header.frame_id];
 		if (!buf)
 			return this.absoluteTransforms[header.frame_id];
-		return buf.nearest(header.stamp?.secs, header.stamp?.nsecs) ?? this.absoluteTransforms[header.frame_id];
+		// ROS 2 stamps are { sec, nanosec }. A zero stamp means "latest", as in tf2.
+		const sec = header.stamp?.sec ?? header.stamp?.secs;
+		const nanosec = header.stamp?.nanosec ?? header.stamp?.nsecs;
+		if (sec == null || nanosec == null || (sec === 0 && nanosec === 0))
+			return buf.nearest() ?? this.absoluteTransforms[header.frame_id];
+		return buf.nearest(sec, nanosec) ?? this.absoluteTransforms[header.frame_id];
 	}
 
 	// Timestamp-aware drop-in for transformPose(frame, fixed_frame, position, orientation).

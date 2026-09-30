@@ -8,7 +8,7 @@ import { sanitizeCameraState, MIN_ZOOM, MAX_ZOOM } from './camera_state.js';
 // ROS is Z-up. This must run before any camera is created.
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
-const TOPDOWN_HEIGHT = 1000;
+const TOPDOWN_HEIGHT = 10000;
 
 export function webglSupported() {
 	try {
@@ -65,7 +65,7 @@ export class Scene3D {
 		this.persp = new THREE.PerspectiveCamera(50, 1, 0.05, 5000);
 
 		// looks straight down -Z with +Y up on screen, so +X is right like the current 2D view
-		this.ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
+		this.ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
 		this.ortho.up.set(0, 1, 0);
 
 		this.orbitControls = new OrbitControls(this.persp, this.canvas);
@@ -303,7 +303,7 @@ export class Scene3D {
 	viewRadiusMeters() {
 		if (this.mode === "topdown")
 			return Math.hypot(this.width, this.height) / (2 * this.ortho.zoom);
-		return this.persp.position.distanceTo(this.orbitControls.target) * 3;
+		return this.persp.position.distanceTo(this.orbitControls.target) * 2;
 	}
 
 	// PointsMaterial settings that draw a point `meters` wide.

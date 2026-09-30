@@ -272,3 +272,27 @@ test('propsForTopic carries the type for multi-type displays only', () => {
 	assert.deepEqual(Multi.propsForTopic("/a", "nav2_msgs/msg/ParticleCloud"), { topic: "/a", topic_type: "nav2_msgs/msg/ParticleCloud" });
 	assert.deepEqual(Probe.propsForTopic("/a", "std_msgs/msg/String"), { topic: "/a" });
 });
+
+// ---- behaviour fixed after review ----
+
+test('a re-enabled display catches up with the camera and TF it missed', () => {
+	const { d } = start();
+	const seen = [];
+	d.onCameraChange = () => seen.push("camera");
+	d.onTfChange = () => seen.push("tf");
+	d._setEnabled(false);
+	assert.deepEqual(seen, []);
+	d._setEnabled(true);
+	assert.deepEqual(seen.sort(), ["camera", "tf"]);
+});
+
+test('changing the throttle while data is flowing does not claim that no data was received', () => {
+	const { d, subs } = start();
+	subs[0].cb({ data: "hi" });
+	assert.equal(d.status.level, "ok");
+	d._setProperty("throttle", 500);
+	assert.equal(d.status.level, "ok");
+	// a new topic does start from "no data"
+	d._setProperty("topic", "/other");
+	assert.deepEqual([d.status.level, d.status.text], ["warn", "No data received."]);
+});

@@ -94,6 +94,9 @@ export class RobotModelDisplay extends Display {
 			this.applyShape();
 			this.place();
 			this.requestRender();
+		}, undefined, () => {
+			if (this._alive)
+				this.status.error(`The sprite image "${this.props.sprite}" could not be loaded.`);
 		});
 	}
 

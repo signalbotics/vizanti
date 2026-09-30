@@ -40,6 +40,13 @@ export function buildCameraControls(container, app) {
 		return { ok: true, value: raw };
 	}, app.envFor(null));
 
+	// keep the selector in step when the camera mode is changed elsewhere
+	const modeSelect = container.querySelector("select");
+	scene.onCameraChange(() => {
+		if (modeSelect && modeSelect.isConnected && modeSelect.value !== scene.mode)
+			modeSelect.value = scene.mode;
+	});
+
 	container.appendChild(button("Reset Camera View", () => scene.resetCamera()));
 	container.appendChild(comment("Reset only the camera to its default pose (zero relative to the fixed frame link)."));
 }

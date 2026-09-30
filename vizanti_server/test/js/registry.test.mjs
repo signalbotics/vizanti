@@ -178,3 +178,15 @@ test('ids that are not plain names are refused, since template widgets put the i
 	reg.load({ version: 2, items: [{ type: "fake", id: "a b" }, { type: "fake", id: "ok_1" }] });
 	assert.deepEqual(reg.items.map((i) => i.id), ["ok_1"]);
 });
+
+test('removing a folder moves the widgets that were inside it back to the main bar', () => {
+	const { reg, events } = make();
+	const folder = reg.add("fake", {}, { id: "folder_1" });
+	const inside = reg.add("fake", {}, { container: "folder_1_widget_container" });
+	const outside = reg.add("fake", {}, { container: "folder_2_widget_container" });
+	events.length = 0;
+	reg.remove(folder.id);
+	assert.equal(inside.container, "");
+	assert.equal(outside.container, "folder_2_widget_container");
+	assert.ok(events.includes("removed"));
+});

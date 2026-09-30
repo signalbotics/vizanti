@@ -82,6 +82,11 @@ export class Registry extends EventTarget {
 			return;
 		const [item] = this.items.splice(index, 1);
 		item._destroy();
+		// widgets that lived in this item's folder go back to the main bar
+		for (const other of this.items) {
+			if (other.container === `${id}_widget_container`)
+				other.container = "";
+		}
 		this._reorder();
 		this._emit("removed", { item });
 	}

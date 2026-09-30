@@ -123,6 +123,8 @@ export class MapDisplay extends Display {
 			this.applyVisibility();
 			return;
 		}
+		// the verdict comes from apply(), once the conversion is back from the worker
+		this.status.touched = true;
 		this.convert(msg);
 	}
 
@@ -186,6 +188,8 @@ export class MapDisplay extends Display {
 
 		if (result.factor > 1)
 			this.status.warn(`Map is ${msg.info.width}x${msg.info.height}, larger than this device can draw; showing every ${result.factor}th cell.`);
+		else if (this.status.text !== "Map transform not available yet, using identity transform.")
+			this.status.ok();
 
 		this.requestRender();
 	}
@@ -197,8 +201,11 @@ export class MapDisplay extends Display {
 			this.convert(this.lastMsg);
 		if (key === "use_timestamp" && this.lastMsg)
 			this.setFrame(this.lastMsg.header, { follow: !value });
-		if (key === "topic")
+		if (key === "topic") {
 			this.hasData = false;
+			this.seq++; // a conversion still running belongs to the old topic
+			this.jobs.clear();
+		}
 		this.applyVisibility();
 	}
 

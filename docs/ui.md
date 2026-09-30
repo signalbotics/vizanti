@@ -33,7 +33,7 @@ remembered per browser (storage key `vizanti_ui`).
 The RViz UI opens in the 3D orbit camera (left-drag rotates, right-drag pans, wheel zooms); the
 touch UI opens top-down. Change it under Views / Global Settings → Camera.
 
-## Saved layouts
+## Saved layouts, configs on the robot, screenshots, time
 
 The layout (widgets, their settings, global options, camera, panel arrangement) is saved in
 browser storage under `vizanti_v2`. Export and import it from Global Options.
@@ -42,6 +42,14 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
   on first load. The old data is left in place.
 - The `default_widget_config` launch parameter accepts both the old format and the new one.
 - An unreadable layout is kept under `vizanti_v2_backup` and the default is loaded.
+- **Configs on the robot:** Global Options → "On the robot" saves, loads and deletes named
+  layouts on the Vizanti server, so every browser can use them. They are JSON files in
+  `~/.vizanti/configs` (launch argument `config_dir`). Names may only use letters, digits, `-`
+  and `_`; files are limited to 2 MB.
+- **Screenshots:** Global Options → "Save screenshot" downloads the 3D view with its text
+  overlay as a PNG.
+- **Time:** the RViz UI's Time panel shows ROS time, elapsed ROS time and wall time. ROS time
+  follows `/clock` while it is being published (simulation), otherwise the system clock.
 
 ## What is drawn how
 
@@ -177,24 +185,8 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
 - The URDF robot model needs the package that holds the meshes to be installed on the machine
   running the Vizanti server. It was checked with the Panda arm (Collada visuals, STL
   collisions) at rest; it was not checked with moving joints, `.obj` meshes or textured meshes.
-- In the orbit view the grid reaches far enough to alias into dots near the horizon, and
-  Satellite Tiles pick a coarser zoom than needed.
-- A display that was disabled while the camera or TF moved is not redrawn until the next camera
-  or TF change after it is enabled again.
-- With a map of the wrong size arriving repeatedly, the status alternates between Ok and the error.
-- A map conversion still running when the topic is changed can show the old topic's map once.
-- Changing the throttle shows "No data received." until the next message.
-- "Loading topics..." never ends when rosbridge is down.
 - Handing a very large map to the colour-conversion worker blocks the page briefly (about
   150 ms for 2000 x 2000 cells).
-- The top-down camera does not show anything more than 1000 m above the fixed frame origin.
-- `js/modules/tf.js` reads `stamp.secs/nsecs`, which ROS 2 does not send, so "nearest the
-  message stamp" lookups return the latest transform.
 - The Point Cloud "RGB Colour Count" option is gone: per-point colours are drawn directly.
-- The Camera selector in the Views panel does not follow a camera mode changed elsewhere.
-- Removing a folder from the RViz UI's tree leaves the widgets that were inside it pointing at
-  a folder that no longer exists; they reappear in the icon bar of the touch UI.
-- Removing a tool while it is armed leaves camera movement switched off until the page reloads.
-- The robot sprite has no error handling for a sprite image that fails to load.
 - `Contributing.md` still describes the old page structure (`main.js`, `setup.js`).
 - In the orbit view, a tool ignores clicks above the horizon (there is no ground there) and says so.

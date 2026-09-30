@@ -64,7 +64,15 @@ export function openAddDialog(app, { container = "" } = {}) {
 		loading.textContent = "Loading topics...";
 		topicBox.appendChild(loading);
 
-		const result = await app.listAllTopics();
+		// rosapi never answers while rosbridge is down
+		const result = await Promise.race([
+			app.listAllTopics(),
+			new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+		]);
+		if (!result) {
+			loading.textContent = "The topic list did not arrive. Is rosbridge connected?";
+			return;
+		}
 		topicBox.replaceChildren();
 		for (let i = 0; i < result.topics.length; i++) {
 			for (const Cls of app.types.values()) {
