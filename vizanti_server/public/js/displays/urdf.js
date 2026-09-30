@@ -1,6 +1,7 @@
 import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
 import { parseUrdf, rpyToQuat, meshUrl } from '../geometry/urdf.js';
+import { getMeshLoaders } from '../core/mesh_loader.js';
 
 const DEFAULT_COLOR = [0.7, 0.7, 0.7, 1];
 const COLLISION_COLOR = [0.9, 0.5, 0.1, 0.45];
@@ -41,12 +42,7 @@ export class UrdfDisplay extends Display {
 
 	// the mesh loaders are only fetched when a robot actually uses meshes
 	async getLoaders() {
-		this.loaders ??= Promise.all([
-			import('../lib/three_addons/loaders/STLLoader.js'),
-			import('../lib/three_addons/loaders/ColladaLoader.js'),
-			import('../lib/three_addons/loaders/OBJLoader.js'),
-		]).then(([stl, dae, obj]) => ({ stl: new stl.STLLoader(), dae: new dae.ColladaLoader(), obj: new obj.OBJLoader() }));
-		return this.loaders;
+		return getMeshLoaders();
 	}
 
 	material(color) {

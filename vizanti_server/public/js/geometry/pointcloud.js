@@ -11,7 +11,7 @@ const READERS = {
 };
 
 // rosbridge delivers the byte array as base64 text (JSON), a typed array (CBOR) or a plain array
-function toBytes(data) {
+export function toBytes(data) {
 	if (typeof data === "string") {
 		const binary = atob(data);
 		const bytes = new Uint8Array(binary.length);

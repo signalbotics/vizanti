@@ -1,6 +1,7 @@
 import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
 import { buildMarker, disposeMarker, markerKey, markerExpired } from '../geometry/markers.js';
+import { loadMeshObject } from '../core/mesh_loader.js';
 
 export class MarkerArrayDisplay extends Display {
 
@@ -11,7 +12,7 @@ export class MarkerArrayDisplay extends Display {
 	static msgTypes = ["visualization_msgs/msg/MarkerArray"];
 
 	static properties = {
-		topic: { type: "topic", label: "Topic", help: "All marker types are drawn in 3D except MESH_RESOURCE." },
+		topic: { type: "topic", label: "Topic", help: "All marker types are drawn in 3D. Mesh markers need package:// paths to .stl, .dae or .obj files." },
 		opacity: { type: "float", label: "Opacity", default: 1.0, min: 0, max: 1, step: 0.05, slider: true },
 		throttle: { type: "int", label: "Socket throttle (ms)", default: 100, min: 0, max: 10000 },
 		disabled_namespaces: { type: "object", default: {} },
@@ -51,6 +52,32 @@ export class MarkerArrayDisplay extends Display {
 	clear() {
 		for (const key of [...this.markers.keys()])
 			this.remove(key);
+	}
+
+	// MESH_RESOURCE markers: the mesh arrives after the marker is already placed
+	async loadMesh(key, built) {
+		const { filename, scale, color, embedded } = built.mesh;
+		const makeMaterial = () => {
+			const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(color[0], color[1], color[2]), side: THREE.DoubleSide });
+			material.userData.alpha = color[3];
+			return material;
+		};
+		try {
+			// a colour of all zeros means "use the mesh's own materials"
+			const keepOwn = embedded || color.every((v) => v === 0);
+			const object = await loadMeshObject(filename, makeMaterial, keepOwn);
+			if (!this._alive || this.markers.get(key)?.built !== built) {
+				disposeMarker(object);
+				return; // the marker was replaced or removed while the mesh loaded
+			}
+			object.scale.fromArray(scale);
+			built.object.add(object);
+			built.object.traverse((child) => { child.renderOrder = this.order; });
+			this.applyOpacity();
+			this.requestRender();
+		} catch (e) {
+			this.status.warn(`Mesh marker could not be loaded: ${e.message}`);
+		}
 	}
 
 	placeOuter(entry, transform) {
@@ -103,6 +130,8 @@ export class MarkerArrayDisplay extends Display {
 			});
 			if (built.warning)
 				problem = { level: "warn", text: built.warning };
+			if (built.mesh)
+				this.loadMesh(key, built);
 
 			const entry = {
 				outer: new THREE.Group(),

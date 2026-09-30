@@ -56,6 +56,14 @@ export function pathSegments(points) {
 	return new Float32Array(out);
 }
 
+// Like pathSegments, with a closing segment back to the first point.
+export function loopSegments(points) {
+	const good = points.filter(finitePoint);
+	if (good.length < 2)
+		return new Float32Array(0);
+	return pathSegments([...good, good[0]]);
+}
+
 export function pathLength(points) {
 	const good = points.filter(finitePoint);
 	let total = 0;

@@ -77,7 +77,6 @@ test('triangle lists keep every triangle, scaled, with vertex or face colours', 
 test('text markers carry their text for the overlay, and mesh resources are reported', () => {
 	const text = buildMarker(base(MARKER.TEXT_VIEW_FACING, { text: "hello\nworld" }));
 	assert.deepEqual(text.text, { lines: ["hello", "world"], height: 3, color: "rgba(255, 0, 0, 0.5)", outline: "#FFFFFF" });
-	assert.match(buildMarker(base(MARKER.MESH_RESOURCE)).warning, /MESH_RESOURCE/);
 	assert.match(buildMarker(base(99)).warning, /Unknown marker type 99/);
 });
 

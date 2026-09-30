@@ -1,4 +1,5 @@
 import * as THREE from '../lib/three.module.min.js';
+import { rotateVector } from '../geometry/tf.js';
 
 export class DisplayStatus {
 
@@ -135,6 +136,22 @@ export class Display {
 		this.root.position.set(abs.translation.x, abs.translation.y, abs.translation.z);
 		this.root.quaternion.set(abs.rotation.x, abs.rotation.y, abs.rotation.z, abs.rotation.w);
 		return true;
+	}
+
+	// A point given in the header's frame, expressed in the fixed frame as it was when the
+	// message arrived. Returns null (and sets an error status) when the frame is unknown.
+	toFixed(header, point) {
+		const tf = this.ctx.tf;
+		const frame = header.frame_id === "" ? tf.fixed_frame : header.frame_id;
+		const abs = tf.getAbsoluteTransform({ frame_id: frame, stamp: header.stamp });
+		if (!abs) {
+			if (frame === tf.fixed_frame)
+				return { x: point.x, y: point.y, z: point.z };
+			this.status.error(`Required transform frame "${frame}" not found.`);
+			return null;
+		}
+		const r = rotateVector(abs.rotation, [point.x, point.y, point.z]);
+		return { x: abs.translation.x + r[0], y: abs.translation.y + r[1], z: abs.translation.z + r[2] };
 	}
 
 	setInfo(info) {

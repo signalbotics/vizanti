@@ -226,7 +226,13 @@ export function buildMarker(m, options = {}) {
 			};
 			break;
 		case MARKER.MESH_RESOURCE:
-			result.warning = "MESH_RESOURCE markers are not supported yet.";
+			// loaded by the caller; the file has to be fetched
+			result.mesh = {
+				filename: m.mesh_resource,
+				scale: [m.scale.x, m.scale.y, m.scale.z],
+				color: [clamp01(m.color?.r), clamp01(m.color?.g), clamp01(m.color?.b), clamp01(m.color?.a ?? 1)],
+				embedded: !!m.mesh_use_embedded_materials,
+			};
 			break;
 		case MARKER.TRIANGLE_LIST:
 			if (points.length >= 3)
