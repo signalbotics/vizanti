@@ -291,7 +291,20 @@ function convertView(view) {
 			camera.follow_yaw = true;
 		return camera;
 	}
-	return undefined; // FPS and other views have no Vizanti equivalent
+	if (kind === "FPS") {
+		const p = view.Position ?? {};
+		const position = [num(p.X) ?? 0, num(p.Y) ?? 0, num(p.Z) ?? 1];
+		const pitch = num(view.Pitch) ?? 0;
+		const yaw = num(view.Yaw) ?? 0;
+		// RViz's FPS pitch is positive looking down
+		const target = [
+			position[0] + Math.cos(pitch) * Math.cos(yaw),
+			position[1] + Math.cos(pitch) * Math.sin(yaw),
+			position[2] - Math.sin(pitch),
+		];
+		return { mode: "fps", target_frame, orbit: { target, position } };
+	}
+	return undefined; // other views have no Vizanti equivalent
 }
 
 // types: anything with has(type), e.g. the registry's type Map.

@@ -33,6 +33,11 @@ remembered per browser (storage key `vizanti_ui`).
 The RViz UI opens in the 3D orbit camera (left-drag rotates, right-drag pans, wheel zooms); the
 touch UI opens top-down. Change it under Views / Global Settings → Camera.
 
+- **FPS (first person):** left-drag looks around (drag up to look up), right-drag slides the
+  camera sideways and up, the wheel moves forward and back, arrow keys move and strafe while
+  the pointer is over the view (Shift for four times the step), PageUp/PageDown move up and
+  down. Orbit and FPS share one camera pose, so switching between them keeps the view.
+
 - **Target frame:** the camera moves with that TF frame. Tick "Turn with target frame" and the
   orbit camera also swings round as the frame turns (a third-person view behind the robot).
 - **Saved views:** type a name under "Saved views" and press "Save current view" (Enter works
@@ -47,7 +52,7 @@ browser storage under `vizanti_v2`. Export and import it from Global Options.
 
 - **RViz configs:** Import also takes an RViz 1 or RViz 2 `.rviz` file. Its displays replace the
   current ones (groups are flattened; displays in a disabled group come in disabled), and its
-  fixed frame, background colour and current view (Orbit, XYOrbit, ThirdPersonFollower,
+  fixed frame, background colour and current view (Orbit, XYOrbit, ThirdPersonFollower, FPS,
   TopDownOrtho) are applied. Widgets such as the rosbridge connection, teleop and tools are
   kept. A notice lists the RViz displays Vizanti has no equivalent for (MoveIt, IMU,
   `sensor_msgs/PointCloud`, vendor plugins…); they are left out. Topics, colours, alpha, sizes

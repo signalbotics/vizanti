@@ -211,3 +211,23 @@ test("convertRvizConfig rounds float32 noise and keeps cloud colours only when f
 	assert.deepEqual(items[0].props, { topic: "/points", thickness: 0.01 });
 	assert.deepEqual(items[1].props, { topic: "/flat", color: "#0000ff", colour_override: true });
 });
+
+test("convertRvizConfig turns an FPS view into Vizanti's first-person camera", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Views:
+    Current:
+      Class: rviz_default_plugins/FPS
+      Pitch: 0.5
+      Position:
+        X: 1
+        Y: 2
+        Z: 3
+      Yaw: 1.2
+`);
+	const { camera } = convertRvizConfig(doc, new Set());
+	assert.equal(camera.mode, "fps");
+	assert.deepEqual(camera.orbit.position, [1, 2, 3]);
+	const [x, y, z] = camera.orbit.target;
+	assert.ok(z < 3, "positive RViz pitch looks down");
+	assert.ok(Math.abs(Math.atan2(y - 2, x - 1) - 1.2) < 1e-9);
+});

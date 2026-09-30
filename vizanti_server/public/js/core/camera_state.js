@@ -30,7 +30,7 @@ export function sanitizeCameraState(state) {
 	}
 
 	return {
-		mode: src.mode === "orbit" ? "orbit" : "topdown",
+		mode: ["orbit", "fps"].includes(src.mode) ? src.mode : "topdown",
 		target_frame: typeof src.target_frame === "string" ? src.target_frame : "",
 		follow_yaw: src.follow_yaw === true,
 		topdown: {

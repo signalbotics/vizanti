@@ -4,6 +4,7 @@ import { LineSegments2 } from '../lib/three_addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../lib/three_addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../lib/three_addons/lines/LineMaterial.js';
 import { sanitizeCameraState, MIN_ZOOM, MAX_ZOOM } from './camera_state.js';
+import { FpsControls } from './fps_controls.js';
 
 // ROS is Z-up. This must run before any camera is created.
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -86,6 +87,9 @@ export class Scene3D {
 		this.orbitControls.addEventListener("change", changed);
 		this.topControls.addEventListener("change", changed);
 
+		// shares the perspective camera and its look point with the orbit controls
+		this.fpsControls = new FpsControls(this.persp, this.orbitControls.target, this.canvas, changed);
+
 		// three.js restores its own GL state; displays get a chance to re-upload what they own
 		this.canvas.addEventListener("webglcontextrestored", () => {
 			for (const fn of this._restoreListeners)
@@ -155,20 +159,24 @@ export class Scene3D {
 	}
 
 	setCameraMode(mode) {
-		this.mode = mode === "orbit" ? "orbit" : "topdown";
-		this.camera = this.mode === "orbit" ? this.persp : this.ortho;
-		this.orbitControls.enabled = this._inputEnabled && this.mode === "orbit";
-		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
+		this.mode = ["orbit", "fps"].includes(mode) ? mode : "topdown";
+		this.camera = this.mode === "topdown" ? this.ortho : this.persp;
+		this._enableControls();
 		this.orbitControls.update();
 		this.topControls.update();
 		this._cameraChanged();
 	}
 
+	_enableControls() {
+		this.orbitControls.enabled = this._inputEnabled && this.mode === "orbit";
+		this.fpsControls.enabled = this._inputEnabled && this.mode === "fps";
+		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
+	}
+
 	// Tools that take over the pointer switch camera movement off while they are active.
 	setInputEnabled(enabled) {
 		this._inputEnabled = !!enabled;
-		this.orbitControls.enabled = this._inputEnabled && this.mode === "orbit";
-		this.topControls.enabled = this._inputEnabled && this.mode === "topdown";
+		this._enableControls();
 	}
 
 	setFollowYaw(enabled) {

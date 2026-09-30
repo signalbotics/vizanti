@@ -30,7 +30,13 @@ export function buildCameraControls(container, app) {
 	renderProperties(container, {
 		mode: {
 			type: "enum", label: "Camera",
-			options: [{ value: "topdown", label: "Top-down (orthographic)" }, { value: "orbit", label: "Orbit" }],
+			options: [
+				{ value: "topdown", label: "Top-down (orthographic)" },
+				{ value: "orbit", label: "Orbit" },
+				{ value: "fps", label: "FPS (first person)" },
+			],
+			help: "Orbit: left-drag rotates, right-drag pans, wheel zooms. FPS: left-drag looks around, "
+				+ "right-drag slides, wheel or arrow keys move (Shift for faster), PageUp/PageDown move up and down.",
 		},
 		target_frame: { type: "frame", label: "Target Frame" },
 		follow_yaw: { type: "bool", label: "Turn with target frame", help: "With a target frame set, the orbit camera swings round as the frame turns (a third-person view)." },
@@ -65,7 +71,7 @@ export function buildCameraControls(container, app) {
 			const row = document.createElement("div");
 			row.className = "saved_view";
 			const name = document.createElement("span");
-			name.textContent = view.name + ` (${view.camera.mode === "orbit" ? "orbit" : "top-down"})`;
+			name.textContent = view.name + ` (${{ orbit: "orbit", fps: "FPS", topdown: "top-down" }[view.camera.mode]})`;
 			row.append(
 				name,
 				button("Go", () => scene.setCameraState(view.camera)),
