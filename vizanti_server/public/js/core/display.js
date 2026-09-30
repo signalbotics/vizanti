@@ -62,6 +62,7 @@ export class Display {
 
 		this.root = new THREE.Group();
 		this.root.name = id;
+		this.root.userData.display = this; // lets the select tool find who drew a clicked object
 
 		this._alive = false;
 		this._unsubscribe = null;

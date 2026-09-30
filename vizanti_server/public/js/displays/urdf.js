@@ -72,6 +72,7 @@ export class UrdfDisplay extends Display {
 		for (const [name, link] of Object.entries(robot.links)) {
 			const entry = { group: new THREE.Group(), visual: new THREE.Group(), collision: new THREE.Group() };
 			entry.group.name = name;
+			entry.group.userData.selectLabel = `Link: ${name}`;
 			entry.group.add(entry.visual, entry.collision);
 			for (const part of link.visuals)
 				this.addPart(entry.visual, part, part.color ?? DEFAULT_COLOR);

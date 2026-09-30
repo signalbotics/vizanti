@@ -102,6 +102,7 @@ RViz keyboard shortcuts:
 | Tool | Key | What it does |
 |---|---|---|
 | Move Camera | m | The default. Esc returns to it. |
+| Select | s | Click an object: a box shows the display that drew it, its topic and frame, the URDF link or marker (namespace and id) or point-cloud point, and the clicked point in the fixed frame. Stays armed; a click on empty space clears it. Lines, grids and text labels cannot be selected. |
 | Measure | n | Click two points; the distance is shown on the line. |
 | Publish Point | c | Click a point; publishes `geometry_msgs/PointStamped` on `/clicked_point`. |
 | Focus Camera | f | Click a point; the camera centres on it. |

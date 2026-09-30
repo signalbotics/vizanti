@@ -362,6 +362,15 @@ export class Scene3D {
 	// The nearest thing under the pointer: a point on a solid object or point cloud, or else
 	// the ground plane. Lines and hidden objects are ignored. Returns { x, y, z } or null.
 	pick(clientX, clientY) {
+		const hit = this.pickObject(clientX, clientY);
+		const ground = this._raycaster.ray.intersectPlane(this._ground, new THREE.Vector3());
+		const best = ground && (!hit || this._raycaster.ray.origin.distanceTo(ground) < hit.distance) ? ground : hit?.point;
+		return best ? { x: best.x, y: best.y, z: best.z } : null;
+	}
+
+	// The nearest visible mesh or point under the pointer, as { object, point, index, distance }
+	// (index: which point of a point cloud), or null. Leaves the ray in this._raycaster.
+	pickObject(clientX, clientY) {
 		const rect = this.container.getBoundingClientRect();
 		const ndc = new THREE.Vector2(
 			((clientX - rect.left) / this.width) * 2 - 1,
@@ -379,8 +388,6 @@ export class Scene3D {
 			return true;
 		};
 
-		let best = null;
-		let bestDistance = Infinity;
 		let hits = [];
 		try {
 			hits = this._raycaster.intersectObject(this.frames.root, true);
@@ -391,15 +398,10 @@ export class Scene3D {
 			const o = hit.object;
 			if (o.isLineSegments2 || !(o.isMesh || o.isPoints) || !shown(o))
 				continue;
-			best = hit.point;
-			bestDistance = hit.distance;
-			break; // hits are sorted nearest first
+			// hits are sorted nearest first
+			return { object: o, point: hit.point.clone(), index: hit.index, distance: hit.distance };
 		}
-
-		const ground = this._raycaster.ray.intersectPlane(this._ground, new THREE.Vector3());
-		if (ground && this._raycaster.ray.origin.distanceTo(ground) < bestDistance)
-			best = ground;
-		return best ? { x: best.x, y: best.y, z: best.z } : null;
+		return null;
 	}
 
 	// the pointer's ray in the fixed frame, as THREE vectors

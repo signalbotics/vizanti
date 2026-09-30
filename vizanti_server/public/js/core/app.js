@@ -487,8 +487,42 @@ async function start() {
 			notify(`Published to ${topic}`);
 	};
 
+	// What the select tool shows about the object under the pointer.
+	const inspect = (x, y) => {
+		const hit = scene.pickObject(x, y);
+		if (!hit)
+			return null;
+		let display = null;
+		let part = "";
+		for (let o = hit.object; o && !display; o = o.parent) {
+			if (!part && typeof o.userData.selectLabel === "string")
+				part = o.userData.selectLabel;
+			display = o.userData.display ?? null;
+		}
+		const lines = [];
+		if (display) {
+			lines.push(`${display.name} (${display.constructor.label})`);
+			if (display.props.topic)
+				lines.push(`Topic: ${display.props.topic}`);
+			const frame = display.lastMsg?.header?.frame_id;
+			if (frame)
+				lines.push(`Frame: ${frame}`);
+		} else {
+			lines.push("Scene object");
+		}
+		if (part)
+			lines.push(part);
+		if (hit.object.isPoints && hit.index !== undefined)
+			lines.push(`Point #${hit.index}`);
+		const p = hit.point;
+		const f = (v) => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(3); // no "-0.000"
+		lines.push(`${tf.fixed_frame}: ${f(p.x)}, ${f(p.y)}, ${f(p.z)}`);
+		return { point: { x: p.x, y: p.y, z: p.z }, lines, display: display?.id ?? null };
+	};
+
 	const tools = new ToolManager({
 		pick: (x, y) => scene.pick(x, y),
+		inspect,
 		ground: (x, y) => scene.groundPoint(x, y),
 		focus: (point) => scene.focusOn(point),
 		setInputEnabled: (enabled) => scene.setInputEnabled(enabled),
@@ -587,6 +621,30 @@ async function start() {
 			ctx.strokeStyle = "#161B21";
 			ctx.strokeText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
 			ctx.fillText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
+		}
+
+		const selected = tools.selection;
+		if (selected) {
+			const p = at(selected.point);
+			ctx.strokeStyle = "#00e5ff";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
+			ctx.stroke();
+
+			ctx.font = "12px Monospace";
+			ctx.textAlign = "left";
+			const pad = 6, lineHeight = 16;
+			const width = Math.max(...selected.lines.map((line) => ctx.measureText(line).width)) + 2 * pad;
+			const height = selected.lines.length * lineHeight + pad;
+			// beside the point, kept inside the view
+			const x = Math.min(p.x + 12, view.width - width - 4);
+			const y = Math.min(Math.max(p.y - height / 2, 30), view.height - height - 4);
+			ctx.fillStyle = "rgba(22, 27, 33, 0.85)";
+			ctx.fillRect(x, y, width, height);
+			ctx.strokeRect(x, y, width, height);
+			ctx.fillStyle = "white";
+			selected.lines.forEach((line, i) => ctx.fillText(line, x + pad, y + pad + 10 + i * lineHeight));
 		}
 
 		const pose = tools.preview;

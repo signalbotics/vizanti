@@ -3,6 +3,7 @@
 
 export const TOOLS = [
 	{ id: "move", label: "Move Camera", key: "m", hint: "Drag to move the camera." },
+	{ id: "select", label: "Select", key: "s", hint: "Click something in the view to see what it is." },
 	{ id: "measure", label: "Measure", key: "n", hint: "Click two points to measure the distance between them." },
 	{ id: "point", label: "Publish Point", key: "c", hint: "Click a point to publish it." },
 	{ id: "focus", label: "Focus Camera", key: "f", hint: "Click a point to centre the camera on it." },
@@ -47,6 +48,7 @@ export function sanitizeToolOptions(options) {
 // deps:
 //   pick(clientX, clientY)   -> nearest point under the pointer on an object or the ground, or null
 //   ground(clientX, clientY) -> point on the ground plane under the pointer, or null
+//   inspect(clientX, clientY) -> { point, lines } describing the object under the pointer, or null
 //   focus(point), setInputEnabled(bool), publish(topic, type, msg), fixedFrame(), now(), requestRender()
 export class ToolManager {
 
@@ -56,6 +58,7 @@ export class ToolManager {
 		this.active = "move";
 		this.preview = null;     // { start, yaw } while a pose is being dragged out
 		this.measurement = null; // { a, b, distance, done }
+		this.selection = null;   // { point, lines } from the select tool
 		this.onChange = null;
 		this.onOptions = null;
 		this._dragStart = null;
@@ -67,6 +70,7 @@ export class ToolManager {
 		this.active = id;
 		this.preview = null;
 		this.measurement = null;
+		this.selection = null;
 		this._dragStart = null;
 		this.deps.setInputEnabled(id === "move");
 		this.deps.requestRender();
@@ -113,6 +117,11 @@ export class ToolManager {
 				break;
 			case "measure":
 				this.measureTool(kind, event);
+				break;
+			case "select":
+				// stays armed like RViz's select tool; a click on nothing clears the selection
+				if (kind === "up")
+					this.selection = this.deps.inspect(event.clientX, event.clientY);
 				break;
 		}
 		this.deps.requestRender();

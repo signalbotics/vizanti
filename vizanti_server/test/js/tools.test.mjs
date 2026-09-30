@@ -9,8 +9,10 @@ function make(options) {
 	const focused = [];
 	const input = [];
 	let pickResult = { x: 1, y: 2, z: 0 };
+	let inspectResult = { point: { x: 1, y: 2, z: 0.5 }, lines: ["Scan (Laser Scan)"] };
 	const deps = {
 		pick: () => pickResult,
+		inspect: () => inspectResult,
 		ground: () => pickResult && { x: pickResult.x, y: pickResult.y, z: 0 },
 		focus: (p) => focused.push(p),
 		setInputEnabled: (v) => input.push(v),
@@ -22,13 +24,17 @@ function make(options) {
 	const manager = new ToolManager(deps, options);
 	const changes = [];
 	manager.onChange = () => changes.push(manager.active);
-	return { manager, published, focused, input, changes, setPick: (p) => { pickResult = p; } };
+	return {
+		manager, published, focused, input, changes,
+		setPick: (p) => { pickResult = p; },
+		setInspect: (r) => { inspectResult = r; },
+	};
 }
 
 const click = (m, x = 10, y = 10) => { m.pointer("down", { clientX: x, clientY: y, button: 0 }); m.pointer("up", { clientX: x, clientY: y, button: 0 }); };
 
-test('the tool list matches RViz: move, measure, point, focus, goal, estimate', () => {
-	assert.deepEqual(TOOLS.map((t) => t.id), ["move", "measure", "point", "focus", "goal", "estimate"]);
+test('the tool list matches RViz: move, select, measure, point, focus, goal, estimate', () => {
+	assert.deepEqual(TOOLS.map((t) => t.id), ["move", "select", "measure", "point", "focus", "goal", "estimate"]);
 	assert.deepEqual(DEFAULT_TOOL_OPTIONS, { point_topic: "/clicked_point", goal_topic: "/goal_pose", estimate_topic: "/initialpose" });
 });
 
@@ -149,4 +155,24 @@ test('helpers', () => {
 	assert.deepEqual(stampNow(1700000000123), { sec: 1700000000, nanosec: 123000000 });
 	assert.deepEqual(sanitizeToolOptions({ goal_topic: "/g", point_topic: 5, extra: 1 }), { point_topic: "/clicked_point", goal_topic: "/g", estimate_topic: "/initialpose" });
 	assert.deepEqual(sanitizeToolOptions(null), DEFAULT_TOOL_OPTIONS);
+});
+
+test('select keeps what was clicked, stays armed, and clears on empty space or another tool', () => {
+	const { manager, published, setInspect } = make();
+	manager.key("s");
+	assert.equal(manager.active, "select");
+	click(manager);
+	assert.deepEqual(manager.selection, { point: { x: 1, y: 2, z: 0.5 }, lines: ["Scan (Laser Scan)"] });
+	assert.equal(manager.active, "select");
+	assert.deepEqual(published, []);
+
+	setInspect(null);
+	click(manager);
+	assert.equal(manager.selection, null);
+
+	setInspect({ point: { x: 0, y: 0, z: 0 }, lines: ["Map"] });
+	click(manager);
+	assert.ok(manager.selection);
+	manager.select("move");
+	assert.equal(manager.selection, null);
 });

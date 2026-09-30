@@ -144,6 +144,7 @@ export class MarkerArrayDisplay extends Display {
 				stamp: Date.now(),
 			};
 			entry.outer.add(built.object);
+			entry.outer.userData.selectLabel = `Marker: ${m.ns ?? ""} #${m.id ?? 0}`;
 			this.placeOuter(entry, transform);
 			this.add(entry.outer);
 			entry.outer.traverse((object) => { object.renderOrder = this.order; });
