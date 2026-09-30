@@ -7,6 +7,7 @@ def generate_launch_description():
     port_rosbridge = launch.substitutions.LaunchConfiguration('port_rosbridge', default=5001)
     flask_debug = launch.substitutions.LaunchConfiguration('flask_debug', default=False)
     default_widget_config = launch.substitutions.LaunchConfiguration('default_widget_config', default='') #e.g. ~/your_custom_config.json
+    config_dir = launch.substitutions.LaunchConfiguration('config_dir', default='~/.vizanti/configs') #where configs saved from the UI are kept
 
     #https://github.com/v-kiniv/rws
     rws_server_node = launch_ros.actions.Node(
@@ -33,7 +34,8 @@ def generate_launch_description():
             {'flask_debug': flask_debug},
             {'base_url': base_url},
             {'compression': "cbor"},
-            {'default_widget_config': default_widget_config}
+            {'default_widget_config': default_widget_config},
+            {'config_dir': config_dir}
         ]
     )
 

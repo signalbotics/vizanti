@@ -9,6 +9,7 @@ def generate_launch_description():
     port_rosbridge = launch.substitutions.LaunchConfiguration('port_rosbridge', default=5001)
     flask_debug = launch.substitutions.LaunchConfiguration('flask_debug', default=False)
     default_widget_config = launch.substitutions.LaunchConfiguration('default_widget_config', default='') #e.g. ~/your_custom_config.json
+    config_dir = launch.substitutions.LaunchConfiguration('config_dir', default='~/.vizanti/configs') #where configs saved from the UI are kept
 
     #rosbridge internal params
     send_action_goals_in_new_thread = launch.substitutions.LaunchConfiguration('send_action_goals_in_new_thread', default='true')
@@ -61,7 +62,8 @@ def generate_launch_description():
             {'flask_debug': flask_debug},
             {'base_url': base_url},
             {'compression': "none"},
-            {'default_widget_config': default_widget_config}
+            {'default_widget_config': default_widget_config},
+            {'config_dir': config_dir}
         ]
     )
 

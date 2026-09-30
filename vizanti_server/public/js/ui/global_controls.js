@@ -111,6 +111,79 @@ export function buildLayoutControls(container, app) {
 	container.appendChild(row);
 	container.appendChild(comment("Exporting the current configuration will save the widget layout, settings, camera pose, and other info, so it can be imported later."));
 
+	// ---- layouts kept on the robot ----
+	const robot = document.createElement("div");
+	robot.className = "prop_row";
+	const robotLabel = document.createElement("label");
+	robotLabel.textContent = "On the robot:";
+	const select = document.createElement("select");
+	robot.append(robotLabel, select);
+	container.appendChild(robot);
+
+	const refresh = async (selected) => {
+		try {
+			const names = await app.configs.list();
+			select.replaceChildren();
+			for (const name of names) {
+				const option = document.createElement("option");
+				option.value = name;
+				option.textContent = name;
+				select.appendChild(option);
+			}
+			if (names.length === 0) {
+				const option = document.createElement("option");
+				option.value = "";
+				option.textContent = "(none saved yet)";
+				select.appendChild(option);
+			}
+			if (selected && names.includes(selected))
+				select.value = selected;
+		} catch (e) {
+			app.notify(e.message);
+		}
+	};
+	refresh();
+
+	const robotButtons = document.createElement("span");
+	robotButtons.appendChild(button("Load", async () => {
+		if (!select.value)
+			return;
+		try {
+			const layout = await app.configs.load(select.value);
+			if (!app.importLayout(JSON.stringify(layout)))
+				app.notify(`"${select.value}" is not a layout this version of Vizanti can read.`);
+		} catch (e) {
+			app.notify(e.message);
+		}
+	}, "export_button"));
+	robotButtons.appendChild(button("Save as…", async () => {
+		const name = prompt("Save the current layout on the robot as:", select.value || "robot_config");
+		if (name === null)
+			return;
+		try {
+			await app.configs.save(name.trim(), app.exportLayout());
+			app.notify(`Saved "${name.trim()}" on the robot.`);
+			refresh(name.trim());
+		} catch (e) {
+			app.notify(e.message);
+		}
+	}, "export_button"));
+	robotButtons.appendChild(button("Delete", async () => {
+		if (!select.value || !confirm(`Delete the config "${select.value}" from the robot?`))
+			return;
+		try {
+			await app.configs.remove(select.value);
+			refresh();
+		} catch (e) {
+			app.notify(e.message);
+		}
+	}, "export_button"));
+	container.appendChild(robotButtons);
+	container.appendChild(comment("Configs saved on the robot are available to every browser that opens Vizanti."));
+
+	container.appendChild(button("Save screenshot", () => app.saveScreenshot()));
+	container.appendChild(comment("Downloads the 3D view as a PNG image."));
+
 	container.appendChild(button("Reset Layout to default", () => {
 		if (confirm("Are you sure you want to delete your saved widget setup? This will refresh the page."))
 			app.resetLayout();

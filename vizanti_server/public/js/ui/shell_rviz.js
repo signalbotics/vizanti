@@ -9,6 +9,7 @@ const PANELS = {
 	view: { title: "3D View" },
 	displays: { title: "Displays", position: { referencePanel: "view", direction: "left" }, initialWidth: 340 },
 	views: { title: "Views", position: { referencePanel: "displays", direction: "below" }, initialHeight: 220 },
+	time: { title: "Time", position: { referencePanel: "view", direction: "below" }, initialHeight: 64 },
 };
 
 function button(text, onClick) {
@@ -115,6 +116,7 @@ export class RvizShell {
 			// dockview does not apply initialWidth/initialHeight when splitting an existing group
 			this.api.getPanel("displays")?.api.setSize({ width: PANELS.displays.initialWidth });
 			this.api.getPanel("views")?.api.setSize({ height: PANELS.views.initialHeight });
+			this.api.getPanel("time")?.api.setSize({ height: PANELS.time.initialHeight });
 		}
 
 		this.layoutListener = this.api.onDidLayoutChange(() => {
@@ -133,6 +135,7 @@ export class RvizShell {
 
 	unmount() {
 		window.removeEventListener("vizanti_tool_changed", this.paintTools);
+		clearInterval(this.timeTimer);
 		if (this.toolPanelPaint)
 			window.removeEventListener("vizanti_tool_changed", this.toolPanelPaint);
 		for (const [name, fn] of this.handlers)
@@ -188,6 +191,33 @@ export class RvizShell {
 			if (PANELS[id].initialHeight) spec.initialHeight = PANELS[id].initialHeight;
 		}
 		this.api.addPanel(spec);
+	}
+
+	// ROS time, wall time and time since the page opened, as in RViz's Time panel
+	buildTime(element) {
+		element.classList.add("rviz_time");
+		const field = (label) => {
+			const box = document.createElement("span");
+			const name = document.createElement("label");
+			name.textContent = label + ": ";
+			const value = document.createElement("span");
+			value.className = "time_value";
+			box.append(name, value);
+			element.appendChild(box);
+			return value;
+		};
+		const ros = field("ROS Time"), elapsed = field("ROS Elapsed"), wall = field("Wall Time"), source = field("Source");
+		const time = this.app.time;
+		const started = time.now();
+		clearInterval(this.timeTimer);
+		this.timeTimer = setInterval(() => {
+			if (!element.isConnected)
+				return;
+			ros.textContent = time.now().toFixed(2);
+			elapsed.textContent = (time.now() - started).toFixed(2);
+			wall.textContent = (Date.now() / 1000).toFixed(2);
+			source.textContent = time.simulated ? "/clock (simulation)" : "system clock";
+		}, 100);
 	}
 
 	// ---- panels for widgets that run from their original template ----
@@ -261,6 +291,8 @@ export class RvizShell {
 				} else if (name === "displays") {
 					this.tree = element;
 					this.renderTree();
+				} else if (name === "time") {
+					this.buildTime(element);
 				} else if (name === "views") {
 					buildCameraControls(element, this.app);
 					const heading = document.createElement("h4");

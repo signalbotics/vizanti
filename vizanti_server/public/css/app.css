@@ -311,3 +311,18 @@
 	gap: 4px;
 	margin: 6px 0;
 }
+
+.rviz_time {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 24px;
+	padding: 6px 10px;
+	font-size: 0.85rem;
+}
+
+.rviz_time .time_value {
+	display: inline-block;
+	min-width: 9em;
+	color: #cfe3ff;
+}

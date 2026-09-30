@@ -13,6 +13,7 @@ import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
 import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
 import { ToolManager, TOOLS } from './tools.js';
+import { createConfigClient } from './configs.js';
 import { formatDistance } from '../geometry/shapes.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
@@ -186,6 +187,32 @@ async function start() {
 			return registry.toJSON();
 		},
 
+		// layouts saved on the robot
+		configs: createConfigClient((url, options) => window.fetch(url, options), base_url),
+
+		saveScreenshot() {
+			scene.screenshot().toBlob((blob) => {
+				if (!blob) {
+					notify("The screenshot could not be created.");
+					return;
+				}
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = "vizanti_" + new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-") + ".png";
+				link.click();
+				URL.revokeObjectURL(url);
+			}, "image/png");
+		},
+
+		// ROS time in seconds: simulation time while /clock is being published, else system time
+		time: {
+			clock: null,
+			clockAt: 0,
+			get simulated() { return this.clock !== null && Date.now() - this.clockAt < 2000; },
+			now() { return this.simulated ? this.clock + (Date.now() - this.clockAt) / 1000 : Date.now() / 1000; },
+		},
+
 		// Returns false when the text is not a layout this version can read.
 		importLayout(text) {
 			let data;
@@ -345,6 +372,11 @@ async function start() {
 		window.dispatchEvent(new Event("view_changed"));
 	});
 	scene.onContextRestored(() => each("onContextRestored"));
+
+	subscribe("/clock", "rosgraph_msgs/msg/Clock", 100, (msg) => {
+		app.time.clock = msg.clock.sec + msg.clock.nanosec * 1e-9;
+		app.time.clockAt = Date.now();
+	});
 
 	// ---- built-in pointer tools ----
 

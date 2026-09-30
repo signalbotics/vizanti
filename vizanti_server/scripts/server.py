@@ -6,6 +6,7 @@ import logging
 import json
 import gzip
 import hashlib
+import re
 import rclpy
 
 from flask import Flask, render_template, send_from_directory, make_response, request, abort
@@ -24,6 +25,10 @@ param_port = 5000
 param_port_rosbridge = 5001
 param_compression = "none"
 param_default_widget_config = ""
+param_config_dir = ""
+
+CONFIG_NAME = re.compile(r'^[\w-]{1,64}$')
+CONFIG_MAX_BYTES = 2 * 1024 * 1024
 
 def get_public_dir():
 	p = Path(__file__).resolve()
@@ -123,6 +128,59 @@ def list_ros_launch_params():
 	response.headers['Content-Type'] = 'application/javascript'
 	return response
 
+def json_response(data, status=200):
+	response = make_response(json.dumps(data), status)
+	response.headers['Content-Type'] = 'application/json'
+	return response
+
+# Named layouts saved on the robot, shared by every browser that connects.
+def list_configs():
+	names = []
+	if os.path.isdir(param_config_dir):
+		for file in sorted(os.listdir(param_config_dir)):
+			name, extension = os.path.splitext(file)
+			if extension == '.json' and CONFIG_NAME.match(name):
+				names.append(name)
+	return json_response({'configs': names})
+
+def config_file(name):
+	if not CONFIG_NAME.match(name):
+		return json_response({'error': 'A config name may only contain letters, digits, - and _.'}, 400)
+	path = os.path.join(param_config_dir, name + '.json')
+
+	if request.method == 'GET':
+		if not os.path.isfile(path):
+			return json_response({'error': f'There is no config named "{name}".'}, 404)
+		with open(path, 'r') as f:
+			response = make_response(f.read())
+		response.headers['Content-Type'] = 'application/json'
+		return response
+
+	if request.method == 'DELETE':
+		if os.path.isfile(path):
+			os.remove(path)
+		return json_response({'deleted': name})
+
+	# PUT: store the layout exactly as sent, after checking it is a JSON object of sane size
+	data = request.get_data(cache=False)
+	if len(data) > CONFIG_MAX_BYTES:
+		return json_response({'error': 'The config is larger than 2 MB.'}, 413)
+	try:
+		parsed = json.loads(data)
+	except ValueError:
+		return json_response({'error': 'The config is not valid JSON.'}, 400)
+	if not isinstance(parsed, dict):
+		return json_response({'error': 'The config must be a JSON object.'}, 400)
+	try:
+		os.makedirs(param_config_dir, exist_ok=True)
+		temporary = path + '.tmp'
+		with open(temporary, 'w') as f:
+			json.dump(parsed, f, indent=2)
+		os.replace(temporary, path)
+	except OSError as e:
+		return json_response({'error': f'The config could not be written: {e.strerror}.'}, 507)
+	return json_response({'saved': name})
+
 # files a robot description may refer to with package:// URIs
 MESH_EXTENSIONS = {'.stl', '.dae', '.obj', '.mtl', '.png', '.jpg', '.jpeg', '.tga', '.bmp'}
 
@@ -216,7 +274,7 @@ class ServerThread(threading.Thread):
 				node.get_logger().info("Waitress server shutting down...")
 
 def main(args=None):
-	global node, param_base_url, param_port, param_port_rosbridge, param_compression, param_default_widget_config
+	global node, param_base_url, param_port, param_port_rosbridge, param_compression, param_default_widget_config, param_config_dir
 
 	rclpy.init(args=args)
 	node = rclpy.create_node('vizanti_flask_node')
@@ -228,6 +286,7 @@ def main(args=None):
 	node.declare_parameter('base_url', param_base_url)
 	node.declare_parameter('compression', param_compression)
 	node.declare_parameter('default_widget_config',param_default_widget_config)
+	node.declare_parameter('config_dir', '~/.vizanti/configs')
 
 	param_host = node.get_parameter('host').value
 	param_port = node.get_parameter('port').value
@@ -243,6 +302,9 @@ def main(args=None):
 
 	node.get_logger().info(f"Default widget config set to {param_default_widget_config}")
 
+	param_config_dir = os.path.expanduser(node.get_parameter('config_dir').value or '~/.vizanti/configs')
+	node.get_logger().info(f"Saved configs are kept in {param_config_dir}")
+
 	app.debug = node.get_parameter('flask_debug').value
 	app.add_url_rule(param_base_url + '/', 'index', index)
 	app.add_url_rule(param_base_url + '/templates/files', 'list_template_files', list_template_files)
@@ -250,6 +312,8 @@ def main(args=None):
 	app.add_url_rule(param_base_url + '/ros_launch_params', 'ros_launch_params', list_ros_launch_params)
 	app.add_url_rule(param_base_url + '/default_widget_config', 'get_default_widget_config', get_default_widget_config)
 	app.add_url_rule(param_base_url + '/displays/paths', 'list_display_files', list_display_files)
+	app.add_url_rule(param_base_url + '/configs', 'list_configs', list_configs)
+	app.add_url_rule(param_base_url + '/configs/<name>', 'config_file', config_file, methods=['GET', 'PUT', 'DELETE'])
 	app.add_url_rule(param_base_url + '/package/<package>/<path:path>', 'serve_package_file', serve_package_file)
 	app.add_url_rule(param_base_url + '/<path:path>', 'serve_static', serve_static)
 

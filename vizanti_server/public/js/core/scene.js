@@ -266,6 +266,19 @@ export class Scene3D {
 			fn(ctx, this);
 	}
 
+	// The view as it is now, with its text overlay, as a canvas ready to save.
+	screenshot() {
+		this.renderer.render(this.scene, this.camera);
+		this._drawOverlay();
+		const out = document.createElement("canvas");
+		out.width = this.canvas.width;
+		out.height = this.canvas.height;
+		const ctx = out.getContext("2d");
+		ctx.drawImage(this.canvas, 0, 0);
+		ctx.drawImage(this.overlay, 0, 0, out.width, out.height);
+		return out;
+	}
+
 	setBackground(hex) {
 		this._background = hex;
 		this.renderer.setClearColor(new THREE.Color(hex));
