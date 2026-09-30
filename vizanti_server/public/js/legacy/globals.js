@@ -12,7 +12,19 @@ export function installLegacyGlobals(app) {
 			openAddDialog(app, { container: target === "icon_container" ? "" : target });
 			return;
 		}
-		app.shell.openLegacy(id.replace(/_modal$/, ""));
+		if (id.endsWith("_modal") && app.registry.get(id.replace(/_modal$/, ""))) {
+			app.shell.openLegacy(id.replace(/_modal$/, ""));
+			return;
+		}
+		// a widget's secondary modal (node details, ros2 doctor output, ...)
+		const element = document.getElementById(id);
+		if (element) {
+			// inside a docked panel it would be clipped; show it over the page instead
+			if (element.closest(".rviz_panel_legacy")) {
+				app.legacy.modals.appendChild(element);
+			}
+			element.style.display = "flex";
+		}
 	};
 
 	window.closeModal = (id) => {

@@ -73,8 +73,10 @@ export function makeTemplateClass(type, template, meta = {}) {
 			if (template.view) {
 				this.viewElement = wrap(template.view, this.id);
 				// tool canvases are drawn in window coordinates and cover the whole window
-				for (const canvas of this.viewElement.querySelectorAll(":scope > canvas"))
-					canvas.classList.add("legacy_fullscreen");
+				for (const canvas of this.viewElement.querySelectorAll(":scope > canvas")) {
+					if (canvas.style.pointerEvents === "none" && !canvas.className)
+						canvas.classList.add("legacy_fullscreen");
+				}
 				hosts.views.appendChild(this.viewElement);
 			}
 

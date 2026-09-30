@@ -105,6 +105,7 @@ export class RvizShell {
 
 		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
 			this.listen(name, () => this.renderTree());
+		this.renderWidgets();
 		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
 		this.listen("property", (event) => this.paintIcon(event.detail.item));

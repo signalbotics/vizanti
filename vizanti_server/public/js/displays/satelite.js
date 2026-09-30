@@ -52,7 +52,8 @@ export class SatelliteDisplay extends Display {
 		this.textures = new Map(); // url -> THREE.Texture
 		this.fix = null;
 		this.origin = null;
-		this.lastFixKey = null;
+		this.anchor = null;
+		this.reanchor = false;
 		this.lastFixTime = 0;
 		this.pending = false;
 		this.navsat = null;
@@ -73,7 +74,7 @@ export class SatelliteDisplay extends Display {
 	}
 
 	schedule() {
-		if (this.pending)
+		if (this.pending || !this.enabled)
 			return;
 		this.pending = true;
 		setTimeout(() => {
@@ -112,12 +113,15 @@ export class SatelliteDisplay extends Display {
 		}
 
 		this.fix = { latitude: msg.latitude, longitude: msg.longitude, altitude: Number.isFinite(msg.altitude) ? msg.altitude : 0, frame };
-		// only rebuild the tangent plane when the fix itself moved
-		const key = `${msg.latitude},${msg.longitude},${msg.altitude}`;
-		if (key !== this.lastFixKey) {
-			this.lastFixKey = key;
+		// Re-anchor the tangent plane only when the fix moved by more than receiver jitter.
+		// The old tiles stay on screen until rebuild() replaces them in the same frame.
+		const moved = !this.anchor || this.Navsat === null
+			|| this.Navsat.haversine(this.anchor.latitude, this.anchor.longitude, msg.latitude, msg.longitude) > 0.25
+			|| Math.abs(this.anchor.altitude - this.fix.altitude) > 1;
+		if (moved) {
+			this.anchor = { ...this.fix };
 			this.origin = null;
-			this.clearTiles();
+			this.reanchor = true;
 		}
 		this.schedule();
 	}
@@ -137,7 +141,12 @@ export class SatelliteDisplay extends Display {
 		}
 		const Navsat = this.Navsat;
 		const scene = this.ctx.scene;
-		this.origin ??= Navsat.buildEnuOrigin(this.fix.latitude, this.fix.longitude, this.fix.altitude);
+		this.anchor ??= { ...this.fix };
+		this.origin ??= Navsat.buildEnuOrigin(this.anchor.latitude, this.anchor.longitude, this.anchor.altitude);
+		if (this.reanchor) {
+			this.reanchor = false;
+			this.clearMeshes(); // their corners were computed for the old anchor; textures are kept
+		}
 
 		const pose = this.framePose();
 		this.holder.position.set(pose.translation.x, pose.translation.y, pose.translation.z);
@@ -275,13 +284,17 @@ export class SatelliteDisplay extends Display {
 		this.tiles.set(key, { mesh, source: source.url, own: source.own });
 	}
 
-	clearTiles() {
+	clearMeshes() {
 		for (const entry of this.tiles.values()) {
 			entry.mesh.removeFromParent();
 			entry.mesh.geometry.dispose();
 			entry.mesh.material.dispose();
 		}
 		this.tiles.clear();
+	}
+
+	clearTiles() {
+		this.clearMeshes();
 		for (const texture of this.textures.values())
 			texture.dispose();
 		this.textures.clear();
@@ -325,7 +338,7 @@ export class SatelliteDisplay extends Display {
 		}
 		if (key === "topic") {
 			this.fix = null;
-			this.lastFixKey = null;
+			this.anchor = null;
 			this.lastFixTime = 0;
 			this.clearTiles();
 			this.setInfo({});

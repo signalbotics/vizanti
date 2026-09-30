@@ -63,9 +63,11 @@ export class OdomDisplay extends Display {
 			if (!this.props.save_history)
 				return;
 			const stored = await db.getObject(this.dbKey);
-			if (stored instanceof Float32Array && stored.length % 4 === 0 && this.samples.length === 0) {
+			if (stored instanceof Float32Array && stored.length % 4 === 0) {
+				const saved = [];
 				for (let i = 0; i < stored.length; i += 4)
-					this.samples.push({ x: stored[i], y: stored[i + 1], z: stored[i + 2], yaw: stored[i + 3] });
+					saved.push({ x: stored[i], y: stored[i + 1], z: stored[i + 2], yaw: stored[i + 3] });
+				this.samples = [...saved, ...this.samples].slice(-this.props.history);
 				this.rebuild();
 			}
 		} catch (e) {

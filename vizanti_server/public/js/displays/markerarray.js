@@ -181,6 +181,12 @@ export class MarkerArrayDisplay extends Display {
 		}
 	}
 
+	_setEnabled(enabled) {
+		super._setEnabled(enabled);
+		if (!enabled)
+			this.clear();
+	}
+
 	// frame-locked markers follow their frame; the rest stay where they were published
 	onTfChange() {
 		const tf = this.ctx.tf;

@@ -106,6 +106,8 @@ export class Scene3D {
 
 	// ---- listeners ----
 
+	get inputEnabled() { return this._inputEnabled; }
+
 	onCameraChange(fn) { this._cameraListeners.push(fn); }
 	onContextRestored(fn) { this._restoreListeners.push(fn); }
 	addOverlayDrawer(fn) { this._overlayDrawers.push(fn); }

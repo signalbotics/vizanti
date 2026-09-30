@@ -190,6 +190,7 @@ export class Display {
 			this._unsubscribe = null;
 		}
 		this._subscribeSeq++;
+		clearTimeout(this._retryTimer);
 		if (!("topic" in this.props) || !this._alive || !this.enabled)
 			return;
 		if (this.props.topic === "") {
@@ -211,7 +212,12 @@ export class Display {
 			if (seq !== this._subscribeSeq || !this._alive || !this.enabled || this.props.topic !== topic)
 				return;
 			if (!type) {
-				this.status.error(`Topic "${topic}" is not being published, so its message type is unknown.`);
+				// nothing publishes it yet (or rosapi did not answer): look again shortly
+				this.status.warn(`Topic "${topic}" is not being published yet, so its message type is unknown. Waiting...`);
+				this._retryTimer = setTimeout(() => {
+					if (seq === this._subscribeSeq)
+						this._resubscribe();
+				}, 3000);
 				return;
 			}
 			if (!types.includes(type)) {
@@ -219,6 +225,7 @@ export class Display {
 				return;
 			}
 			this.props.topic_type = type;
+			this.setProp("topic_type", type); // saved, and the shells repaint
 			this._subscribeAs(type);
 		});
 	}
@@ -275,6 +282,8 @@ export class Display {
 			this._unsubscribe();
 			this._unsubscribe = null;
 		}
+		clearTimeout(this._retryTimer);
+		this._subscribeSeq++;
 		if (this._overlayFn) {
 			this.ctx.scene.removeOverlayDrawer(this._overlayFn);
 			this._overlayFn = null;

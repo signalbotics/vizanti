@@ -238,8 +238,25 @@ test('an unsupported or unpublished topic gives an error and no subscription', a
 	const b = startMulti({}, {});
 	await tick();
 	assert.equal(b.subs.length, 0);
-	assert.equal(b.d.status.level, "error");
+	assert.equal(b.d.status.level, "warn");
 	assert.match(b.d.status.text, /not being published/);
+	b.d._destroy();
+});
+
+test('a topic that is not published yet is looked up again until it appears', async (t) => {
+	t.mock.timers.enable({ apis: ['setTimeout'] });
+	const lookup = {};
+	const { d, subs, sets } = startMulti({}, lookup);
+	await Promise.resolve(); await Promise.resolve();
+	assert.equal(subs.length, 0);
+	lookup["/cloud"] = "geometry_msgs/msg/PoseArray";
+	t.mock.timers.tick(3000);
+	await Promise.resolve(); await Promise.resolve();
+	assert.equal(subs.length, 1);
+	assert.equal(subs[0].type, "geometry_msgs/msg/PoseArray");
+	// the type is saved through the registry so it survives a reload
+	assert.deepEqual(sets.at(-1), ["multi_0", "topic_type", "geometry_msgs/msg/PoseArray"]);
+	d._destroy();
 });
 
 test('changing the topic forgets the old type, and a stale lookup is ignored', async () => {

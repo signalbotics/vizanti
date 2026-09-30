@@ -213,6 +213,10 @@
 	z-index: 5;
 }
 
+#legacy_views > div > * {
+	pointer-events: auto;
+}
+
 /* tool canvases draw in window coordinates, whatever part of the window the view occupies */
 #legacy_views canvas.legacy_fullscreen {
 	width: 100vw;

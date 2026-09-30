@@ -169,3 +169,12 @@ test('an item remembers which folder its icon lives in', () => {
 	b.reg.load(json);
 	assert.deepEqual(b.reg.items.map((i) => i.container), ["folder_0_widget_container", ""]);
 });
+
+test('ids that are not plain names are refused, since template widgets put the id into markup', () => {
+	const { reg } = make();
+	assert.throws(() => reg.add("fake", {}, { id: 'x"><img src=x onerror=alert(1)>' }), /Invalid display id/);
+	assert.throws(() => reg.add("fake", {}, { id: "" }), /Invalid display id/);
+	assert.equal(reg.add("fake", {}, { id: "map_autoID_3-b" }).id, "map_autoID_3-b");
+	reg.load({ version: 2, items: [{ type: "fake", id: "a b" }, { type: "fake", id: "ok_1" }] });
+	assert.deepEqual(reg.items.map((i) => i.id), ["ok_1"]);
+});

@@ -164,3 +164,9 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
   message stamp" lookups return the latest transform.
 - The Point Cloud "RGB Colour Count" option is gone: per-point colours are drawn directly.
 - The Camera selector in the Views panel does not follow a camera mode changed elsewhere.
+- Removing a folder from the RViz UI's tree leaves the widgets that were inside it pointing at
+  a folder that no longer exists; they reappear in the icon bar of the touch UI.
+- Removing a tool while it is armed leaves camera movement switched off until the page reloads.
+- The robot sprite has no error handling for a sprite image that fails to load.
+- `Contributing.md` still describes the old page structure (`main.js`, `setup.js`).
+- In the orbit view, a tool ignores clicks above the horizon (there is no ground there) and says so.

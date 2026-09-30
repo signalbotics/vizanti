@@ -13,6 +13,9 @@ import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
 import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
 
+// set once the old 2D UI's layout has been reset away, so it is not converted again
+const LEGACY_DONE_KEY = "vizanti_legacy_done";
+
 // template folders that are not widgets of their own in the new UI
 const TEMPLATE_SKIP = new Set(["add", "settings"]);
 
@@ -189,6 +192,8 @@ async function start() {
 			} catch (e) {
 				return false;
 			}
+			if (isLegacyLayout(data))
+				data = convertLegacyLayout(data, types); // a file exported by the old 2D UI
 			if (!isLayout(data))
 				return false;
 			if (!storage.save(data))
@@ -201,12 +206,29 @@ async function start() {
 		resetLayout() {
 			stopSaving();
 			storage.clear();
+			// otherwise the old 2D UI's layout would be converted again on the next load
+			try { window.localStorage.setItem(LEGACY_DONE_KEY, "1"); } catch (e) { /* storage blocked */ }
 			window.location.reload();
 		},
 	};
 	window.vizanti = app;
 
 	installLegacyGlobals(app);
+
+	// While a tool has taken over the pointer, presses and releases that point above the horizon
+	// (orbit view) are dropped, so a tool can never act on a position that is not on the ground.
+	for (const type of ["mousedown", "mouseup", "click", "touchstart", "touchend"]) {
+		sceneElement.addEventListener(type, (event) => {
+			if (scene.inputEnabled)
+				return;
+			const touch = event.touches?.[0] ?? event.changedTouches?.[0] ?? event;
+			if (scene.groundPoint(touch.clientX, touch.clientY))
+				return;
+			event.stopPropagation();
+			if (type === "mousedown" || type === "touchstart")
+				notify("That point is above the horizon. Click on the ground.");
+		}, true);
+	}
 
 	// ---- load the saved layout ----
 
@@ -223,18 +245,24 @@ async function start() {
 				return convertLegacyLayout(data, types);
 			return isLayout(data) ? data : null;
 		};
+		let converted = null;
 		try {
-			const old = resolveBackend(() => window.localStorage).getItem("settings");
-			const converted = old ? parse(old) : null;
-			if (converted) {
-				initial = converted;
-				notify("Your widget layout from the previous version of Vizanti was carried over.");
-			} else {
+			const backend = resolveBackend(() => window.localStorage);
+			const old = backend.getItem(LEGACY_DONE_KEY) ? null : backend.getItem("settings");
+			converted = old ? parse(old) : null;
+		} catch (e) {
+			console.warn("The layout of the previous version could not be read:", e);
+		}
+		if (converted) {
+			initial = converted;
+			notify("Your widget layout from the previous version of Vizanti was carried over.");
+		} else {
+			try {
 				const text = (await import(`${base_url}/default_widget_config`)).default;
 				initial = parse(text) ?? DEFAULT_LAYOUT;
+			} catch (e) {
+				console.warn("The default config could not be read, using the built-in default:", e);
 			}
-		} catch (e) {
-			console.warn("No earlier layout or default config could be read, using the built-in default:", e);
 		}
 	}
 	if (stored.corrupt)

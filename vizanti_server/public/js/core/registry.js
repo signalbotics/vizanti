@@ -52,6 +52,8 @@ export class Registry extends EventTarget {
 			do {
 				id = `${type}_${this.uid++}`;
 			} while (this.get(id));
+		} else if (typeof id !== "string" || !/^[\w-]+$/.test(id)) {
+			throw new Error(`Invalid display id "${id}"`);
 		} else if (this.get(id)) {
 			throw new Error(`Duplicate display id "${id}"`);
 		}

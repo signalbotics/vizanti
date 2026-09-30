@@ -91,8 +91,10 @@ export class TouchShell {
 			if (item.modalElement)
 				item.modalElement.style.display = "none";
 		}
-		for (const wrapper of this.wrappers.values())
-			wrapper.remove();
+		for (const [id, wrapper] of this.wrappers) {
+			if (!this.app.registry.get(id)?.iconElement)
+				wrapper.remove();
+		}
 		this.wrappers.clear();
 
 		this.app.sceneElement.remove();
