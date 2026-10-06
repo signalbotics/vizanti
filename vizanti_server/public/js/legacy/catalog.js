@@ -83,32 +83,6 @@ export const CATALOG = {
 			"geometry_msgs/msg/PoseStamped"
 		]
 	},
-	"waypoints": {
-		"label": "Waypoint Mission",
-		"icon": "assets/waypoints.svg",
-		"description": "Send a list of goals [nav_msgs/Path] or [geometry_msgs/PoseArray]",
-		"msgTypes": [
-			"nav_msgs/msg/Path",
-			"geometry_msgs/msg/PoseArray"
-		]
-	},
-	"survey": {
-		"label": "Survey Mission",
-		"icon": "assets/survey.svg",
-		"description": "Generate a grid pattern inside a polygon, as a [nav_msgs/Path] or [geometry_msgs/PoseArray]",
-		"msgTypes": [
-			"nav_msgs/msg/Path",
-			"geometry_msgs/msg/PoseArray"
-		]
-	},
-	"area": {
-		"label": "Bounding Box",
-		"icon": "assets/area.svg",
-		"description": "Send vertices of a box [geometry_msgs/PolygonStamped]",
-		"msgTypes": [
-			"geometry_msgs/msg/PolygonStamped"
-		]
-	},
 	"button": {
 		"label": "Button",
 		"icon": "assets/button.svg",

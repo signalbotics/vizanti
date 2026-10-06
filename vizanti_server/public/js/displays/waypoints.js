@@ -1,8 +1,6 @@
 import * as THREE from '../lib/three.module.min.js';
-import { Display } from '../core/display.js';
+import { PointEditorDisplay } from '../core/point_editor.js';
 import { insertIndex, closestIndex, waypointPoses, parseWaypointCsv, marginSegments, fromLegacyWaypoints } from '../geometry/waypoints.js';
-
-const HIT_PX = 14; // how close (screen pixels) a press must be to grab a point
 
 const button = (text, title, onClick) => {
 	const element = document.createElement("button");
@@ -15,7 +13,7 @@ const button = (text, title, onClick) => {
 
 // A waypoint mission edited in the 3D view and sent as nav_msgs/Path or geometry_msgs/PoseArray.
 // Replaces the old 2D "waypoints" widget and carries over its saved missions.
-export class WaypointsDisplay extends Display {
+export class WaypointsDisplay extends PointEditorDisplay {
 
 	static type = "waypoints";
 	static label = "Waypoints";
@@ -61,17 +59,6 @@ export class WaypointsDisplay extends Display {
 		this.place();
 		this.rebuild();
 		this.status.ok();
-	}
-
-	place() {
-		const node = this.ctx.frames.get(this.props.frame);
-		if (!node) {
-			this.status.warn(`Transform to frame '${this.props.frame}' not yet available.`);
-			return false;
-		}
-		if (this.root.parent !== node)
-			node.add(this.root);
-		return true;
 	}
 
 	points() {
@@ -142,39 +129,10 @@ export class WaypointsDisplay extends Display {
 		this.paintEditor();
 	}
 
-	// the screen position of point i, in canvas pixels
-	screenOf(p) {
-		const world = new THREE.Vector3(p.x, p.y, p.z);
-		this.root.localToWorld(world);
-		return this.ctx.scene.project(world.x, world.y, world.z);
-	}
-
-	hitPoint(event) {
-		const rect = this.ctx.scene.canvas.getBoundingClientRect();
-		const x = event.clientX - rect.left, y = event.clientY - rect.top;
-		let best = -1, bestDistance = HIT_PX;
-		this.points().forEach((p, i) => {
-			const s = this.screenOf(p);
-			const d = Math.hypot(s.x - x, s.y - y);
-			if (s.visible && d <= bestDistance) {
-				best = i;
-				bestDistance = d;
-			}
-		});
-		return best;
-	}
-
-	// a ground point (fixed frame) in the mission frame
-	toLocal(ground) {
-		const v = new THREE.Vector3(ground.x, ground.y, ground.z);
-		this.root.updateWorldMatrix(true, false);
-		return this.root.worldToLocal(v);
-	}
-
 	onEditPointer(kind, { event, ground }) {
 		const points = this.points();
 		if (kind === "down") {
-			const index = this.hitPoint(event);
+			const index = this.hitIndex(points, event);
 			if (index === -1)
 				return false; // not on a point: the camera moves, or a click adds one
 			this.drag = { index, startX: event.clientX, startY: event.clientY, startZ: points[index].z, moved: false };
@@ -184,8 +142,7 @@ export class WaypointsDisplay extends Display {
 			const next = points.map((p) => ({ ...p }));
 			const p = next[this.drag.index];
 			if (this.mode === "z") {
-				const metersPerPixel = 1 / Math.max(1e-6, this.ctx.scene.pixelsPerMeter());
-				p.z = this.drag.startZ + (this.drag.startY - event.clientY) * metersPerPixel;
+				p.z = this.drag.startZ + (this.drag.startY - event.clientY) * this.metersPerPixel();
 			} else if (ground) {
 				const local = this.toLocal(ground);
 				p.x = local.x;
@@ -212,7 +169,7 @@ export class WaypointsDisplay extends Display {
 		if (kind === "click" && this.mode === "xy" && ground) {
 			const local = this.toLocal(ground);
 			const p = { x: local.x, y: local.y, z: 0 };
-			const tolerance = HIT_PX / Math.max(1e-6, this.ctx.scene.pixelsPerMeter());
+			const tolerance = 14 * this.metersPerPixel();
 			const next = points.map((q) => ({ ...q }));
 			next.splice(insertIndex(next, p, tolerance), 0, p);
 			this.setPoints(next);
@@ -247,13 +204,12 @@ export class WaypointsDisplay extends Display {
 			return;
 		}
 		if (this.props.start_closest) {
-			const robot = this.ctx.tf.absoluteTransforms[this.props.robot_frame];
+			const robot = this.robotLocal(this.props.robot_frame);
 			if (!robot) {
 				this.status.error(`Robot frame "${this.props.robot_frame}" not found; cannot start from the closest waypoint.`);
 				return;
 			}
-			const local = this.toLocal(robot.translation);
-			points = points.slice(closestIndex(points, local));
+			points = points.slice(closestIndex(points, robot));
 		}
 		this.send(points);
 		if (this.mode !== "idle")

@@ -146,7 +146,23 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   published as `geometry_msgs/PolygonStamped` in the fixed frame, and stays drawn. Checked on
   2026-10-06: ROS received the dragged box with the expected corners.
 
-  Survey is still the old 2D widget.
+- **Survey** (native, replaces the old 2D widget; saved surveys carry over):
+  - **Edit area:** click to add polygon vertices (near an edge to insert), drag vertices or the
+    ST / FIN markers, tap a vertex to delete it.
+  - **Edit heights:** drag vertices up or down.
+  - With three vertices, ST and FIN are placed beside the robot frame, and the line spacing is
+    sized for about ten lines.
+  - The lawnmower path (spacing, angle, turnaround, criss-cross, direct transits) comes from the
+    old widget's planner, unchanged, in `js/workers/survey_worker.js`. It is redrawn after each
+    edit and sent latched like a waypoint mission.
+
+  Checked on 2026-10-06 in the app:
+  - a 10 m square gave 10 lines and 22 waypoints;
+  - dragging FIN re-planned the path;
+  - ROS received the 23-pose Path;
+  - an old saved survey migrated.
+
+  The old waypoints, area and survey templates are deleted.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
