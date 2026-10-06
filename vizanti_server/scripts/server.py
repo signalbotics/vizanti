@@ -27,6 +27,7 @@ param_port_rosbridge = 5001
 param_compression = "none"
 param_default_widget_config = ""
 param_config_dir = ""
+param_default_config = ""
 
 CONFIG_NAME = re.compile(r'^[\w-]{1,64}$')
 CONFIG_MAX_BYTES = 2 * 1024 * 1024
@@ -122,7 +123,8 @@ def list_ros_launch_params():
 	params = {
 		"port": param_port,
 		"port_rosbridge": param_port_rosbridge,
-		"compression": param_compression
+		"compression": param_compression,
+		"default_config": param_default_config
 	}
 	js_module = f"const params = {json.dumps(params)};\nexport default params;"
 	response = make_response(js_module)
@@ -303,7 +305,7 @@ class ServerThread(threading.Thread):
 				node.get_logger().info("Waitress server shutting down...")
 
 def main(args=None):
-	global node, param_base_url, param_port, param_port_rosbridge, param_compression, param_default_widget_config, param_config_dir
+	global node, param_base_url, param_port, param_port_rosbridge, param_compression, param_default_widget_config, param_config_dir, param_default_config
 
 	rclpy.init(args=args)
 	node = rclpy.create_node('vizanti_flask_node')
@@ -316,6 +318,7 @@ def main(args=None):
 	node.declare_parameter('compression', param_compression)
 	node.declare_parameter('default_widget_config',param_default_widget_config)
 	node.declare_parameter('config_dir', '~/.vizanti/configs')
+	node.declare_parameter('default_config', '')
 
 	param_host = node.get_parameter('host').value
 	param_port = node.get_parameter('port').value
@@ -333,6 +336,14 @@ def main(args=None):
 
 	param_config_dir = os.path.expanduser(node.get_parameter('config_dir').value or '~/.vizanti/configs')
 	node.get_logger().info(f"Saved configs are kept in {param_config_dir}")
+
+	# a config saved on the robot that browsers without a layout of their own start from
+	param_default_config = node.get_parameter('default_config').value or ""
+	if param_default_config and not CONFIG_NAME.match(param_default_config):
+		node.get_logger().warn(f"default_config '{param_default_config}' is not a valid config name; ignored")
+		param_default_config = ""
+	elif param_default_config:
+		node.get_logger().info(f"Browsers without a layout start from the saved config '{param_default_config}'")
 
 	app.debug = node.get_parameter('flask_debug').value
 	app.add_url_rule(param_base_url + '/', 'index', index)

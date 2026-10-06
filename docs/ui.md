@@ -129,6 +129,16 @@ touch UI opens top-down. Change it under Views / Global Settings → Camera.
 
 ## Saved layouts, configs on the robot, screenshots, time
 
+**Starting from a robot config:**
+- `http://<robot>:5000/?config=<name>` loads a config saved on the robot. It is applied once
+  and then removed from the address, so a reload keeps your changes.
+- The `default_config:=<name>` launch argument (both launch files) is what a browser with no
+  layout of its own starts from, before the `default_widget_config` file.
+- A missing or unreadable config shows a notice and leaves the layout as it was.
+
+Checked on 2026-10-06: `?config=` loaded a saved config and cleared itself; a missing name gave
+the notice; a fresh browser on a server launched with `default_config` got that config.
+
 The layout (widgets, their settings, global options, camera, panel arrangement) is saved in
 browser storage under `vizanti_v2`. Export and import it from Global Options.
 

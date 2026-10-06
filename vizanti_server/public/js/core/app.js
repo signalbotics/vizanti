@@ -13,7 +13,7 @@ import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
 import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
 import { ToolManager, TOOLS } from './tools.js';
-import { createConfigClient } from './configs.js';
+import { createConfigClient, startupConfig } from './configs.js';
 import { formatDistance } from '../geometry/shapes.js';
 import { parseYaml, isRvizConfig, convertRvizConfig } from './rviz_import.js';
 import { createQosInjector, withQosProperty } from './qos.js';
@@ -362,10 +362,36 @@ async function start() {
 	// ---- load the saved layout ----
 
 	const stored = storage.load();
+	let initial = stored.data;
+
+	// A config saved on the robot: ?config=<name> in the address, or the launch file's
+	// default_config for a browser with no layout of its own.
+	const launchParams = (await import(`${base_url}/ros_launch_params`)).default;
+	const start = startupConfig(window.location.search, !!stored.data, launchParams.default_config ?? "");
+	if (start) {
+		try {
+			let data = await createConfigClient((url, options) => window.fetch(url, options), base_url).load(start.name);
+			if (isLegacyLayout(data))
+				data = convertLegacyLayout(data, types);
+			if (isLayout(data)) {
+				initial = data;
+				notify(`Started from the config "${start.name}" saved on the robot.`);
+			} else {
+				notify(`The config "${start.name}" on the robot is not a layout this version can read.`, { sticky: true });
+			}
+		} catch (e) {
+			notify(`The config "${start.name}" could not be loaded from the robot: ${e.message}`, { sticky: true });
+		}
+		if (start.fromUrl) {
+			// applied once: a reload keeps the changes made since
+			const url = new URL(window.location.href);
+			url.searchParams.delete("config");
+			window.history.replaceState(null, "", url);
+		}
+	}
 
 	// First run of this UI: carry over the layout of the old 2D UI if this browser has one,
 	// otherwise start from the server's default config (either format).
-	let initial = stored.data;
 	if (!initial) {
 		initial = DEFAULT_LAYOUT;
 		const parse = (text) => {

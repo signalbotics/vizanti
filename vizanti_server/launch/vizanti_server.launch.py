@@ -10,6 +10,7 @@ def generate_launch_description():
     flask_debug = launch.substitutions.LaunchConfiguration('flask_debug', default=False)
     default_widget_config = launch.substitutions.LaunchConfiguration('default_widget_config', default='') #e.g. ~/your_custom_config.json
     config_dir = launch.substitutions.LaunchConfiguration('config_dir', default='~/.vizanti/configs') #where configs saved from the UI are kept
+    default_config = launch.substitutions.LaunchConfiguration('default_config', default='') #a config saved on the robot that new browsers start from
 
     #rosbridge internal params
     send_action_goals_in_new_thread = launch.substitutions.LaunchConfiguration('send_action_goals_in_new_thread', default='true')
@@ -63,7 +64,8 @@ def generate_launch_description():
             {'base_url': base_url},
             {'compression': "none"},
             {'default_widget_config': default_widget_config},
-            {'config_dir': config_dir}
+            {'config_dir': config_dir},
+            {'default_config': default_config}
         ]
     )
 

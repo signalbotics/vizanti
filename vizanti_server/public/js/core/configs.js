@@ -41,3 +41,15 @@ export function createConfigClient(fetchImpl, baseUrl) {
 		async remove(name) { return call("DELETE", named(name)); },
 	};
 }
+
+// Which config saved on the robot to start from, if any: ?config=<name> in the address always
+// wins; otherwise a browser that has no layout of its own gets the launch file's default_config.
+// Returns { name, fromUrl } or null.
+export function startupConfig(search, hasStoredLayout, defaultConfig) {
+	const requested = new URLSearchParams(search).get("config");
+	if (requested && validConfigName(requested))
+		return { name: requested, fromUrl: true };
+	if (!hasStoredLayout && defaultConfig && validConfigName(defaultConfig))
+		return { name: defaultConfig, fromUrl: false };
+	return null;
+}

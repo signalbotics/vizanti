@@ -52,3 +52,17 @@ test('a server that cannot be reached gives a readable error', async () => {
 	const client = createConfigClient(async () => { throw new TypeError("Failed to fetch"); }, "");
 	await assert.rejects(() => client.list(), /could not be reached/);
 });
+
+import { startupConfig } from '../../public/js/core/configs.js';
+
+test('startupConfig: ?config= wins, then the launch default for a browser without a layout', () => {
+	assert.deepEqual(startupConfig("?config=warehouse", true, "field"), { name: "warehouse", fromUrl: true });
+	assert.deepEqual(startupConfig("?ui=rviz&config=warehouse", false, ""), { name: "warehouse", fromUrl: true });
+	assert.deepEqual(startupConfig("", false, "field"), { name: "field", fromUrl: false });
+	assert.equal(startupConfig("", true, "field"), null, "a browser's own layout is kept");
+	assert.equal(startupConfig("", false, ""), null);
+	// names the server would refuse are ignored
+	assert.equal(startupConfig("?config=../etc/passwd", false, ""), null);
+	assert.deepEqual(startupConfig("?config=bad name", false, "field"), { name: "field", fromUrl: false });
+	assert.equal(startupConfig("", false, "no/slashes"), null);
+});
