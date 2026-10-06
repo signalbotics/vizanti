@@ -109,5 +109,5 @@ test('the new displays declare their types and defaults', () => {
 	assert.deepEqual(defaultsOf(WrenchDisplay.properties), { topic: "", topic_type: "", linear_color: "#cc3333", angular_color: "#cccc33", linear_scale: 1, angular_scale: 1, width: 0.05, opacity: 1, throttle: 100 });
 	assert.deepEqual(defaultsOf(PolygonDisplay.properties), { topic: "", color: "#19ff00", thickness: 2, opacity: 1, throttle: 100 });
 	assert.deepEqual(defaultsOf(AxesDisplay.properties), { frame: "", length: 1, radius: 0.05, opacity: 1 });
-	assert.deepEqual(defaultsOf(ImageDisplay.properties), { topic: "", size: 320, corner: "top-left", opacity: 1, throttle: 200 });
+	assert.deepEqual(defaultsOf(ImageDisplay.properties), { topic: "", placement: "overlay", size: 320, corner: "top-left", opacity: 1, throttle: 200 });
 });
