@@ -309,6 +309,9 @@ widgets (`{state: {...}}`) are converted on load.
   Right-click it (RViz UI) or long-press it (touch UI) for its panel and settings.
 - **2D Nav Goal, 2D Pose Estimate**: a click arms the view's pose tool with the widget's own
   topic for one pose, so several of them can drive several robots.
+- **Diagnostics**: `/rosout` (a group per node with its recent messages) or `/diagnostics` (a
+  group per status with its values), coloured by severity, with a minimum-severity filter,
+  pause and clear. The icon shows the worst group.
 - **Topic Inspector**: echoes any topic, with its publishers and subscribers.
 - **Parameter Reconfigure**: reads and sets a node's bool / int / float / string parameters.
 - **Node Manager**: starts nodes and launch files (`ros2 run` / `ros2 launch`), shows running
@@ -320,7 +323,7 @@ widgets (`{state: {...}}`) are converted on load.
 
 **Compressed Image** is a native display like Image, plus rotation, rate and bandwidth.
 
-**Template widgets** (`templates/`): Teleop, Diagnostics and Folder still run
+**Template widgets** (`templates/`): Teleop and Folder still run
 their original scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
 `js/modules/persistent.js`) gives them the page functions and the settings object they expect,
 and projects their drawing through the 3D camera onto the ground plane (z = 0).

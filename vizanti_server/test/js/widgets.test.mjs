@@ -163,3 +163,36 @@ test('node manager commands and doctor output', () => {
 	assert.equal(nodeCommand("pkg", "x", "launch"), "ros2 launch pkg x");
 	assert.equal(stripEscapes("\x1B[1mUNIQUE\x1B[0m ok \x1B[31mred\x1B[0m"), "UNIQUE ok red");
 });
+
+import { DiagnosticsModel, DiagnosticsWidget } from '../../public/js/displays/diagnostics_widget.js';
+
+test('diagnostics model: logs group per node, repeat lines count, worst level wins', () => {
+	const m = new DiagnosticsModel(true);
+	const log = (name, level, msg) => m.add({ name, level, msg, file: "/src/a/node.cpp", function: "tick", line: 7 }, 100);
+	log("planner", 20, "ok");
+	log("planner", 20, "ok");
+	log("planner", 40, "boom");
+	log("vizanti_rosbridge", 50, "ignored");
+	const g = m.groups.get("planner");
+	assert.equal(m.groups.size, 1);
+	assert.equal(g.history.length, 2);
+	assert.equal(g.history[0].count, 2);
+	assert.equal(g.history[0].location, "node.cpp:tick:7");
+	assert.equal(g.level, 40);
+	assert.equal(m.worstIcon(), "red");
+	assert.equal(m.worstIcon(4), "default"); // nothing FATAL
+});
+
+test('diagnostics model: statuses keep key / value entries; icon by worst status', () => {
+	const m = new DiagnosticsModel(false);
+	m.add({ status: [
+		{ level: 0, name: "motors", message: "fine", hardware_id: "mc1", values: [{ key: "temp", value: "40" }] },
+		{ level: 1, name: "battery", message: "low", hardware_id: "", values: [] },
+	] });
+	assert.deepEqual(m.list().map((g) => g.key), ["battery", "motors"]);
+	assert.equal(m.groups.get("motors").message, "fine [mc1]");
+	assert.equal(m.groups.get("motors").entries.get("temp").value, "40");
+	assert.equal(m.worstIcon(), "yellow");
+	const { values } = resolveProps(DiagnosticsWidget.properties, DiagnosticsWidget.migrateProps({ state: { topic: "/rosout", throttle: "0", opened: ["planner"] } }));
+	assert.deepEqual([values.topic, values.throttle, values.opened], ["/rosout", 0, ["planner"]]);
+});

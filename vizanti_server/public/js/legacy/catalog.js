@@ -25,15 +25,6 @@ export const CATALOG = {
 		"description": "Group your widgets together",
 		"msgTypes": []
 	},
-	"diagnostics": {
-		"label": "Diagnostics",
-		"icon": "assets/diagnostics.svg",
-		"description": "Monitor [diagnostic_msgs/DiagnosticArray] or [rcl_interfaces/Log]",
-		"msgTypes": [
-			"diagnostic_msgs/msg/DiagnosticArray",
-			"rcl_interfaces/msg/Log"
-		]
-	},
 	"teleop": {
 		"label": "Teleop Joystick",
 		"icon": "assets/joystick.svg",
