@@ -994,3 +994,10 @@ button.status_segment:disabled {
 	border-radius: 4px;
 	user-select: text;
 }
+
+.widget_panel .param_mark {
+	display: inline-block;
+	min-width: 1.2em;
+	margin-left: 4px;
+	color: #8d9aab;
+}

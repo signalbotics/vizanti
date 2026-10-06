@@ -19,12 +19,6 @@ export const CATALOG = {
 		"description": "Custom robot sprite",
 		"msgTypes": []
 	},
-	"reconfigure": {
-		"label": "Parameter Reconfigure",
-		"icon": "assets/reconfigure.svg",
-		"description": "View and edit parameters",
-		"msgTypes": []
-	},
 	"rosbag": {
 		"label": "Bag Recorder",
 		"icon": "assets/rosbag.svg",

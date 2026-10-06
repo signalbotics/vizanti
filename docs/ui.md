@@ -296,7 +296,7 @@ TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>
 the package. `file://` mesh paths are not supported.
 
 **Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature, Speedometer, Altimeter,
-Attitude Indicator, Button, 2D Nav Goal, 2D Pose Estimate and Topic Inspector are native widgets: a live icon and
+Attitude Indicator, Button, 2D Nav Goal, 2D Pose Estimate, Topic Inspector and Parameter Reconfigure are native widgets: a live icon and
 a panel. The 2D Nav Goal and 2D Pose Estimate widgets arm the view's pose tool with their own
 topic for one pose, so several of them can drive several robots. The Button acts on a
 click (publish Empty / Bool, call an Empty / Trigger / SetBool service); right-click it in the
@@ -308,7 +308,7 @@ navball) draw on the view's 2D overlay in both UIs. Drag the navball to move it;
 topic set, click the altimeter tape near its ticks to publish that target (std_msgs/Float32).
 
 **Template widgets** (`templates/`): Teleop and the
-panels (Node Manager, Bag Recorder, Parameter Reconfigure, Diagnostics, Folder). Compressed Image is now a native display like Image (plus rotation, rate and
+panels (Node Manager, Bag Recorder, Diagnostics, Folder). Compressed Image is now a native display like Image (plus rotation, rate and
 bandwidth). These still run their original
 scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)
 gives them the page functions and the settings object they expect, and projects their drawing

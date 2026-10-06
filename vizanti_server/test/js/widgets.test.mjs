@@ -127,3 +127,18 @@ test('echoLines indents nested fields and cuts long arrays and strings', () => {
 	]);
 	assert.equal(echoLines({ a: new Array(10).fill(0) }, { maxLines: 3, maxArray: 100 }).at(-1).text, "… (cut at 3 lines)");
 });
+
+import { groupParameters, parameterText } from '../../public/js/displays/reconfigure_widget.js';
+
+test('parameters group by their dots and convert typed text', () => {
+	const tree = groupParameters([["use_sim_time", false, 1], ["controller.kp", 1.5, 3], ["controller.limits.max", 10, 2]]);
+	assert.deepEqual(tree.use_sim_time, ["use_sim_time", false, 1]);
+	assert.deepEqual(tree.controller.kp, ["controller.kp", 1.5, 3]);
+	assert.deepEqual(tree.controller.limits.max, ["controller.limits.max", 10, 2]);
+	assert.equal(parameterText(1, true), "true");
+	assert.equal(parameterText(2, "1000"), "1000"); // not "1,000"
+	assert.equal(parameterText(2, "1.5"), null);
+	assert.equal(parameterText(3, "2.5e-3"), "0.0025");
+	assert.equal(parameterText(3, ""), null);
+	assert.equal(parameterText(4, "hello"), "hello");
+});

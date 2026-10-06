@@ -215,6 +215,8 @@ async function start() {
 		}),
 		// names of the services of one type
 		listServices: (type) => rosbridge.get_services(type),
+		// the names of the running nodes
+		listNodes: async () => (await rosbridge.get_all_nodes()).nodes ?? [],
 		// { publishers: [node names], subscribers: [node names] } of a topic
 		topicInfo: (topic) => rosbridge.get_topic_publishers_and_subscribers(topic),
 		resolveType: async (topic) => {
