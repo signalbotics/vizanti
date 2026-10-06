@@ -63,6 +63,7 @@ export class Registry extends EventTarget {
 		item.container = typeof opts.container === "string" ? opts.container : ""; // folder the icon lives in
 		item.status.onChange = () => this._notify("status", { item });
 		item.onInfo = () => this._notify("info", { item });
+		item.onIcon = () => this._notify("icon", { item }); // a widget's live icon changed
 
 		this.items.push(item);
 		// a display that replaced an older widget converts that widget's saved props

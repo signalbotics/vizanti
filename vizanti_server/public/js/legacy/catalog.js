@@ -226,10 +226,4 @@ export const CATALOG = {
 			"sensor_msgs/msg/Temperature"
 		]
 	},
-	"rosbridge": {
-		"label": "Rosbridge",
-		"icon": "assets/rosbridge_connected.svg",
-		"description": "Shows the state of the connection to the robot",
-		"msgTypes": []
-	}
 };

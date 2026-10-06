@@ -69,6 +69,7 @@ export class TouchShell {
 		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed"])
 			this.listen(name, () => this.renderIcons());
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
+		this.listen("icon", (event) => this.paintIcon(event.detail.item)); // a widget's live icon
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
 		this.listenWindow("resize", () => this.calculateWidth());
 
@@ -297,6 +298,13 @@ export class TouchShell {
 
 	openItem(item) {
 		this.openModal(item.name, (inner) => {
+			// a widget's own panel (readouts, controls) comes first
+			const panel = item.constructor.widget ? document.createElement("div") : null;
+			if (panel) {
+				inner.appendChild(panel);
+				item.attachPanel(panel);
+				inner.appendChild(hr());
+			}
 			const editor = buildItemEditor(item, this.app);
 			inner.appendChild(editor.element);
 			inner.appendChild(hr());
@@ -321,7 +329,11 @@ export class TouchShell {
 			});
 			inner.appendChild(remove);
 
-			return () => editor.dispose();
+			return () => {
+				editor.dispose();
+				if (panel && item.panelHost === panel)
+					item.detachPanel();
+			};
 		});
 	}
 

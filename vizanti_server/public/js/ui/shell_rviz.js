@@ -171,6 +171,9 @@ export class RvizShell {
 		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
+		for (const name of ["icon", "status", "property", "renamed", "enabled"])
+			this.listen(name, (event) => event.detail?.item && this.paintWidget(event.detail.item));
+		this.listen("icon", (event) => this.paintIcon(event.detail.item));
 
 		// displays that show in a panel of their own (an image with "Show in: its own panel")
 		for (const name of ["added", "removed", "property", "enabled", "loaded", "renamed"])
@@ -327,8 +330,12 @@ export class RvizShell {
 			return;
 		if (typeof item.detachPanel === "function" && item.panelHost)
 			item.detachPanel();
-		if (!this.closingDisplayPanels && item.enabled && item.wantsPanel)
-			this.app.registry.setEnabled(item.id, false);
+		if (!this.closingDisplayPanels && item.enabled && item.wantsPanel) {
+			if (item.constructor.widget)
+				item.togglePanel(false); // a widget's panel just closes
+			else
+				this.app.registry.setEnabled(item.id, false); // an image panel belongs to the display
+		}
 	}
 
 	openLegacy(id) {
@@ -427,10 +434,50 @@ export class RvizShell {
 	}
 
 	renderWidgets() {
+		this.widgetButtons ??= new Map();
+		const seen = new Set();
 		for (const item of this.app.registry.items) {
 			if (item.iconElement && item.constructor.type !== "folder" && item.iconElement.parentElement !== this.widgets)
 				this.widgets.appendChild(item.iconElement);
+			if (!item.constructor.widget)
+				continue;
+			// a native widget: its live icon opens and closes its panel
+			seen.add(item.id);
+			let element = this.widgetButtons.get(item.id);
+			if (!element) {
+				element = document.createElement("button");
+				element.type = "button";
+				element.className = "widget_button";
+				element.appendChild(document.createElement("img"));
+				element.addEventListener("click", () => item.togglePanel());
+				this.widgetButtons.set(item.id, element);
+			}
+			this.widgets.appendChild(element); // keeps the display order
+			this.paintWidget(item);
 		}
+		for (const [id, element] of this.widgetButtons) {
+			if (!seen.has(id)) {
+				element.remove();
+				this.widgetButtons.delete(id);
+			}
+		}
+	}
+
+	paintWidget(item) {
+		const element = this.widgetButtons?.get(item.id);
+		if (!element)
+			return;
+		const image = element.firstElementChild;
+		if (image.getAttribute("src") !== item.icon)
+			image.src = item.icon;
+		image.alt = "";
+		element.title = `${item.name}: ${item.status.text}` + (item.wantsPanel ? "" : " (click to open)");
+		element.setAttribute("aria-label", item.name);
+		element.setAttribute("aria-pressed", String(!!item.wantsPanel));
+		element.classList.toggle("widget_open", !!item.wantsPanel);
+		element.classList.toggle("widget_disabled", !item.enabled);
+		element.classList.toggle("status-warn", item.status.level === "warn");
+		element.classList.toggle("status-error", item.status.level === "error");
 	}
 
 	renderTree() {

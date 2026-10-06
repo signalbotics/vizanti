@@ -563,6 +563,11 @@
 .rviz_widgets {
 	display: flex;
 	align-items: center;
+	gap: 2px;
+}
+
+/* the old template widgets' 50 px icons, scaled to the toolbar */
+.rviz_widgets > :not(.widget_button) {
 	zoom: 0.55;
 }
 
@@ -864,4 +869,79 @@ button.status_segment:disabled {
 .scene_container.pointer_editing,
 .pointer_editing canvas {
 	cursor: crosshair;
+}
+
+/* native widgets: a live icon in the RViz toolbar's widget strip, and their panel */
+.rviz_widgets .widget_button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 2px;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.rviz_widgets .widget_button img {
+	width: 28px;
+	height: 28px;
+	pointer-events: none;
+}
+
+.rviz_widgets .widget_button:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.rviz_widgets .widget_button.widget_open {
+	border-color: #6c8ebf;
+	background-color: rgba(108, 142, 191, 0.2);
+}
+
+.rviz_widgets .widget_button.widget_disabled {
+	opacity: 0.4;
+}
+
+.rviz_widgets .widget_button.status-warn {
+	box-shadow: inset 0 -3px 0 #f5c542;
+}
+
+.rviz_widgets .widget_button.status-error {
+	box-shadow: inset 0 -3px 0 #ff6b6b;
+}
+
+.widget_panel {
+	padding: 8px 10px;
+	font-size: 0.9rem;
+	box-sizing: border-box;
+}
+
+.display_panel_host:has(> .widget_panel) {
+	align-items: stretch;
+	justify-content: flex-start;
+	overflow: auto;
+	background-color: transparent;
+}
+
+.display_panel_host > .widget_panel {
+	width: 100%;
+}
+
+/* label / value rows used by the readout widgets */
+.readout {
+	display: grid;
+	grid-template-columns: minmax(110px, auto) 1fr;
+	gap: 4px 12px;
+	margin: 4px 0;
+}
+
+.readout dt {
+	color: #8d9aab;
+}
+
+.readout dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
 }
