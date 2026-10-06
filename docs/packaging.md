@@ -52,6 +52,21 @@ with `docker rmi vizanti-deb-builder:<distro>`.
 Checked for Jazzy (2026-10-01): all five packages built, then `apt install`ed into a clean
 `ros:jazzy-ros-base` container. The server started there and served the web UI.
 
+### arm64 (Jetson, Raspberry Pi)
+
+```bash
+packaging/build_debs_docker.sh jazzy --arch arm64     # -> packaging/debs/jazzy/*_arm64.deb
+```
+
+This builds in an arm64 container under QEMU emulation, so it is slow (about an hour for all
+five packages on the development machine, versus minutes natively). It needs QEMU user-mode
+emulation registered with the kernel: `sudo apt install qemu-user-binfmt`. The script says so
+if it is missing. The builder image is `vizanti-deb-builder:<distro>-arm64`.
+
+Checked on 2026-10-06: Jazzy arm64 packages built. The binaries are aarch64 ELF, all five
+installed with apt in an emulated arm64 `ros:jazzy-ros-base` container, and the server served
+the UI there. Not checked on real arm64 hardware.
+
 ### Install
 
 Install them on a machine with the matching distro and Ubuntu release, using apt, which pulls
