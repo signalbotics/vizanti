@@ -622,3 +622,66 @@
 	color: #8d9aab;
 	padding: 8px 0;
 }
+
+/* status bar under the panels */
+.rviz_statusbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 3px 10px;
+	font-size: 0.75rem;
+	color: #b8c4d2;
+	background-color: rgba(0, 0, 0, 0.7);
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.rviz_statusbar .spacer_flex {
+	flex: 1;
+}
+
+.status_segment {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* a coloured dot before each segment that has a level */
+.status_segment[data-level]::before {
+	content: "";
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: #4fd68a;
+}
+
+.status_segment[data-level="warn"]::before {
+	background-color: #f5c542;
+}
+
+.status_segment[data-level="error"]::before {
+	background-color: #ff6b6b;
+}
+
+button.status_segment {
+	padding: 1px 6px;
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+button.status_segment:hover:not(:disabled) {
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+button.status_segment:disabled {
+	cursor: default;
+}

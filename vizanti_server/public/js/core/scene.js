@@ -42,6 +42,7 @@ export class Scene3D {
 		this._raycaster = new THREE.Raycaster();
 		this._ground = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 		this._inputEnabled = true;
+		this.stats = { frames: 0, lastMs: 0 }; // for the status bar
 
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio(window.devicePixelRatio || 1);
@@ -280,8 +281,11 @@ export class Scene3D {
 		this._pending = true;
 		requestAnimationFrame(() => {
 			this._pending = false;
+			const start = performance.now();
 			this.renderer.render(this.scene, this.camera);
 			this._drawOverlay();
+			this.stats.frames++;
+			this.stats.lastMs = performance.now() - start;
 		});
 	}
 

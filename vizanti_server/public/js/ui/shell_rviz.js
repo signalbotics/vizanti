@@ -3,6 +3,9 @@ import { buildGlobalOptions, buildCameraControls, buildToolControls } from './gl
 import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
 import { AppMenu, openContextMenu } from './app_menu.js';
+import { summarizeStatus, renderRate } from '../core/status_summary.js';
+import { rosbridge } from '../modules/rosbridge.js';
+import { tf } from '../modules/tf.js';
 
 const dockview = globalThis["dockview-core"];
 
@@ -64,7 +67,8 @@ export class RvizShell {
 		toolbar.className = "rviz_toolbar";
 		const dock = document.createElement("div");
 		dock.className = "rviz_dock";
-		shell.append(toolbar, dock);
+		const statusBar = this.buildStatusBar();
+		shell.append(toolbar, dock, statusBar);
 		root.appendChild(shell);
 
 		const menuButton = iconButton("menu", "Main menu", "Menu: import, export, robot configs, screenshot, reset", () => this.menu.toggle());
@@ -167,6 +171,7 @@ export class RvizShell {
 	unmount() {
 		window.removeEventListener("vizanti_tool_changed", this.paintTools);
 		clearInterval(this.timeTimer);
+		clearInterval(this.statusTimer);
 		if (this.toolPanelPaint)
 			window.removeEventListener("vizanti_tool_changed", this.toolPanelPaint);
 		for (const [name, fn] of this.handlers)
@@ -425,6 +430,75 @@ export class RvizShell {
 		if (this.selectedId && !registry.get(this.selectedId))
 			this.selectedId = null; // it was removed
 		this.paintActionRow();
+	}
+
+	// ---- status bar: connection, fixed frame, display problems, tool, render rate ----
+
+	buildStatusBar() {
+		const bar = document.createElement("div");
+		bar.className = "rviz_statusbar";
+		bar.setAttribute("role", "status");
+		const segment = (className, tag = "span") => {
+			const element = document.createElement(tag);
+			element.className = "status_segment " + className;
+			bar.appendChild(element);
+			return element;
+		};
+		const connection = segment("status_connection");
+		const frame = segment("status_frame");
+		const displays = segment("status_displays", "button");
+		displays.title = "Show the first display with a problem";
+		displays.addEventListener("click", () => this.revealProblem());
+		const spacer = document.createElement("span");
+		spacer.className = "spacer_flex";
+		bar.appendChild(spacer);
+		const tool = segment("status_tool");
+		const rate = segment("status_rate");
+		rate.title = "Redraws per second (the view only redraws when something changes) and the time the last one took";
+
+		const paint = (element, { level, text }) => {
+			element.textContent = text;
+			element.dataset.level = level;
+		};
+		let last = { frames: this.app.scene.stats.frames, time: performance.now() };
+		const update = () => {
+			const summary = summarizeStatus(
+				{ connected: rosbridge.connected, status: rosbridge.status, url: `${rosbridge.url}:${rosbridge.port}` },
+				tf.fixed_frame, tf.frame_list, this.app.registry.items);
+			paint(connection, summary.connection);
+			paint(frame, summary.frame);
+			paint(displays, summary.displays);
+			displays.disabled = summary.displays.firstProblemId === null;
+			this.firstProblemId = summary.displays.firstProblemId;
+
+			const label = this.app.tools ? TOOLS.find((t) => t.id === this.app.tools.active)?.label : "";
+			tool.textContent = label ? `Tool: ${label}` : "";
+
+			const now = performance.now();
+			const stats = this.app.scene.stats;
+			const fps = renderRate(stats.frames - last.frames, now - last.time);
+			last = { frames: stats.frames, time: now };
+			rate.textContent = fps === 0 ? "Idle" : `${fps} fps · ${stats.lastMs.toFixed(1)} ms`;
+		};
+		update();
+		clearInterval(this.statusTimer);
+		this.statusTimer = setInterval(update, 500);
+		return bar;
+	}
+
+	// Selects the first display with an error (or else a warning), opens it and scrolls to it.
+	revealProblem() {
+		const item = this.firstProblemId ? this.app.registry.get(this.firstProblemId) : null;
+		if (!item)
+			return;
+		if (this.api && !this.api.getPanel("displays"))
+			this.showPanel("displays");
+		this.select(item.id);
+		const row = this.row(item);
+		if (row) {
+			row.open = true;
+			row.scrollIntoView({ block: "nearest" });
+		}
 	}
 
 	// ---- the selected display, its action row and right-click menu ----

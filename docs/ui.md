@@ -37,6 +37,15 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - Last, the switch to the touch UI (phone).
 
   The icons are SVGs in `public/assets/toolbar/`, drawn in the button's text colour.
+- **Status bar** (bottom):
+  - rosbridge connection;
+  - whether the fixed frame exists in TF;
+  - how many enabled displays have errors or warnings (click to jump to the first);
+  - the active tool;
+  - redraws per second and the last redraw's time ("Idle" when nothing changes, since the view
+    only redraws on change).
+
+  Green, yellow and red dots mean OK, warning and error.
 - **Displays panel:** click a display's row to select it.
   - The icon row at the bottom acts on the selected display: add, duplicate, rename, move up,
     move down and remove.
