@@ -327,10 +327,18 @@ widgets (`{state: {...}}`) are converted on load.
 
 **Compressed Image** is a native display like Image, plus rotation, rate and bandwidth.
 
-**Template widgets** (`templates/`): only Folder still runs
-its original script. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
-`js/modules/persistent.js`) gives them the page functions and the settings object they expect,
-and projects their drawing through the 3D camera onto the ground plane (z = 0).
+**Groups** (Add → Scene → Group): one switch for several displays, as in RViz. In the RViz
+UI the members sit under the group in the Displays list. Put a display in a group by dragging
+it onto the group's lower half or next to a member, with its **Group** setting, or with
+right-click → *Move to group* / *New group with this display*. Switching a group off hides its
+members; each member keeps its own switch. In the touch UI a group is a folder icon that opens
+to its members and has its own add button. Removing a group keeps its displays. Groups are
+saved as type `folder` with each member's `container`, so the touch UI's old folders load as
+groups.
+
+**Template widgets**: none of the built-in widgets runs from a template any more. The
+compatibility layer (`js/legacy/`) stays: it converts layouts saved by the old 2D page and runs
+template folders a third-party package may still ship in `public/templates/`.
 
 ## Run the tests
 

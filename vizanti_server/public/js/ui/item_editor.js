@@ -59,3 +59,22 @@ export function buildItemEditor(item, app) {
 		},
 	};
 }
+
+// A "Group" row for a display's settings: which group it is in. Null when there are no groups
+// (or the item is a group itself).
+export function buildGroupPicker(item, app) {
+	const registry = app.registry;
+	const groups = registry.items.filter((other) => other.constructor.isGroup);
+	if (item.constructor.isGroup || groups.length === 0)
+		return null;
+	const row = document.createElement("div");
+	row.className = "prop_row";
+	const label = document.createElement("label");
+	label.textContent = "Group:";
+	const select = document.createElement("select");
+	select.append(new Option("(none)", ""), ...groups.map((group) => new Option(group.name, group.id)));
+	select.value = registry.groupOf(item)?.id ?? "";
+	select.addEventListener("change", () => registry.setGroup(item.id, select.value));
+	row.append(label, select);
+	return row;
+}

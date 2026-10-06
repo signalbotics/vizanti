@@ -229,3 +229,66 @@ test('a display class can migrate props saved by the widget it replaced', () => 
 	assert.equal(reg.add("migrating", { state: { old_topic: "/legacy" } }).props.topic, "/legacy");
 	assert.equal(reg.add("migrating", { topic: "/new" }).props.topic, "/new");
 });
+
+class Group extends Fake {
+	static type = "folder";
+	static isGroup = true;
+	static properties = {};
+}
+
+function makeWithGroups() {
+	const reg = new Registry({ types: new Map([["fake", Fake], ["folder", Group]]), context: {} });
+	const events = [];
+	for (const name of ["enabled", "grouped", "changed"])
+		reg.addEventListener(name, (e) => events.push(name === "changed" ? `changed:${e.detail.cause}` : `${name}:${e.detail.item?.id}`));
+	return { reg, events };
+}
+
+test('a disabled group hides its members; each keeps its own switch', () => {
+	const { reg, events } = makeWithGroups();
+	const group = reg.add("folder", {}, { id: "g" });
+	const a = reg.add("fake", {}, { id: "a", container: "g_widget_container" });
+	const b = reg.add("fake", {}, { id: "b", enabled: false, container: "g_widget_container" });
+	assert.deepEqual(reg.membersOf("g").map((i) => i.id), ["a", "b"]);
+	assert.equal(reg.groupOf(a), group);
+	reg.setEnabled("g", false);
+	assert.equal(a.enabled, false);
+	assert.equal(a.selfEnabled, true);
+	assert.ok(events.includes("enabled:a"));
+	reg.setEnabled("g", true);
+	assert.equal(a.enabled, true);
+	assert.equal(b.enabled, false); // its own switch is off
+	// saved: the own switches
+	reg.setEnabled("g", false);
+	const saved = reg.toJSON().items;
+	assert.deepEqual(saved.map((i) => [i.id, i.enabled]), [["g", false], ["a", true], ["b", false]]);
+});
+
+test('setGroup moves displays in and out; groups do not nest; removing a group frees its members', () => {
+	const { reg, events } = makeWithGroups();
+	reg.add("folder", {}, { id: "g" });
+	reg.add("folder", {}, { id: "h" });
+	const a = reg.add("fake", {}, { id: "a" });
+	reg.setEnabled("g", false);
+	assert.equal(reg.setGroup("a", "g"), true);
+	assert.equal(a.enabled, false);
+	assert.ok(events.includes("grouped:a") && events.includes("changed:grouped"));
+	assert.equal(reg.setGroup("h", "g"), false); // no nesting
+	assert.equal(reg.setGroup("a", "nope"), false);
+	reg.setGroup("a", "");
+	assert.equal(a.enabled, true);
+	reg.setGroup("a", "g");
+	reg.remove("g");
+	assert.equal(a.container, "");
+	assert.equal(a.enabled, true);
+});
+
+test('a group saved after its members still applies on load', () => {
+	const { reg } = makeWithGroups();
+	reg.load({ items: [
+		{ id: "a", type: "fake", enabled: true, container: "g_widget_container", props: {} },
+		{ id: "g", type: "folder", enabled: false, props: {} },
+	] });
+	assert.equal(reg.get("a").enabled, false);
+	assert.equal(reg.get("a").selfEnabled, true);
+});

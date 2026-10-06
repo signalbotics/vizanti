@@ -1089,3 +1089,36 @@ button.status_segment:disabled {
 .widget_panel .teleop_keybind.listening {
 	outline: 2px solid #6c8ebf;
 }
+
+/* display groups in the Displays list */
+.tree_body > .tree_item {
+	margin-left: 10px;
+}
+
+.tree_item.tree_inactive > summary {
+	opacity: 0.5;
+}
+
+/* a group in the touch bar: a folder with two of its members' icons */
+.icon-group {
+	position: relative;
+}
+
+.icon-group .group_folder {
+	width: 50px;
+	height: 50px;
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.icon-group .group_mini {
+	position: absolute;
+	top: 50%;
+	width: 24px;
+	height: 24px;
+	transform: translate(-50%, -40%);
+	pointer-events: none;
+}
+
+.icon-group .group_mini_left { left: 30%; }
+.icon-group .group_mini_right { left: 70%; }

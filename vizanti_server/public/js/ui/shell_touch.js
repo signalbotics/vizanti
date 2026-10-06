@@ -1,7 +1,8 @@
-import { buildItemEditor } from './item_editor.js';
+import { buildItemEditor, buildGroupPicker } from './item_editor.js';
 import { buildGlobalOptions, buildCameraControls, buildLayoutControls, buildToolControls } from './global_controls.js';
 import { openAddDialog } from './add_dialog.js';
 import { setIconColor } from '../modules/util.js';
+import { memberKey } from '../core/registry.js';
 
 const BAR_HEIGHT_KEY = "iconBarHeight";
 
@@ -55,7 +56,11 @@ export class TouchShell {
 		this.modals = document.createElement("div");
 		this.modals.id = "modal_container";
 
-		root.append(this.bar, view, this.modals);
+		// group member icons while their group is closed
+		this.hidden = document.createElement("div");
+		this.hidden.style.display = "none";
+
+		root.append(this.bar, view, this.modals, this.hidden);
 
 		this.settingsIcon = this.staticIcon("settingsbutton", "assets/settings.svg", "Global Settings", () => this.openSettings());
 		this.addIcon = this.staticIcon("addbutton", "assets/add.svg", "Add", () => openAddDialog(this.app));
@@ -66,7 +71,7 @@ export class TouchShell {
 		if (saved)
 			this.setBarHeight(saved);
 
-		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed"])
+		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed", "grouped"])
 			this.listen(name, () => this.renderIcons());
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
 		this.listen("icon", (event) => this.paintIcon(event.detail.item)); // a widget's live icon
@@ -119,8 +124,62 @@ export class TouchShell {
 		return wrapper;
 	}
 
+	// A group's icon: a folder showing its first two members' icons.
+	groupIcon(item) {
+		const wrapper = document.createElement("div");
+		wrapper.dataset.uniqueid = item.id;
+		const icon = document.createElement("div");
+		icon.className = "icon noselect icon-group";
+		icon.title = item.name;
+		const folder = document.createElement("img");
+		folder.src = item.icon;
+		folder.alt = "";
+		folder.className = "group_folder";
+		icon.appendChild(folder);
+		for (const side of ["left", "right"]) {
+			const mini = document.createElement("img");
+			mini.className = `group_mini group_mini_${side}`;
+			mini.alt = "";
+			icon.appendChild(mini);
+		}
+		icon.addEventListener("click", () => this.openGroup(item));
+		wrapper.appendChild(icon);
+		return wrapper;
+	}
+
+	paintGroup(item) {
+		const icon = this.wrappers.get(item.id)?.firstElementChild;
+		if (!icon)
+			return;
+		const members = this.app.registry.membersOf(item.id);
+		icon.querySelectorAll(".group_mini").forEach((mini, i) => {
+			const member = members[i];
+			mini.style.display = member ? "" : "none";
+			if (member && mini.getAttribute("src") !== member.icon)
+				mini.src = member.icon;
+		});
+		icon.title = `${item.name} (${members.length})`;
+	}
+
+	// where a group's member icons live: in the group's modal while it is open, else out of sight
+	groupHolder(groupId) {
+		this.holders ??= new Map();
+		let holder = this.holders.get(groupId);
+		if (!holder) {
+			holder = document.createElement("div");
+			holder.className = "folder_icon_container";
+			holder.appendChild(this.staticIcon("addbutton", "assets/add.svg", "Add to this group",
+				() => openAddDialog(this.app, { container: memberKey(groupId) })));
+			this.holders.set(groupId, holder);
+			this.hidden.appendChild(holder);
+		}
+		return holder;
+	}
+
 	// A display's icon is an inline SVG document, so it can be tinted with the display's colour.
 	displayIcon(item) {
+		if (item.constructor.isGroup)
+			return this.groupIcon(item);
 		const wrapper = document.createElement("div");
 		wrapper.dataset.uniqueid = item.id;
 		const icon = document.createElement("div");
@@ -210,12 +269,24 @@ export class TouchShell {
 		for (const item of this.app.registry.items) {
 			seen.add(item.id);
 			const wrapper = this.wrapperFor(item);
-			// an item created inside a folder lives in that folder's container
-			const target = (item.container && document.getElementById(item.container)) || this.icons;
+			// a group's members live in the group
+			const group = this.app.registry.groupOf(item);
+			const target = group ? this.groupHolder(group.id) : this.icons;
 			const add = [...target.children].find((child) => child.dataset.uniqueid === "addbutton") ?? null;
 			target.insertBefore(wrapper, add);
 			this.paintIcon(item);
 			this.paintStatus(item);
+		}
+		for (const item of this.app.registry.items) {
+			if (item.constructor.isGroup)
+				this.paintGroup(item);
+		}
+		// holders of removed groups
+		for (const [id, holder] of this.holders ?? []) {
+			if (!this.app.registry.get(id)) {
+				holder.remove();
+				this.holders.delete(id);
+			}
 		}
 		for (const [id, wrapper] of this.wrappers) {
 			if (!seen.has(id)) {
@@ -233,6 +304,8 @@ export class TouchShell {
 			return;
 		const icon = wrapper.firstElementChild;
 		icon.classList.toggle("icon-disabled", !item.enabled);
+		if (item.constructor.isGroup)
+			return;
 		const image = icon.querySelector("object");
 		if (!image)
 			return; // a widget's own face, painted by the widget
@@ -345,6 +418,9 @@ export class TouchShell {
 				item.attachPanel(panel);
 				inner.appendChild(hr());
 			}
+			const picker = buildGroupPicker(item, this.app);
+			if (picker)
+				inner.appendChild(picker);
 			const editor = buildItemEditor(item, this.app);
 			inner.appendChild(editor.element);
 			inner.appendChild(hr());
@@ -355,7 +431,7 @@ export class TouchShell {
 			label.textContent = "Enabled:";
 			const enabled = document.createElement("input");
 			enabled.type = "checkbox";
-			enabled.checked = item.enabled;
+			enabled.checked = item.selfEnabled ?? item.enabled;
 			enabled.addEventListener("change", () => this.app.registry.setEnabled(item.id, enabled.checked));
 			row.append(label, enabled);
 			inner.appendChild(row);
@@ -373,6 +449,50 @@ export class TouchShell {
 				editor.dispose();
 				if (panel && item.panelHost === panel)
 					item.detachPanel();
+			};
+		});
+	}
+
+	// A group opens as a folder: its members' icons, an add button, its switch and removal.
+	openGroup(group) {
+		this.openModal(group.name, (inner) => {
+			const holder = this.groupHolder(group.id);
+			inner.appendChild(holder);
+			inner.appendChild(hr());
+
+			const nameRow = document.createElement("div");
+			nameRow.className = "prop_row";
+			const nameLabel = document.createElement("label");
+			nameLabel.textContent = "Name:";
+			const name = document.createElement("input");
+			name.type = "text";
+			name.value = group.name;
+			name.addEventListener("change", () => this.app.registry.rename(group.id, name.value));
+			nameRow.append(nameLabel, name);
+
+			const row = document.createElement("div");
+			row.className = "prop_row";
+			const label = document.createElement("label");
+			label.textContent = "Show its displays:";
+			const enabled = document.createElement("input");
+			enabled.type = "checkbox";
+			enabled.checked = group.selfEnabled ?? group.enabled;
+			enabled.addEventListener("change", () => this.app.registry.setEnabled(group.id, enabled.checked));
+			row.append(label, enabled);
+
+			const remove = document.createElement("button");
+			remove.className = "delete_button";
+			remove.textContent = "Remove group (its displays stay)";
+			remove.addEventListener("click", () => {
+				this.closeModal();
+				this.app.registry.remove(group.id);
+			});
+			inner.append(nameRow, row, remove);
+
+			// a member's own settings open over the folder; closing those comes back here
+			return () => {
+				if (this.holders?.get(group.id) === holder)
+					this.hidden.appendChild(holder);
 			};
 		});
 	}

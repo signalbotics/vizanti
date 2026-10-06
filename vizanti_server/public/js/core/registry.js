@@ -2,6 +2,10 @@ import { flattenSchema, resolveProps, coerce } from './properties.js';
 
 export const DEFAULT_GLOBAL = { fixed_frame: "odom", background: "#273444" };
 
+// A display's group is kept in its `container` (the folder name the touch UI's template folders
+// used), so layouts saved before groups load as they were.
+export const memberKey = (groupId) => `${groupId}_widget_container`;
+
 const GLOBAL_SCHEMA = {
 	fixed_frame: { type: "string" },
 	background: { type: "color" },
@@ -60,7 +64,8 @@ export class Registry extends EventTarget {
 
 		const item = new Cls(id, this.context);
 		item.name = opts.name ?? Cls.label;
-		item.container = typeof opts.container === "string" ? opts.container : ""; // folder the icon lives in
+		item.container = typeof opts.container === "string" ? opts.container : ""; // the group it is in
+		item.selfEnabled = opts.enabled ?? true; // its own switch; it is shown only if its group is on too
 		item.status.onChange = () => this._notify("status", { item });
 		item.onInfo = () => this._notify("info", { item });
 		item.onIcon = () => this._notify("icon", { item }); // a widget's live icon changed
@@ -70,7 +75,7 @@ export class Registry extends EventTarget {
 		if (typeof Cls.migrateProps === "function")
 			props = Cls.migrateProps(props ?? {});
 		try {
-			item._create(resolveProps(Cls.properties, props).values, opts.enabled ?? true);
+			item._create(resolveProps(Cls.properties, props).values, this._effective(item));
 		} catch (e) {
 			this.items.pop();
 			throw e;
@@ -86,10 +91,12 @@ export class Registry extends EventTarget {
 			return;
 		const [item] = this.items.splice(index, 1);
 		item._destroy();
-		// widgets that lived in this item's folder go back to the main bar
+		// the members of a removed group stay, outside any group
 		for (const other of this.items) {
-			if (other.container === `${id}_widget_container`)
+			if (other.container === memberKey(id)) {
 				other.container = "";
+				this._applyEnabled(other);
+			}
 		}
 		this._reorder();
 		this._emit("removed", { item });
@@ -114,8 +121,59 @@ export class Registry extends EventTarget {
 		const item = this.get(id);
 		if (!item)
 			return;
-		item._setEnabled(!!enabled);
+		item.selfEnabled = !!enabled;
+		this._applyEnabled(item);
+		if (item.constructor.isGroup) {
+			for (const member of this.membersOf(id))
+				this._applyEnabled(member, true);
+		}
 		this._emit("enabled", { item });
+	}
+
+	// ---- groups ----
+
+	groupOf(item) {
+		const match = /^(.+)_widget_container$/.exec(item?.container ?? "");
+		const group = match ? this.get(match[1]) : null;
+		return group?.constructor.isGroup ? group : null;
+	}
+
+	membersOf(groupId) {
+		return this.items.filter((item) => item.container === memberKey(groupId));
+	}
+
+	// Puts a display in a group (groupId "" or null: in none). Groups do not nest.
+	setGroup(id, groupId) {
+		const item = this.get(id);
+		if (!item)
+			return false;
+		if (groupId) {
+			const group = this.get(groupId);
+			if (!group?.constructor.isGroup || item.constructor.isGroup)
+				return false;
+		}
+		const container = groupId ? memberKey(groupId) : "";
+		if (item.container === container)
+			return true;
+		item.container = container;
+		this._applyEnabled(item, true);
+		this._emit("grouped", { item });
+		return true;
+	}
+
+	// shown when its own switch and its group's are both on
+	_effective(item) {
+		const group = this.groupOf(item);
+		return item.selfEnabled !== false && (!group || group.selfEnabled !== false);
+	}
+
+	_applyEnabled(item, announce = false) {
+		const effective = this._effective(item);
+		if (item.enabled === effective)
+			return;
+		item._setEnabled(effective);
+		if (announce)
+			this._notify("enabled", { item });
 	}
 
 	rename(id, name) {
@@ -135,7 +193,7 @@ export class Registry extends EventTarget {
 			return null;
 		const copy = this.add(item.constructor.type, { ...item.props }, {
 			name: `${item.name} (copy)`,
-			enabled: item.enabled,
+			enabled: item.selfEnabled,
 			container: item.container,
 		});
 		this.move(copy.id, this.items.indexOf(item) + 1);
@@ -181,7 +239,7 @@ export class Registry extends EventTarget {
 					id: item.id,
 					type: item.constructor.type,
 					name: item.name,
-					enabled: item.enabled,
+					enabled: item.selfEnabled,
 					container: item.container,
 					props: { ...item.props },
 				})),
@@ -227,6 +285,9 @@ export class Registry extends EventTarget {
 					}
 				}
 			}
+			// a group may come after its members in the file
+			for (const item of this.items)
+				this._applyEnabled(item);
 		} finally {
 			this._loading = false;
 		}

@@ -19,12 +19,6 @@ export const CATALOG = {
 		"description": "Custom robot sprite",
 		"msgTypes": []
 	},
-	"folder": {
-		"label": "Folder",
-		"icon": "assets/folder.svg",
-		"description": "Group your widgets together",
-		"msgTypes": []
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",

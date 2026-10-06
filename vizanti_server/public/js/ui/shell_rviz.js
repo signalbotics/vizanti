@@ -1,4 +1,4 @@
-import { buildItemEditor } from './item_editor.js';
+import { buildItemEditor, buildGroupPicker } from './item_editor.js';
 import { buildGlobalOptions, buildCameraControls, buildToolControls } from './global_controls.js';
 import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
@@ -165,7 +165,7 @@ export class RvizShell {
 		});
 		this.paintPanelButtons();
 
-		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed"])
+		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed", "grouped"])
 			this.listen(name, () => this.renderTree());
 		this.renderWidgets();
 		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
@@ -517,16 +517,23 @@ export class RvizShell {
 		global.append(globalSummary, globalBody);
 		this.tree.appendChild(global);
 
-		registry.items.forEach((item) => {
+		this.knownGroups ??= new Set();
+		const rowFor = (item) => {
 			const details = document.createElement("details");
 			details.className = "tree_item";
 			details.dataset.id = item.id;
-			details.open = open.has(item.id);
+			// a group starts open, so its members can be seen
+			const isGroup = !!item.constructor.isGroup;
+			details.open = open.has(item.id) || (isGroup && !this.knownGroups.has(item.id));
+			if (isGroup)
+				this.knownGroups.add(item.id);
+			// on, but its group is off
+			details.classList.toggle("tree_inactive", item.selfEnabled !== false && !item.enabled);
 
 			const summary = document.createElement("summary");
 			const enabled = document.createElement("input");
 			enabled.type = "checkbox";
-			enabled.checked = item.enabled;
+			enabled.checked = item.selfEnabled ?? item.enabled;
 			enabled.addEventListener("click", (event) => event.stopPropagation());
 			enabled.addEventListener("change", () => registry.setEnabled(item.id, enabled.checked));
 			const icon = document.createElement("img");
@@ -553,16 +560,35 @@ export class RvizShell {
 				// its settings live in its own panel
 				if (item.modalElement)
 					body.appendChild(button("Open panel", () => this.openLegacy(item.id)));
+			} else if (isGroup) {
+				const members = registry.membersOf(item.id);
+				if (members.length === 0) {
+					const hint = document.createElement("p");
+					hint.className = "comment";
+					hint.textContent = "Drag displays onto this group, or pick it as a display's Group.";
+					body.appendChild(hint);
+				}
+				for (const member of members)
+					body.appendChild(rowFor(member));
 			} else {
+				const picker = buildGroupPicker(item, this.app);
+				if (picker)
+					body.appendChild(picker);
 				const editor = buildItemEditor(item, this.app);
 				this.editors.push(editor);
 				body.appendChild(editor.element);
 			}
 
 			details.append(summary, body);
-			this.tree.appendChild(details);
+			return details;
+		};
+		for (const item of registry.items) {
+			if (registry.groupOf(item))
+				continue; // shown inside its group
+			this.tree.appendChild(rowFor(item));
+		}
+		for (const item of registry.items)
 			this.paintStatus(item);
-		});
 		if (this.selectedId && !registry.get(this.selectedId))
 			this.selectedId = null; // it was removed
 		this.paintActionRow();
@@ -661,6 +687,7 @@ export class RvizShell {
 		details.addEventListener("dragover", (event) => {
 			if (!this.draggingId || this.draggingId === item.id)
 				return;
+			event.stopPropagation(); // a member row sits inside its group's row
 			event.preventDefault(); // accept the drop
 			event.dataTransfer.dropEffect = "move";
 			const after = below(event);
@@ -676,9 +703,16 @@ export class RvizShell {
 			if (!id || id === item.id)
 				return;
 			event.preventDefault();
-			const items = this.app.registry.items;
-			const to = dropIndex(items.findIndex((i) => i.id === id), items.indexOf(item), below(event));
-			this.app.registry.move(id, to);
+			event.stopPropagation();
+			const registry = this.app.registry;
+			// measured before regrouping re-renders the list (and detaches this row)
+			const after = below(event);
+			// it joins the group of the row it lands next to; on a group's lower half, that group
+			const target = item.constructor.isGroup && after ? item : registry.groupOf(item);
+			registry.setGroup(id, target?.id ?? "");
+			const items = registry.items;
+			const to = dropIndex(items.findIndex((i) => i.id === id), items.indexOf(item), after);
+			registry.move(id, to);
 			this.select(id);
 		});
 	}
@@ -753,13 +787,34 @@ export class RvizShell {
 		openContextMenu(x, y, [
 			{ label: "Rename", action: () => this.startRename(item) },
 			{ label: "Duplicate", action: () => this.duplicate(item), disabled: item.constructor.kind === "template" },
-			{ label: item.enabled ? "Disable" : "Enable", action: () => this.app.registry.setEnabled(item.id, !item.enabled) },
+			{ label: (item.selfEnabled ?? item.enabled) ? "Disable" : "Enable", action: () => this.app.registry.setEnabled(item.id, !(item.selfEnabled ?? item.enabled)) },
 			"-",
+			...this.groupMenu(item),
 			{ label: "Move up", action: () => this.moveBy(item, -1), disabled: index <= 0 },
 			{ label: "Move down", action: () => this.moveBy(item, 1), disabled: index >= last },
 			"-",
 			{ label: "Remove", action: () => this.app.registry.remove(item.id), danger: true },
 		]);
+	}
+
+	// Right-click entries for putting a display in a group.
+	groupMenu(item) {
+		const registry = this.app.registry;
+		if (item.constructor.isGroup)
+			return [];
+		const current = registry.groupOf(item);
+		const entries = registry.items
+			.filter((other) => other.constructor.isGroup && other !== current)
+			.map((group) => ({ label: `Move to group "${group.name}"`, action: () => registry.setGroup(item.id, group.id) }));
+		if (current)
+			entries.push({ label: "Take out of the group", action: () => registry.setGroup(item.id, "") });
+		entries.push({ label: "New group with this display", action: () => {
+			const group = registry.add("folder", {}, { name: "Group" });
+			registry.move(group.id, registry.items.indexOf(item));
+			registry.setGroup(group.id, ""); // groups do not nest
+			registry.setGroup(item.id, group.id);
+		} });
+		return [...entries, "-"];
 	}
 
 	// Swaps the row's name for a text field: Enter or leaving the field keeps it, Escape cancels.
