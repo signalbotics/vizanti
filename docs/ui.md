@@ -295,25 +295,33 @@ TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>
 `/package/<pkg>/<path>`; only mesh and texture file types are served, and paths cannot leave
 the package. `file://` mesh paths are not supported.
 
-**Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature, Speedometer, Altimeter,
-Attitude Indicator, Button, 2D Nav Goal, 2D Pose Estimate, Topic Inspector, Parameter Reconfigure and Bag Recorder are native widgets: a live icon and
-a panel. The 2D Nav Goal and 2D Pose Estimate widgets arm the view's pose tool with their own
-topic for one pose, so several of them can drive several robots. The Button acts on a
-click (publish Empty / Bool, call an Empty / Trigger / SetBool service); right-click it in the
-RViz UI, or long-press it in the touch UI, for its panel and settings. In the RViz UI the icon sits in the toolbar's widget strip
-and opens the panel as a dock tab; in the touch UI the icon is in the bar and the panel is at the
-top of its settings modal. Their old saved settings (`{state: {...}}`) are converted on load.
-The Altimeter (a height / depth tape along a side of the view) and the Attitude Indicator (a
-navball) draw on the view's 2D overlay in both UIs. Drag the navball to move it; with a target
-topic set, click the altimeter tape near its ticks to publish that target (std_msgs/Float32).
+**Widgets** (`js/core/widget.js`): a live icon plus a panel. In the RViz UI the icon sits in
+the toolbar's widget strip and opens the panel as a dock tab; in the touch UI the icon is in the
+bar and the panel is at the top of its settings modal. Settings saved by the old template
+widgets (`{state: {...}}`) are converted on load.
 
-**Template widgets** (`templates/`): Teleop and the
-panels (Node Manager, Diagnostics, Folder). Compressed Image is now a native display like Image (plus rotation, rate and
-bandwidth). These still run their original
-scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)
-gives them the page functions and the settings object they expect, and projects their drawing
-through the 3D camera onto the ground plane (z = 0), so the tools work in both the top-down and
-the orbit view.
+- **Rosbridge, Battery, Temperature, Speedometer**: the icon shows the state (connection,
+  charge, hot / cold, a speed gauge); the panel has the readings.
+- **Altimeter, Attitude Indicator**: drawn on the view's 2D overlay in both UIs (a height /
+  depth tape along a side, a navball). Drag the navball to move it. With a target topic set,
+  click the altimeter tape near its ticks to publish a target (std_msgs/Float32).
+- **Button**: a click publishes Empty / Bool or calls an Empty / Trigger / SetBool service.
+  Right-click it (RViz UI) or long-press it (touch UI) for its panel and settings.
+- **2D Nav Goal, 2D Pose Estimate**: a click arms the view's pose tool with the widget's own
+  topic for one pose, so several of them can drive several robots.
+- **Topic Inspector**: echoes any topic, with its publishers and subscribers.
+- **Parameter Reconfigure**: reads and sets a node's bool / int / float / string parameters.
+- **Bag Recorder**: runs `ros2 bag record` on the robot through the Vizanti server. The server
+  passes the topics after `--topics` where that flag exists (Iron and later; Lyrical requires
+  it) and bare on Humble, creates the folder if needed, reports an error rather than "started"
+  when the recorder quits at once, and stops it with Ctrl+C so the bag is closed properly.
+
+**Compressed Image** is a native display like Image, plus rotation, rate and bandwidth.
+
+**Template widgets** (`templates/`): Teleop, Node Manager, Diagnostics and Folder still run
+their original scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
+`js/modules/persistent.js`) gives them the page functions and the settings object they expect,
+and projects their drawing through the 3D camera onto the ground plane (z = 0).
 
 ## Run the tests
 
