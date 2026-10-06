@@ -145,6 +145,10 @@ them to that tag's GitHub release, creating the release if needed:
 git tag -a vX.Y.Z -m "..." && git push signalbotics vX.Y.Z
 ```
 
+To try the package build without a release, run the CI workflow by hand (Actions → CI → Run
+workflow, or `gh workflow run ci.yml --repo signalbotics/vizanti -f distro=jazzy -f arch=amd64`):
+the packages are attached to the run as artifacts.
+
 **By hand:**
 
 Built packages are published as GitHub release assets on the private repository

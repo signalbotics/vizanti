@@ -7,6 +7,18 @@ on:
     branches: [ros2]
     tags: ["v*"]
   pull_request:
+  workflow_dispatch: # build packages for one distro/arch as run artifacts, without a release
+    inputs:
+      distro:
+        description: ROS distro
+        type: choice
+        options: [jazzy, humble, lyrical]
+        default: jazzy
+      arch:
+        description: Architecture
+        type: choice
+        options: [amd64, arm64]
+        default: amd64
 
 permissions:
   contents: write # attach packages to the release on tags
@@ -24,15 +36,16 @@ jobs:
         run: node --test "test/js/*.test.mjs"
 
   debs:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 300 # arm64 builds run under QEMU emulation
     strategy:
       fail-fast: false
       matrix:
-        distro: [humble, jazzy, lyrical]
-        arch: [amd64, arm64]
+        # every combination on a tag; the chosen one when run by hand
+        distro: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.distro) || '["humble", "jazzy", "lyrical"]') }}
+        arch: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.arch) || '["amd64", "arm64"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: QEMU for arm64
