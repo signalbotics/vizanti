@@ -2,7 +2,7 @@
 // `static category`; anything else lands in "Other".
 const CATEGORIES = [
 	["Robot", ["urdf", "robotmodel", "tf", "axes", "odom"]],
-	["Sensors", ["scan", "pointcloud", "depthcloud", "camera", "image", "range", "sensorvalue", "imu"]],
+	["Sensors", ["scan", "pointcloud", "depthcloud", "camera", "image", "compressedimage", "range", "sensorvalue", "imu"]],
 	["Maps and navigation", ["map", "gridcells", "path", "posearray", "posewithcovariancestamped", "pointstamped", "polygon", "wrench", "satelite"]],
 	["Markers", ["marker", "markerarray", "interactivemarkers"]],
 	["Scene", ["grid"]],

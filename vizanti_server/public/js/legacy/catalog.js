@@ -99,14 +99,6 @@ export const CATALOG = {
 			"nav_msgs/msg/GridCells"
 		]
 	},
-	"compressedimage": {
-		"label": "Compressed Image",
-		"icon": "assets/image.svg",
-		"description": "sensor_msgs/CompressedImage",
-		"msgTypes": [
-			"sensor_msgs/msg/CompressedImage"
-		]
-	},
 	"markerarray": {
 		"label": "Marker Array",
 		"icon": "assets/markerarray.svg",

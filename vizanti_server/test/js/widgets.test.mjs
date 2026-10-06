@@ -90,3 +90,26 @@ test('the button reads the old template settings', () => {
 	const unknown = ButtonWidget.migrateProps({ state: { topic: "/x", text: "X", typedict: {} } });
 	assert.equal(unknown.topic_type, undefined);
 });
+
+import { CompressedImageDisplay, StreamStats, formatBytes } from '../../public/js/displays/compressed_image.js';
+
+test('compressed image stream statistics', () => {
+	assert.equal(formatBytes(512), "512 B");
+	assert.equal(formatBytes(2048), "2.0 kB");
+	assert.equal(formatBytes(3 * 1024 * 1024), "3.00 MB");
+	const stats = new StreamStats(5);
+	assert.ok(Number.isNaN(stats.rate));
+	for (let i = 0; i < 8; i++)
+		stats.add(i * 100, 1000);
+	assert.equal(stats.samples.length, 5);
+	assert.ok(Math.abs(stats.rate - 10) < 1e-9);
+	assert.equal(stats.meanBytes, 1000);
+});
+
+test('compressed image reads the old template settings', () => {
+	const { values } = resolveProps(CompressedImageDisplay.properties, CompressedImageDisplay.migrateProps({
+		state: { topic: "/cam/compressed", opacity: "0.7", throttle: "250", width: "25", img_offset_x: 80, img_offset_y: 20, rotation: "90" },
+	}));
+	assert.deepEqual([values.topic, values.opacity, values.throttle, values.rotation, values.corner], ["/cam/compressed", 0.7, 250, 90, "top-right"]);
+	assert.equal(values.size, Math.round(0.25 * 1920));
+});

@@ -309,7 +309,8 @@ topic set, click the altimeter tape near its ticks to publish that target (std_m
 
 **Template widgets** (`templates/`): Teleop and the
 panels (Node Manager, Bag Recorder, Parameter Reconfigure, Diagnostics, Topic Inspector,
-Compressed Image, Folder). These still run their original
+Folder). Compressed Image is now a native display like Image (plus rotation, rate and
+bandwidth). These still run their original
 scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)
 gives them the page functions and the settings object they expect, and projects their drawing
 through the 3D camera onto the ground plane (z = 0), so the tools work in both the top-down and
