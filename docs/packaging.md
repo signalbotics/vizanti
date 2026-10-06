@@ -49,8 +49,9 @@ inside that image with the repository mounted read-only. The .deb files are owne
 The first run for a distro takes a few minutes; later runs reuse the image. Remove the image
 with `docker rmi vizanti-deb-builder:<distro>`.
 
-Checked for Jazzy (2026-10-01): all five packages built, then `apt install`ed into a clean
-`ros:jazzy-ros-base` container. The server started there and served the web UI.
+Checked for Jazzy (2026-10-01) and Humble (2026-10-06, Ubuntu 22.04): all five packages
+built, then `apt install`ed into a clean `ros:<distro>-ros-base` container. The server started
+there and served the web UI.
 
 ### arm64 (Jetson, Raspberry Pi)
 

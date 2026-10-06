@@ -68,8 +68,8 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
 
   Checked on 2026-10-06 against Lyrical: a map published once, latched, after Vizanti had
   subscribed arrived about 4 s later; with Latched selected, the request carried
-  transient_local and the map arrived. rosbridge 2.x (Lyrical, Jazzy 2.7.1) supports explicit
-  QoS; Humble's rosbridge was not checked.
+  transient_local and the map arrived. rosbridge 2.x supports explicit QoS on all three
+  distros (checked: Lyrical, Jazzy 2.7.1, Humble 2.0.8).
 - **Costmap updates:** the Map display also subscribes to `map_msgs/OccupancyGridUpdate` patches
   ("Apply updates", on by default). The topic is the map topic plus `_updates`, as Nav2
   publishes them, or the one set in "Update topic". Each patch is written into the last full
