@@ -28,8 +28,12 @@ export class DisplayStatus {
 
 // Base class for everything drawn in the 3D scene. A subclass declares its properties as
 // data and implements the on* hooks; subscription, frames, status and saving are handled here.
-// how long a display in "auto" QoS waits for data before subscribing again
+// how long a display in "auto" QoS waits for data before subscribing again; doubles after each
+// try (5, 10, 20, 40 s) up to once a minute, so a topic nobody publishes doesn't churn rosbridge
 const NO_DATA_RESUBSCRIBE_MS = 5000;
+const NO_DATA_RESUBSCRIBE_MAX_MS = 60000;
+const NO_DATA_HINT = "No data received. If the publisher is reliable and its messages are large "
+	+ "(point clouds, images, maps), try QoS: Reliable; rosbridge's automatic choice can drop them.";
 
 export class Display {
 
@@ -259,7 +263,7 @@ export class Display {
 	_subscribeAs(type) {
 		// when only the rate changed, the data already on screen is still valid
 		if (!this.lastMsg)
-			this.status.warn("No data received.");
+			this.status.warn(this._noDataAttempts > 0 && (this.props.qos ?? "auto") === "auto" ? NO_DATA_HINT : "No data received.");
 		const throttle = Number.isFinite(this.props.throttle) ? this.props.throttle : 0;
 		const qos = this.props.qos ?? "auto";
 		this._unsubscribe = this.ctx.subscribe(
@@ -273,10 +277,13 @@ export class Display {
 		// picks volatile / best effort and would miss a latched map published later. Try again.
 		if (qos === "auto" && !this.lastMsg) {
 			const seq = this._subscribeSeq;
+			const delay = Math.min(NO_DATA_RESUBSCRIBE_MAX_MS, NO_DATA_RESUBSCRIBE_MS * 2 ** (this._noDataAttempts ?? 0));
 			this._noDataTimer = setTimeout(() => {
-				if (seq === this._subscribeSeq && !this.lastMsg && this._alive && this.enabled)
+				if (seq === this._subscribeSeq && !this.lastMsg && this._alive && this.enabled) {
+					this._noDataAttempts = (this._noDataAttempts ?? 0) + 1;
 					this._resubscribe();
-			}, NO_DATA_RESUBSCRIBE_MS);
+				}
+			}, delay);
 		}
 	}
 
@@ -284,6 +291,7 @@ export class Display {
 		if (!this._alive || !this.enabled)
 			return;
 		this.lastMsg = msg;
+		this._noDataAttempts = 0;
 		this.status.touched = false;
 		this._safe("onMessage", msg);
 		if (!this.status.touched)
@@ -299,6 +307,8 @@ export class Display {
 				this.props.topic_type = "";
 		}
 		this._safe("onPropertyChange", key, value);
+		if (key === "topic" || key === "qos")
+			this._noDataAttempts = 0; // a new topic or QoS starts the retries from 5 s again
 		if (key === "topic" || key === "throttle" || key === "qos")
 			this._resubscribe();
 		this.requestRender();

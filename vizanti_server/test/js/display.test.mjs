@@ -362,3 +362,27 @@ test('a disabled or destroyed display stops retrying', () => {
 		mock.timers.reset();
 	}
 });
+
+test('the auto re-subscribe backs off (5, 10, 20, 40 s, then every 60 s) and hints at Reliable', () => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		const { d, subs } = start();
+		const at = [];
+		let elapsed = 0;
+		for (let s = 0; s < 130; s++) {
+			mock.timers.tick(1000);
+			elapsed += 1;
+			if (subs.length > at.length + 1)
+				at.push(elapsed);
+		}
+		assert.deepEqual(at, [5, 15, 35, 75, 135].filter((t) => t <= 130));
+		assert.match(d.status.text, /Reliable/);
+		// a changed topic starts again from 5 s
+		d._setProperty("topic", "/other");
+		const before = subs.length;
+		mock.timers.tick(5000);
+		assert.equal(subs.length, before + 1);
+	} finally {
+		mock.timers.reset();
+	}
+});

@@ -163,6 +163,22 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - an old saved survey migrated.
 
   The old waypoints, area and survey templates are deleted.
+- **Performance** (measured 2026-10-06 on the development machine, desktop GPU):
+
+  | Load | Cost |
+  |---|---|
+  | 200,000-point cloud, coloured by intensity | about 24 ms per message (7 ms decode, 2 ms colour, the rest upload) |
+  | 2000 × 2000 map | 5 ms on the main thread (converted in a worker) |
+  | Full redraw with all of the above and the 70-mesh Panda arm (136,000 triangles) | 0.3 ms median, 1.4 ms at the 90th percentile |
+
+  Colouring used to take about 40 ms; it now uses a 1024-step lookup table. rosbridge, not
+  the page, is the limit: two 200,000-point clouds at about 6 Hz with no throttle (about
+  19 MB/s) stalled every topic on the connection. Keep the point cloud throttle (default
+  1 s) for big clouds.
+- **Large messages and QoS:** for a reliable publisher, rosbridge's automatic QoS is best
+  effort. Best effort drops large messages (a 3.2 MB cloud never arrived), while small ones
+  like TF work. Set QoS to Reliable on such displays; an Auto display that gets nothing says
+  so in its status. The Auto re-subscribe backs off (5, 10, 20, 40 s, then once a minute).
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
