@@ -275,3 +275,21 @@ test("convertRvizConfig maps the grid plane, offset and reference frame", () => 
 	assert.deepEqual(items[0].props, { plane: "XZ", offset_y: 1.5, frame: "base_link" });
 	assert.deepEqual(items[1].props, {});
 });
+
+test("convertRvizConfig maps both RViz IMU plugins to the IMU display", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Displays:
+    - Class: rviz_imu_plugin/Imu
+      Name: IMU
+      Topic: /imu/data
+      Enable acceleration: false
+    - Class: rviz_default_plugins/Imu
+      Name: IMU2
+      Topic:
+        Value: /imu
+`);
+	const { items, skipped } = convertRvizConfig(doc, new Set(["imu"]));
+	assert.deepEqual(items.map((i) => [i.type, i.props.topic]), [["imu", "/imu/data"], ["imu", "/imu"]]);
+	assert.equal(items[0].props.show_acceleration, false);
+	assert.deepEqual(skipped, []);
+});

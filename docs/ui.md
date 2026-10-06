@@ -102,6 +102,15 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   report that the transform is missing. Before 2026-10-06 such frames were drawn at the fixed
   frame's origin. A map that arrives before its TF is still drawn at the origin, with a
   warning, until TF connects it.
+- **IMU** (`sensor_msgs/Imu`, under Sensors):
+  - axes at the IMU frame showing its orientation in the fixed frame, as an AHRS reports it;
+    hidden when the message says it has none (orientation covariance[0] = −1);
+  - an arrow for the linear acceleration in the sensor frame, length = acceleration × scale;
+  - roll / pitch / yaw, |a| and |ω| in the panel.
+
+  `.rviz` import maps `rviz_imu_plugin/Imu` and `rviz_default_plugins/Imu`. Checked on
+  2026-10-06 with a test IMU mounted at 90° yaw: the axes matched the reported orientation in
+  the world, and the acceleration arrow turned with the mount.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot

@@ -267,6 +267,7 @@ const MAPPINGS = {
 	})],
 	Odometry: ["odom", (d) => ({ topic: topicOf(d.Topic), color: rvizColor(d.Shape?.Color ?? d.Color) })],
 	Range: ["range", (d) => ({ topic: topicOf(d.Topic), opacity: num(d.Alpha) })],
+	Imu: ["imu", (d) => ({ topic: topicOf(d.Topic), show_acceleration: bool(d["Enable acceleration"]), show_orientation: bool(d["Enable axes"]) })],
 	GridCells: ["gridcells", (d) => ({ topic: topicOf(d.Topic), color: rvizColor(d.Color), opacity: num(d.Alpha) })],
 	RobotModel: ["urdf", (d) => ({
 		topic: topicOf(d["Description Topic"]), opacity: num(d.Alpha),
