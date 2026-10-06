@@ -64,7 +64,7 @@ export class AltimeterWidget extends WidgetDisplay {
 			options: Object.entries(ALTIMETER_MODES).map(([value, m]) => ({ value, label: m.label })),
 			help: "Shows the frame's Z on an altitude or depth tape. The inverted modes count negative Z as positive." },
 		step: { type: "float", label: "Step (m)", default: 1, min: 0.1, max: 1000, step: 0.1, help: "Metres between labelled marks." },
-		topic: { type: "topic", label: "Target topic", help: "std_msgs/Float32. Optional: leave empty for no target." },
+		topic: { type: "topic", label: "Target topic", optional: true, help: "std_msgs/Float32. Optional: leave empty for no target." },
 		side: { type: "enum", label: "Side", default: "left", options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }] },
 		column: { type: "int", label: "Offset (tape widths)", default: 0, min: 0, max: 20, help: "Places several tapes side by side." },
 		...WIDGET_PROPERTIES,

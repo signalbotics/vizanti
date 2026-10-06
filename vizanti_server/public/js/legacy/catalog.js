@@ -83,15 +83,6 @@ export const CATALOG = {
 			"geometry_msgs/msg/PoseStamped"
 		]
 	},
-	"button": {
-		"label": "Button",
-		"icon": "assets/button.svg",
-		"description": "Display and toggle [std_msgs/Bool], or send [std_msgs/Empty]",
-		"msgTypes": [
-			"std_msgs/msg/Bool",
-			"std_msgs/msg/Empty"
-		]
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",

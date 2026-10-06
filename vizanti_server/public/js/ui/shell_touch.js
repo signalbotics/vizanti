@@ -130,7 +130,7 @@ export class TouchShell {
 		if (face) {
 			// a widget that draws its own icon
 			icon.appendChild(face);
-			icon.addEventListener("click", () => this.openItem(item));
+			this.onIconPress(icon, item);
 			wrapper.appendChild(icon);
 			return wrapper;
 		}
@@ -145,9 +145,37 @@ export class TouchShell {
 		});
 		image.data = item.icon;
 		icon.appendChild(image);
-		icon.addEventListener("click", () => this.openItem(item));
+		this.onIconPress(icon, item);
 		wrapper.appendChild(icon);
 		return wrapper;
+	}
+
+	// A tap opens the item's settings; an action widget (Button) acts on a tap instead, and a
+	// long press opens its settings.
+	onIconPress(icon, item) {
+		if (!item.onIconClick) {
+			icon.addEventListener("click", () => this.openItem(item));
+			return;
+		}
+		let timer = null;
+		let long = false;
+		const cancel = () => clearTimeout(timer);
+		icon.addEventListener("pointerdown", () => {
+			long = false;
+			timer = setTimeout(() => {
+				long = true;
+				this.openItem(item);
+			}, 500);
+		});
+		for (const type of ["pointerup", "pointerleave", "pointercancel"])
+			icon.addEventListener(type, cancel);
+		icon.addEventListener("contextmenu", (event) => event.preventDefault());
+		icon.addEventListener("click", () => {
+			if (long)
+				long = false;
+			else
+				item.onIconClick();
+		});
 	}
 
 	// the way back to the desktop interface, always visible at the end of the bar

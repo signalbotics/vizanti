@@ -72,3 +72,21 @@ test('the ported widgets read the old template settings', () => {
 	// props saved by the native widget pass through unchanged
 	check(TemperatureWidget, { topic: "/t", high: 30 }, { topic: "/t", high: 30 });
 });
+
+import { ButtonWidget, buttonIcon } from '../../public/js/displays/button_widget.js';
+
+test('buttonIcon shows state only for the stateful types', () => {
+	assert.equal(buttonIcon("std_msgs/msg/Bool", true), "assets/button_true.svg");
+	assert.equal(buttonIcon("std_srvs/srv/SetBool", false), "assets/button_false.svg");
+	assert.equal(buttonIcon("std_msgs/msg/Bool", undefined), "assets/button.svg");
+	assert.equal(buttonIcon("std_srvs/srv/Trigger", true), "assets/button.svg");
+});
+
+test('the button reads the old template settings', () => {
+	const { values } = resolveProps(ButtonWidget.properties, ButtonWidget.migrateProps({
+		state: { topic: "/reset", text: "Reset", typedict: { "/reset": "std_srvs/srv/Trigger", "/other": "std_msgs/msg/Bool" } },
+	}));
+	assert.deepEqual([values.topic, values.text, values.topic_type], ["/reset", "Reset", "std_srvs/srv/Trigger"]);
+	const unknown = ButtonWidget.migrateProps({ state: { topic: "/x", text: "X", typedict: {} } });
+	assert.equal(unknown.topic_type, undefined);
+});

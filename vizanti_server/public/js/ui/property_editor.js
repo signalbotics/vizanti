@@ -128,9 +128,21 @@ export function createControl(def, value, commit, env) {
 		case "topic": {
 			const element = document.createElement("select");
 			setOptions(element, [], value);
+			// a property may name its own message types, and service types to offer as well
+			// (the Button calls a service or publishes); those entries show their type
 			const refresh = async () => {
-				const topics = await env.listTopics(env.msgTypes);
-				setOptions(element, topics.map((topic) => ({ value: topic, label: topic })), element.value);
+				const none = def.optional ? [{ value: "", label: "(none)" }] : [];
+				if (!def.serviceTypes) {
+					const topics = await env.listTopics(def.msgTypes ?? env.msgTypes);
+					setOptions(element, [...none, ...topics.map((topic) => ({ value: topic, label: topic }))], element.value);
+					return;
+				}
+				const short = (type) => type.replace("/msg/", "/").replace("/srv/", "/");
+				const lists = await Promise.all([
+					...(def.msgTypes ?? env.msgTypes).map(async (type) => (await env.listTopics([type])).map((name) => ({ value: name, label: `${name} (${short(type)})` }))),
+					...def.serviceTypes.map(async (type) => (await (env.listServices?.([type]) ?? [])).map((name) => ({ value: name, label: `${name} (${short(type)})` }))),
+				]);
+				setOptions(element, [...none, ...lists.flat()], element.value);
 			};
 			element.addEventListener("focus", refresh);
 			element.addEventListener("change", () => report(element, element.value));

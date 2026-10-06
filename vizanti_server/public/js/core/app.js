@@ -211,6 +211,8 @@ async function start() {
 				(error) => { clearTimeout(timer); reject(new Error(String(error))); }
 			);
 		}),
+		// names of the services of one type
+		listServices: (type) => rosbridge.get_services(type),
 		resolveType: async (topic) => {
 			const all = await rosbridge.get_all_topics();
 			const index = all.topics.indexOf(topic);
@@ -270,6 +272,11 @@ async function start() {
 				listTopics: async (msgTypes) => {
 					const lists = await Promise.all(msgTypes.map((type) => rosbridge.get_topics(type)));
 					return lists.flat().sort();
+				},
+				listServices: async (srvTypes) => {
+					const lists = await Promise.all(srvTypes.map((type) => rosbridge.get_services(type)));
+					// Vizanti's own services are not something to point a widget at
+					return lists.flat().filter((name) => !name.includes("/vizanti/")).sort();
 				},
 				listFrames: () => [...tf.frame_list],
 			};

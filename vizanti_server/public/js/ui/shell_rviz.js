@@ -449,7 +449,12 @@ export class RvizShell {
 				element.type = "button";
 				element.className = "widget_button";
 				element.appendChild(item.makeIconFace() ?? document.createElement("img"));
-				element.addEventListener("click", () => item.togglePanel());
+				// an action widget (Button) acts on a click; its panel opens on a right-click
+				element.addEventListener("click", () => (item.onIconClick ? item.onIconClick() : item.togglePanel()));
+				element.addEventListener("contextmenu", (event) => {
+					event.preventDefault();
+					item.togglePanel();
+				});
 				this.widgetButtons.set(item.id, element);
 			}
 			this.widgets.appendChild(element); // keeps the display order
@@ -473,7 +478,7 @@ export class RvizShell {
 				image.src = item.icon;
 			image.alt = "";
 		}
-		element.title = `${item.name}: ${item.status.text}` + (item.wantsPanel ? "" : " (click to open)");
+		element.title = `${item.name}: ${item.status.text}` + (item.onIconClick ? " (right-click for its panel)" : item.wantsPanel ? "" : " (click to open)");
 		element.setAttribute("aria-label", item.name);
 		element.setAttribute("aria-pressed", String(!!item.wantsPanel));
 		element.classList.toggle("widget_open", !!item.wantsPanel);
