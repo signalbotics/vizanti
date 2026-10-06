@@ -6,29 +6,54 @@ Contrbutions are of course welcome, feel free to fork and submit PRs for any fix
 
 ## Overview
 
-Vizanti is split into the python based ROS-side server and the web browser client.
+Vizanti is split into the Python ROS-side server and the web browser client.
 
 ### Server
 
 The static content is served using Flask, with Jinja2 as the template engine. ROS related communications go through Rosbridge and Rosapi.
 
-[server.py](vizanti_server/vizanti_server/server.py)
+[server.py](vizanti_server/scripts/server.py) also serves robot configs (`/configs`), mesh and texture files from ROS packages (`/package/...`) and display plugins from other packages (`/plugins/...`).
 
 There are also two ROS nodes that provide additional functionality not covered by Rosbridge.
 
-[service_handler.py](vizanti_server/vizanti_server/service_handler.py)
+[service_handler.py](vizanti_server/scripts/service_handler.py)
 
 [tf_consolidator.cpp](vizanti_cpp/src/tf_consolidator.cpp)
 
 ### Client
 
-The front end is written in vanilla JS with ES6 modules, while making use of Jinja templating and minimal fixed dependencies in [vizanti_server/public/js/lib](vizanti_server/public/js/lib).
+The front end is plain JavaScript ES modules with no build step; libraries (three.js, dockview, roslib, …) are vendored in [vizanti_server/public/js/lib](vizanti_server/public/js/lib). One three.js scene is shared by two interfaces: the RViz-style desktop UI and the touch UI.
+
+| Folder | What is in it |
+|---|---|
+| `js/core/` | App start-up, the display registry, the 3D scene, TF frames, tools, QoS, configs |
+| `js/displays/` | One file per native 3D display (map, scan, point cloud, URDF, markers, …) |
+| `js/geometry/` | Pure message-to-geometry functions, unit-tested in Node |
+| `js/ui/` | The two interfaces, the property editor, menus and dialogs |
+| `js/legacy/` | Hosting for the widgets that still run from their original templates |
+| `js/modules/` | TF and rosbridge, plus compatibility shims for template widgets |
+
+[docs/ui.md](docs/ui.md) is the user and developer guide; [docs/packaging.md](docs/packaging.md) covers the Debian packages.
 
 ---
 
-## Adding a new widget
+## Adding a display (preferred)
 
-Upon client load, the server collects all widget templates in [vizanti_server/public/templates](vizanti_server/public/templates) and sends them to the client where they are processed by [main.js](vizanti_server/public/js/main.js). As per the existing examples, the suported files are:
+New features should be native displays: one ES module in `vizanti_server/public/js/displays/` exporting a class that extends `Display` and declares its properties. Both interfaces, saving and the property editor are generated from that declaration. See ["Add a display"](docs/ui.md#add-a-display) in the guide, and ["Display plugins from other packages"](docs/ui.md#display-plugins-from-other-packages) to ship a display in your own ROS package without changing Vizanti.
+
+Put the message-to-geometry logic in `js/geometry/` as pure functions with tests in `vizanti_server/test/js/`, and run the tests before sending a change:
+
+```bash
+cd vizanti_server && node --test "test/js/*.test.mjs"
+```
+
+---
+
+## Template widgets (legacy)
+
+About 20 widgets (teleop, battery, waypoints, …) still run from their original templates through a compatibility layer in `js/legacy/`. The rest of this guide describes that template format, for maintaining them; new features should be native displays (above).
+
+Upon client load, the server collects all widget templates in [vizanti_server/public/templates](vizanti_server/public/templates) and sends them to the client, where [js/legacy/](vizanti_server/public/js/legacy) instantiates them. As per the existing examples, the suported files are:
 
 - `name_icon.html` The mandatory icon element that will be added to the taskbar.
 
@@ -38,7 +63,7 @@ Upon client load, the server collects all widget templates in [vizanti_server/pu
 
 - `name_script.js` A JS module that can import helper singletons from [vizanti_server/public/js/modules](vizanti_server/public/js/modules).
 
-To add the widget to the taskbar, it has to be defined in the `add_types_container` list in the [add_modal.html](vizanti_server/public/templates/add/add_modal.html). The `data-topic` value is used for creating widgets from a specific topic.
+To appear in the Add dialog, a template widget needs an entry in [js/legacy/catalog.js](vizanti_server/public/js/legacy/catalog.js) (label, icon, description and accepted message types).
 
 Any required assets should be put into [vizanti_server/public/assets](vizanti_server/public/assets). Any SVG icons that need to display a colour change using utilModule.setIconColor need to have specific elements tagged as id="fillColor" or id="strokeColor" depending on which part needs coloring.
 
@@ -66,7 +91,7 @@ icon.src = "something.png"
 
 ## Helper Singletons
 
-Quaternion.js and Roslib.js are loaded globally. There are also two global functions to streamline opening and closing models, the aptly named `openModal(widget_id+"_modal")` and `closeModal(widget_id+"_modal")` found in [setup.js](vizanti_server/public/js/setup.js). Typically called when an icon is clicked.
+Quaternion.js and Roslib.js are loaded globally. There are also two global functions to streamline opening and closing models, the aptly named `openModal(widget_id+"_modal")` and `closeModal(widget_id+"_modal")` defined in [js/legacy/globals.js](vizanti_server/public/js/legacy/globals.js). Typically called when an icon is clicked.
 
 ### View
 
@@ -74,7 +99,7 @@ Quaternion.js and Roslib.js are loaded globally. There are also two global funct
 let viewModule = await import(`${base_url}/js/modules/view.js`);
 let view = viewModule.view;
 ```
-Handles how the screen is moved and zoomed by the user for final rendering from ROS tf space into screen space. The TF and screen frames are currently not rotated, which simplifies rendering.
+A compatibility shim: it projects the fixed frame's ground plane (z = 0) through the 3D camera, so template widgets keep drawing in 2D on an overlay above the 3D view.
 
 Example:
 

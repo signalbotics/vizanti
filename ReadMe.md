@@ -2,9 +2,11 @@
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.png)](https://opensource.org/licenses/BSD-3-Clause) [![Build Status](https://build.ros2.org/buildStatus/icon?job=Hdev__vizanti__ubuntu_jammy_amd64)](https://build.ros2.org/job/Hdev__vizanti__ubuntu_jammy_amd64/)
 
-Vizanti is a web-based visualization and control tool developed for more convenient operation of outdoor robots running the Robot Operating System (ROS). The application attempts to replicate RViz's orthographic 2D view as closely as possible with a smartphone friendly interface. The second goal is to allow planning and executing movement and mission commands, i.e. goals and waypoints, with custom buttons and parameter reconfigure.
+Vizanti is a web-based visualization and control tool developed for more convenient operation of outdoor robots running the Robot Operating System (ROS). It shows the robot in 3D (URDF, point clouds, maps, markers, cameras and more) in an RViz-style desktop interface, and keeps a smartphone friendly touch interface; both share the same displays. The second goal is to allow planning and executing movement and mission commands, i.e. goals and waypoints, with custom buttons and parameter reconfigure.
 
-<img src="vizanti_server/public/assets/icon/preview.jpg" alt=""/> 
+<img src="docs/images/vizanti-rviz-ui.jpg" alt="Vizanti's RViz-style interface: a robot arm on a map with a lidar trail coloured by intensity"/>
+
+See [docs/ui.md](docs/ui.md) for the interfaces and every display. 
 
 ## Installation
 
