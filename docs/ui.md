@@ -89,6 +89,11 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - intensity 0–359 went from blue to red;
   - with 2 s decay, 11 clouds were kept, and the oldest was 1.0 m behind the newest;
   - in height mode, the highest point was red and the lowest blue.
+- **Laser scan:** colour by Flat (default), Intensity, or Range (distance), using the same blue
+  to red rainbow. Decay time keeps recent scans where they were measured. `.rviz` import maps
+  the Intensity transformer and Decay Time. Point clouds and scans share this trail code
+  (`core/trail.js`). Checked on 2026-10-06 with a 5 Hz scan moving at 0.5 m/s: 10 scans kept
+  for 2 s decay; intensity and range coloured blue to red; disable and enable work.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot

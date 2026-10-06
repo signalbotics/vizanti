@@ -55,6 +55,17 @@ test('ScanDisplay declares every option the current scan widget has', () => {
 	assert.equal(ScanDisplay.type, "scan");
 	assert.deepEqual(ScanDisplay.msgTypes, ["sensor_msgs/msg/LaserScan"]);
 	assert.deepEqual(defaultsOf(ScanDisplay.properties), {
-		topic: "", opacity: 1, thickness: 0.02, color: "#ff0000", throttle: 2000,
+		topic: "", opacity: 1, thickness: 0.02, color: "#ff0000", colour_mode: "flat", decay_ms: 0, throttle: 2000,
 	});
+});
+
+test('scanPoints also returns the intensity and range of each kept ray', () => {
+	const msg = { angle_min: 0, angle_increment: Math.PI / 2, range_min: 0.1, range_max: 10,
+		ranges: [1, null, 2, 50], intensities: [10, 20, 30, 40] };
+	const r = scanPoints(msg);
+	assert.equal(r.count, 2);
+	assert.deepEqual(Array.from(r.intensities), [10, 30]);
+	assert.deepEqual(Array.from(r.ranges), [1, 2]);
+	const none = scanPoints({ ...msg, intensities: [] });
+	assert.equal(none.intensities, null);
 });

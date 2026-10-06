@@ -224,10 +224,15 @@ const MAPPINGS = {
 		show_names: bool(d["Show Names"]), show_axes: bool(d["Show Axes"]),
 		show_lines: bool(d["Show Arrows"]), scale: num(d["Marker Scale"]),
 	})],
-	LaserScan: ["scan", (d) => ({
-		topic: topicOf(d.Topic), color: flatColor(d) ? rvizColor(d.Color) : undefined,
-		thickness: num(d["Size (m)"]), opacity: num(d.Alpha),
-	})],
+	LaserScan: ["scan", (d) => {
+		const decay = num(d["Decay Time"]);
+		return {
+			topic: topicOf(d.Topic), color: flatColor(d) ? rvizColor(d.Color) : undefined,
+			colour_mode: d["Color Transformer"] === "Intensity" ? "intensity" : undefined,
+			thickness: num(d["Size (m)"]), opacity: num(d.Alpha),
+			decay_ms: decay !== undefined && decay > 0 ? Math.round(decay * 1000) : undefined,
+		};
+	}],
 	PointCloud2: ["pointcloud", (d) => {
 		const mode = cloudColourMode(d);
 		const decay = num(d["Decay Time"]);

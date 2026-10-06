@@ -1,6 +1,7 @@
 import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
 import { decodeCloud, colorizeValues, axisValues } from '../geometry/pointcloud.js';
+import { Trail } from '../core/trail.js';
 
 const COLOUR_MODES = [
 	{ value: "rgb", label: "RGB (from the cloud, else flat)" },
@@ -75,7 +76,7 @@ export class PointCloudDisplay extends Display {
 	onCreate() {
 		this.material = new THREE.PointsMaterial({ color: this.props.color, opacity: this.props.opacity, transparent: true, depthWrite: false });
 		this.circle = null;
-		this.clouds = []; // { points, matrix (cloud frame -> fixed frame when it arrived), time }
+		this.trail = new Trail(this.root); // the latest cloud, plus older ones while decay is on
 		this.lastCloudMsg = null;
 		this.applyStyle();
 		this.decayTimer = setInterval(() => this.expire(), 250);
@@ -172,65 +173,31 @@ export class PointCloudDisplay extends Display {
 		if (colors)
 			geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
+		if (this.props.decay_ms <= 0)
+			this.trail.clear();
+		const points = new THREE.Points(geometry, this.material);
+		points.frustumCulled = false;
+		points.renderOrder = this.order;
 		this.root.updateMatrix();
-		const matrix = this.root.matrix.clone();
-		if (this.props.decay_ms > 0) {
-			const points = new THREE.Points(geometry, this.material);
-			points.frustumCulled = false;
-			points.matrixAutoUpdate = false;
-			this.add(points);
-			this.clouds.push({ points, matrix, time: performance.now() });
-			this.expire();
-			this.placeTrail();
-		} else {
-			this.clear();
-			const points = new THREE.Points(geometry, this.material);
-			points.frustumCulled = false;
-			this.add(points);
-			this.clouds.push({ points, matrix, time: performance.now() });
-		}
+		this.trail.push(points, this.root.matrix, performance.now());
+		this.expire();
 
 		this.setInfo({
 			"Frame": msg.header.frame_id,
 			"Points": msg.width * msg.height,
 			"Shown": cloud.count,
 			"Colour": note,
-			...(this.props.decay_ms > 0 ? { "Clouds kept": this.clouds.length } : {}),
+			...(this.props.decay_ms > 0 ? { "Clouds kept": this.trail.items.length } : {}),
 		});
 	}
 
-	// Older clouds keep the pose they had when they arrived: root has moved to the newest
-	// cloud's pose, so each one gets root^-1 * (its own pose).
-	placeTrail() {
-		const inverse = this.root.matrix.clone().invert();
-		for (const entry of this.clouds) {
-			entry.points.matrix.multiplyMatrices(inverse, entry.matrix);
-			entry.points.matrixWorldNeedsUpdate = true;
-		}
-	}
-
 	expire() {
-		if (!this.clouds || this.props.decay_ms <= 0 || this.clouds.length <= 1)
-			return;
-		const now = performance.now();
-		let removed = false;
-		// the newest cloud always stays
-		while (this.clouds.length > 1 && now - this.clouds[0].time > this.props.decay_ms) {
-			const { points } = this.clouds.shift();
-			points.removeFromParent();
-			points.geometry.dispose();
-			removed = true;
-		}
-		if (removed)
+		if (this.props.decay_ms > 0 && this.trail.expire(this.props.decay_ms, performance.now()))
 			this.requestRender();
 	}
 
 	clear() {
-		for (const { points } of this.clouds) {
-			points.removeFromParent();
-			points.geometry.dispose();
-		}
-		this.clouds = [];
+		this.trail.clear();
 	}
 
 	onPropertyChange(key) {
