@@ -57,6 +57,18 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - Colour fields show their hex value next to the swatch.
   - Help text sits behind a "?" next to the property, and also appears as the label's tooltip.
   - In a narrow panel, labels go above their inputs.
+- **QoS:** every display with a topic has a QoS setting.
+  - **Auto** (default) lets rosbridge match the publishers. rosbridge only does that when it
+    subscribes, and with no publisher yet it falls back to volatile / best effort, which would
+    miss a map that is published once later. So while a display has received nothing, it
+    subscribes again every 5 s.
+  - **Reliable**, **Best effort** and **Latched (transient local)** are sent to rosbridge as an
+    explicit profile. Latched only connects to latched publishers.
+
+  Checked on 2026-10-06 against Lyrical: a map published once, latched, after Vizanti had
+  subscribed arrived about 4 s later; with Latched selected, the request carried
+  transient_local and the map arrived. rosbridge 2.x (Lyrical, Jazzy 2.7.1) supports explicit
+  QoS; Humble's rosbridge was not checked.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot

@@ -1,4 +1,5 @@
 import * as THREE from '../lib/three.module.min.js';
+import { qosRequest } from './qos.js';
 import { rotateVector } from '../geometry/tf.js';
 
 export class DisplayStatus {
@@ -27,6 +28,9 @@ export class DisplayStatus {
 
 // Base class for everything drawn in the 3D scene. A subclass declares its properties as
 // data and implements the on* hooks; subscription, frames, status and saving are handled here.
+// how long a display in "auto" QoS waits for data before subscribing again
+const NO_DATA_RESUBSCRIBE_MS = 5000;
+
 export class Display {
 
 	static kind = "display";
@@ -212,6 +216,7 @@ export class Display {
 		}
 		this._subscribeSeq++;
 		clearTimeout(this._retryTimer);
+		clearTimeout(this._noDataTimer);
 		if (!("topic" in this.props) || !this._alive || !this.enabled)
 			return;
 		if (this.props.topic === "") {
@@ -256,12 +261,23 @@ export class Display {
 		if (!this.lastMsg)
 			this.status.warn("No data received.");
 		const throttle = Number.isFinite(this.props.throttle) ? this.props.throttle : 0;
+		const qos = this.props.qos ?? "auto";
 		this._unsubscribe = this.ctx.subscribe(
 			this.props.topic,
 			type,
 			throttle,
-			(msg) => this._message(msg)
+			(msg) => this._message(msg),
+			qosRequest(qos)
 		);
+		// rosbridge matches QoS only to the publishers there are when it subscribes; with none yet it
+		// picks volatile / best effort and would miss a latched map published later. Try again.
+		if (qos === "auto" && !this.lastMsg) {
+			const seq = this._subscribeSeq;
+			this._noDataTimer = setTimeout(() => {
+				if (seq === this._subscribeSeq && !this.lastMsg && this._alive && this.enabled)
+					this._resubscribe();
+			}, NO_DATA_RESUBSCRIBE_MS);
+		}
 	}
 
 	_message(msg) {
@@ -283,7 +299,7 @@ export class Display {
 				this.props.topic_type = "";
 		}
 		this._safe("onPropertyChange", key, value);
-		if (key === "topic" || key === "throttle")
+		if (key === "topic" || key === "throttle" || key === "qos")
 			this._resubscribe();
 		this.requestRender();
 	}
@@ -311,6 +327,7 @@ export class Display {
 			this._unsubscribe = null;
 		}
 		clearTimeout(this._retryTimer);
+		clearTimeout(this._noDataTimer);
 		this._subscribeSeq++;
 		if (this._overlayFn) {
 			this.ctx.scene.removeOverlayDrawer(this._overlayFn);

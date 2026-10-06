@@ -16,6 +16,7 @@ import { ToolManager, TOOLS } from './tools.js';
 import { createConfigClient } from './configs.js';
 import { formatDistance } from '../geometry/shapes.js';
 import { parseYaml, isRvizConfig, convertRvizConfig } from './rviz_import.js';
+import { createQosInjector, withQosProperty } from './qos.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
 const LEGACY_DONE_KEY = "vizanti_legacy_done";
@@ -90,6 +91,9 @@ async function loadDisplayTypes() {
 	} catch (e) {
 		console.warn("The list of display plugins could not be read:", e);
 	}
+	// every display that subscribes to a topic gets a QoS choice
+	for (const Cls of types.values())
+		withQosProperty(Cls);
 	return types;
 }
 
@@ -133,7 +137,16 @@ const BINARY_TYPES = new Set([
 	"nav_msgs/msg/OccupancyGrid",
 ]);
 
-function subscribe(topic, msgType, throttleMs, callback) {
+// Adds a display's chosen QoS to each subscribe request rosbridge receives for its topic.
+const qosInjector = createQosInjector();
+{
+	const send = rosbridge.ros.callOnConnection.bind(rosbridge.ros);
+	rosbridge.ros.callOnConnection = (message) => send(qosInjector.apply(message));
+}
+
+// qos: a rosbridge QoS object, or null to let rosbridge match the publishers
+function subscribe(topic, msgType, throttleMs, callback, qos = null) {
+	const releaseQos = qosInjector.use(topic, qos);
 	const rosTopic = new ROSLIB.Topic({
 		ros: rosbridge.ros,
 		name: topic,
@@ -143,7 +156,10 @@ function subscribe(topic, msgType, throttleMs, callback) {
 		queue_length: 1,
 	});
 	rosTopic.subscribe(callback);
-	return () => rosTopic.unsubscribe(callback);
+	return () => {
+		rosTopic.unsubscribe(callback);
+		releaseQos();
+	};
 }
 
 async function start() {

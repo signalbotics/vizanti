@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../../public/js/lib/three.module.min.js';
 import { Display, DisplayStatus } from '../../public/js/core/display.js';
@@ -19,8 +19,8 @@ function makeCtx() {
 		frames: new FrameNodes(tf),
 		renders: 0,
 		requestRender() { this.renders++; },
-		subscribe(topic, type, throttle, cb) {
-			const s = { topic, type, throttle, cb, active: true };
+		subscribe(topic, type, throttle, cb, qos = null) {
+			const s = { topic, type, throttle, cb, qos, active: true };
 			subs.push(s);
 			return () => { s.active = false; };
 		},
@@ -48,6 +48,20 @@ class Probe extends Display {
 	onPropertyChange(key, value) { this.changed = [key, value]; }
 	onDestroy() { this.destroyed = true; }
 }
+
+// displays still alive at the end of a test are destroyed, so their timers don't keep Node running
+const live = [];
+const create = Display.prototype._create;
+Display.prototype._create = function (...args) {
+	live.push(this);
+	return create.apply(this, args);
+};
+afterEach(() => {
+	for (const d of live.splice(0)) {
+		if (d._alive)
+			d._destroy();
+	}
+});
 
 function start(props = {}, enabled = true) {
 	const env = makeCtx();
@@ -295,4 +309,56 @@ test('changing the throttle while data is flowing does not claim that no data wa
 	// a new topic does start from "no data"
 	d._setProperty("topic", "/other");
 	assert.deepEqual([d.status.level, d.status.text], ["warn", "No data received."]);
+});
+
+test('auto QoS subscribes again every 5 s while no data has arrived, and stops once it has', () => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		const { d, subs } = start();
+		assert.equal(subs.length, 1);
+		assert.equal(subs[0].qos, null);
+		mock.timers.tick(5000);
+		assert.equal(subs.length, 2);
+		assert.equal(subs[0].active, false);
+		assert.equal(subs[1].active, true);
+		subs[1].cb({ data: "hi" });
+		mock.timers.tick(20000);
+		assert.equal(subs.length, 2); // data flows: no more resubscribing
+		assert.equal(d.status.level, "ok");
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+test('an explicit QoS is passed to the subscription, does not retry, and changing it resubscribes', () => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		const { d, subs } = start({ qos: "latched" });
+		assert.deepEqual(subs[0].qos, { reliability: "reliable", durability: "transient_local", history: "keep_last", depth: 1 });
+		mock.timers.tick(20000);
+		assert.equal(subs.length, 1);
+		d._setProperty("qos", "best_effort");
+		assert.equal(subs.length, 2);
+		assert.equal(subs[0].active, false);
+		assert.equal(subs[1].qos.reliability, "best_effort");
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+test('a disabled or destroyed display stops retrying', () => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		const { d, subs } = start();
+		d._setEnabled(false);
+		mock.timers.tick(20000);
+		assert.equal(subs.filter((s) => s.active).length, 0);
+		d._setEnabled(true);
+		const count = subs.length;
+		d._destroy();
+		mock.timers.tick(20000);
+		assert.equal(subs.length, count);
+	} finally {
+		mock.timers.reset();
+	}
 });
