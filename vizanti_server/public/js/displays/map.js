@@ -1,6 +1,8 @@
 import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
-import { mapToRGBA } from '../geometry/map.js';
+import { mapToRGBA, applyGridUpdate } from '../geometry/map.js';
+
+const UPDATE_TYPE = "map_msgs/msg/OccupancyGridUpdate";
 
 const ICONS = {
 	map: "assets/map.svg",
@@ -39,6 +41,14 @@ export class MapDisplay extends Display {
 		},
 		opacity: { type: "float", label: "Opacity", default: 0.7, min: 0, max: 1, step: 0.05, slider: true },
 		throttle: { type: "int", label: "Socket throttle (ms)", default: 1000, min: 0, max: 10000 },
+		use_updates: {
+			type: "bool", label: "Apply updates", default: true,
+			help: "Costmaps publish the full map now and then and small map_msgs/OccupancyGridUpdate patches in between. Without them a costmap goes stale.",
+		},
+		update_topic: {
+			type: "string", label: "Update topic", default: "",
+			help: "Empty means the map topic with _updates appended, as costmaps publish it (e.g. /global_costmap/costmap_updates).",
+		},
 	};
 
 	// the old widget stored the colour scheme as the index of its dropdown
@@ -211,6 +221,8 @@ export class MapDisplay extends Display {
 			this.seq++; // a conversion still running belongs to the old topic
 			this.jobs.clear();
 		}
+		if (key === "use_updates" || key === "update_topic")
+			this._resubscribeUpdates();
 		this.applyVisibility();
 	}
 
@@ -219,7 +231,49 @@ export class MapDisplay extends Display {
 			this.texture.needsUpdate = true;
 	}
 
+	// ---- partial updates (map_msgs/OccupancyGridUpdate) on their own topic ----
+
+	updateTopic() {
+		if (!this.props.use_updates || !this.props.topic)
+			return "";
+		return this.props.update_topic || `${this.props.topic}_updates`;
+	}
+
+	// The base class calls this whenever the main subscription changes (create, enable, topic,
+	// throttle, QoS); the update subscription follows it.
+	_resubscribe() {
+		super._resubscribe();
+		this._resubscribeUpdates();
+	}
+
+	_resubscribeUpdates() {
+		if (this._unsubscribeUpdates) {
+			this._unsubscribeUpdates();
+			this._unsubscribeUpdates = null;
+		}
+		const topic = this.updateTopic();
+		if (!topic || !this._alive || !this.enabled)
+			return;
+		this._unsubscribeUpdates = this.ctx.subscribe(topic, UPDATE_TYPE, 0, (update) => this._safe("onUpdate", update));
+	}
+
+	onUpdate(update) {
+		if (!this.lastMsg)
+			return; // patches need the full map they belong to
+		const patched = applyGridUpdate(this.lastMsg, update);
+		if (!patched) {
+			this.status.warn(`An update on ${this.updateTopic()} does not fit the ${this.lastMsg.info.width}x${this.lastMsg.info.height} map; ignored.`);
+			return;
+		}
+		this.lastMsg = patched;
+		this.convert(patched);
+	}
+
 	onDestroy() {
+		if (this._unsubscribeUpdates) {
+			this._unsubscribeUpdates();
+			this._unsubscribeUpdates = null;
+		}
 		if (this.worker)
 			this.worker.terminate();
 		if (this.texture)

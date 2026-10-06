@@ -80,6 +80,7 @@ test('MapDisplay declares every option the current map widget has', () => {
 	assert.deepEqual(MapDisplay.msgTypes, ["nav_msgs/msg/OccupancyGrid"]);
 	assert.deepEqual(defaultsOf(MapDisplay.properties), {
 		topic: "", colour_scheme: "map", use_timestamp: false, opacity: 0.7, throttle: 1000,
+		use_updates: true, update_topic: "",
 	});
 	assert.deepEqual(enumValues(flattenSchema(MapDisplay.properties).colour_scheme), COLOUR_SCHEMES);
 });
@@ -87,4 +88,42 @@ test('MapDisplay declares every option the current map widget has', () => {
 test('a costmap topic starts with the costmap colour scheme', () => {
 	assert.deepEqual(MapDisplay.propsForTopic("/local_costmap/costmap"), { topic: "/local_costmap/costmap", colour_scheme: "costmap" });
 	assert.deepEqual(MapDisplay.propsForTopic("/map"), { topic: "/map", colour_scheme: "map" });
+});
+
+import { applyGridUpdate } from '../../public/js/geometry/map.js';
+
+const grid = (width, height, fill = 0, Typed = null) => {
+	const data = Typed ? new Typed(width * height).fill(fill) : new Array(width * height).fill(fill);
+	return { header: { frame_id: "map" }, info: { width, height, resolution: 0.05, origin: { position: { x: 1, y: 2, z: 0 } } }, data };
+};
+
+test('applyGridUpdate writes the update rectangle into a copy of the grid', () => {
+	const base = grid(4, 3);
+	const update = { header: { frame_id: "map", stamp: { sec: 5 } }, x: 1, y: 1, width: 2, height: 2, data: [7, 8, 9, 10] };
+	const out = applyGridUpdate(base, update);
+	assert.deepEqual(Array.from(out.data), [
+		0, 0, 0, 0,
+		0, 7, 8, 0,
+		0, 9, 10, 0,
+	]);
+	assert.deepEqual(Array.from(base.data), new Array(12).fill(0), "the original is not changed");
+	assert.equal(out.info, base.info);
+	assert.deepEqual(out.header.stamp, { sec: 5 });
+	assert.equal(out.header.frame_id, "map");
+});
+
+test('applyGridUpdate keeps typed arrays typed (CBOR maps)', () => {
+	const base = grid(3, 2, -1, Int8Array);
+	const out = applyGridUpdate(base, { header: {}, x: 2, y: 0, width: 1, height: 2, data: [100, 50] });
+	assert.ok(out.data instanceof Int8Array);
+	assert.deepEqual(Array.from(out.data), [-1, -1, 100, -1, -1, 50]);
+});
+
+test('applyGridUpdate refuses updates that do not fit or whose data length is wrong', () => {
+	const base = grid(4, 3);
+	assert.equal(applyGridUpdate(base, { header: {}, x: 3, y: 0, width: 2, height: 1, data: [1, 2] }), null);
+	assert.equal(applyGridUpdate(base, { header: {}, x: 0, y: 2, width: 1, height: 2, data: [1, 2] }), null);
+	assert.equal(applyGridUpdate(base, { header: {}, x: 0, y: 0, width: 2, height: 2, data: [1, 2, 3] }), null);
+	assert.equal(applyGridUpdate(base, { header: {}, x: -1, y: 0, width: 1, height: 1, data: [1] }), null);
+	assert.equal(applyGridUpdate(null, { header: {}, x: 0, y: 0, width: 1, height: 1, data: [1] }), null);
 });

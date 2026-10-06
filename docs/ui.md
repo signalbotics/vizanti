@@ -69,6 +69,12 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   subscribed arrived about 4 s later; with Latched selected, the request carried
   transient_local and the map arrived. rosbridge 2.x (Lyrical, Jazzy 2.7.1) supports explicit
   QoS; Humble's rosbridge was not checked.
+- **Costmap updates:** the Map display also subscribes to `map_msgs/OccupancyGridUpdate` patches
+  ("Apply updates", on by default). The topic is the map topic plus `_updates`, as Nav2
+  publishes them, or the one set in "Update topic". Each patch is written into the last full
+  map and redrawn; a patch that does not fit the map is ignored with a warning. Checked on
+  2026-10-06 with a test publisher (full 50×50 map every 5 s, 5×5 patches every 0.5 s): the
+  patches accumulated between full maps and were drawn.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot

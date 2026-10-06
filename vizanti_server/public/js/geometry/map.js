@@ -88,3 +88,25 @@ export function mapToRGBA(data, width, height, scheme, maxSize = Infinity) {
 
 	return { rgba, width: w, height: h, factor };
 }
+
+// A copy of `grid` (nav_msgs/OccupancyGrid) with a map_msgs/OccupancyGridUpdate rectangle written
+// into it, as costmaps publish between full maps. null when the update does not fit the grid.
+export function applyGridUpdate(grid, update) {
+	if (!grid || !update)
+		return null;
+	const { width, height } = grid.info;
+	const { x, y, width: w, height: h, data } = update;
+	if (![x, y, w, h].every(Number.isInteger) || x < 0 || y < 0 || x + w > width || y + h > height)
+		return null;
+	if (!data || data.length !== w * h)
+		return null;
+
+	const out = Array.isArray(grid.data) ? grid.data.slice() : new grid.data.constructor(grid.data);
+	for (let row = 0; row < h; row++) {
+		const from = row * w;
+		const to = (y + row) * width + x;
+		for (let col = 0; col < w; col++)
+			out[to + col] = data[from + col];
+	}
+	return { ...grid, header: { ...grid.header, ...update.header, frame_id: grid.header.frame_id }, data: out };
+}

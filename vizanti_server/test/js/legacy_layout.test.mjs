@@ -56,7 +56,10 @@ test('native displays get their old options, through fromLegacy where the format
 	const v2 = convertLegacyLayout(old, classes);
 	const props = (id, Cls) => resolveProps(Cls.properties, v2.items.find((i) => i.id === id).props).values;
 	assert.deepEqual(props("grid_default", GridDisplay), { frame: "", autoscale: "Off", size: 2, thickness: 3, colour: "#ff0000", subdivisions: 4, colour_sub: "#00ff00" });
-	assert.deepEqual(props("map_autoID_3", MapDisplay), { topic: "/map", colour_scheme: "costmap", use_timestamp: true, opacity: 0.5, throttle: 500 });
+	assert.deepEqual(props("map_autoID_3", MapDisplay), {
+		topic: "/map", colour_scheme: "costmap", use_timestamp: true, opacity: 0.5, throttle: 500,
+		use_updates: true, update_topic: "",
+	});
 	assert.deepEqual(props("markerarray_autoID_6", MarkerArrayDisplay).disabled_namespaces, { debug: true });
 	const odom = props("odom_autoID_7", OdomDisplay);
 	assert.deepEqual([odom.mode, odom.frame, odom.topic, odom.history, odom.draw_path], ["tf", "base_link", "", 500, false]);

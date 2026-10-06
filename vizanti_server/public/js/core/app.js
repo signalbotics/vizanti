@@ -135,6 +135,7 @@ const BINARY_TYPES = new Set([
 	"sensor_msgs/msg/Image",
 	"sensor_msgs/msg/LaserScan",
 	"nav_msgs/msg/OccupancyGrid",
+	"map_msgs/msg/OccupancyGridUpdate",
 ]);
 
 // Adds a display's chosen QoS to each subscribe request rosbridge receives for its topic.
