@@ -586,6 +586,7 @@ async function start() {
 	const tools = new ToolManager({
 		pick: (x, y) => scene.pick(x, y),
 		inspect,
+		boxSelect: (rect) => scene.boxSelect(rect),
 		ground: (x, y) => scene.groundPoint(x, y),
 		focus: (point) => scene.focusOn(point),
 		setInputEnabled: (enabled) => scene.setInputEnabled(enabled),
@@ -600,6 +601,8 @@ async function start() {
 		window.dispatchEvent(new Event("vizanti_tool_changed"));
 	};
 	tools.onOptions = (options) => registry.setUi("tools", options);
+	// the Selection panel follows this
+	tools.onSelection = (selection) => window.dispatchEvent(new CustomEvent("vizanti_selection_changed", { detail: selection }));
 
 	for (const [type, kind] of [["pointerdown", "down"], ["pointermove", "move"], ["pointerup", "up"]]) {
 		scene.canvas.addEventListener(type, (event) => {
@@ -778,7 +781,42 @@ async function start() {
 			ctx.fillText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
 		}
 
-		const selected = tools.selection;
+		// the box being dragged out with the select tool
+		if (tools.selectBox) {
+			const origin = scene.container.getBoundingClientRect();
+			const b = tools.selectBox;
+			ctx.save();
+			ctx.strokeStyle = "#00e5ff";
+			ctx.fillStyle = "rgba(0, 229, 255, 0.08)";
+			ctx.lineWidth = 1.5;
+			ctx.setLineDash([6, 4]);
+			ctx.fillRect(b.left - origin.left, b.top - origin.top, b.right - b.left, b.bottom - b.top);
+			ctx.strokeRect(b.left - origin.left, b.top - origin.top, b.right - b.left, b.bottom - b.top);
+			ctx.restore();
+		}
+
+		// a box selection: a mark and a count at each display's selected centre
+		for (const entry of tools.selection?.entries?.values() ?? []) {
+			const c = entry.centroid;
+			if (!c)
+				continue;
+			const p = at(c);
+			ctx.strokeStyle = "#00e5ff";
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, 6, 0, 2 * Math.PI);
+			ctx.stroke();
+			const label = `${entry.name}: ${entry.points ? `${entry.points} pts` : ""}${entry.points && entry.objects ? ", " : ""}${entry.objects ? `${entry.objects} obj` : ""}`;
+			ctx.font = "12px Monospace";
+			ctx.textAlign = "left";
+			ctx.lineWidth = 3;
+			ctx.strokeStyle = "#161B21";
+			ctx.strokeText(label, p.x + 10, p.y - 8);
+			ctx.fillStyle = "white";
+			ctx.fillText(label, p.x + 10, p.y - 8);
+		}
+
+		const selected = tools.selection?.point ? tools.selection : null;
 		if (selected) {
 			const p = at(selected.point);
 			ctx.strokeStyle = "#00e5ff";

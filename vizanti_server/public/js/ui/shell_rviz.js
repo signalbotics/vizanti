@@ -15,6 +15,8 @@ const PANELS = {
 	displays: { title: "Displays", position: { referencePanel: "view", direction: "left" }, initialWidth: 340 },
 	views: { title: "Views", position: { referencePanel: "displays", direction: "below" }, initialHeight: 220 },
 	time: { title: "Time", position: { referencePanel: "view", direction: "below" }, initialHeight: 64 },
+	// not in the default layout: it opens with the first box selection, or from its button
+	selection: { title: "Selection", position: { referencePanel: "views", direction: "within" }, optional: true },
 };
 
 function button(text, onClick) {
@@ -132,6 +134,8 @@ export class RvizShell {
 			createComponent: (options) => this.component(options.name, options.id),
 		});
 		this.removeListener = this.api.onDidRemovePanel((panel) => {
+			if (panel.id === "selection")
+				this.selectionPaint = null;
 			this.releaseLegacy(panel.id);
 			this.releaseDisplayPanel(panel.id);
 		});
@@ -147,8 +151,10 @@ export class RvizShell {
 			}
 		}
 		if (!restored) {
-			for (const id of Object.keys(PANELS))
-				this.showPanel(id);
+			for (const id of Object.keys(PANELS)) {
+				if (!PANELS[id].optional)
+					this.showPanel(id);
+			}
 		}
 		// dockview measures its container lazily; do it now so a restored layout has its real size
 		this.api.layout(dock.clientWidth, dock.clientHeight);
@@ -179,10 +185,22 @@ export class RvizShell {
 		for (const name of ["added", "removed", "property", "enabled", "loaded", "renamed"])
 			this.listen(name, () => this.syncDisplayPanels());
 		this.syncDisplayPanels();
+
+		// the first box selection opens the Selection panel; later ones just repaint it
+		this.onSelectionChanged = (event) => {
+			if (event.detail?.entries && this.api && !this.api.getPanel("selection") && !this.selectionShown) {
+				this.selectionShown = true;
+				this.showPanel("selection");
+			}
+			this.selectionPaint?.();
+		};
+		window.addEventListener("vizanti_selection_changed", this.onSelectionChanged);
 	}
 
 	unmount() {
 		window.removeEventListener("vizanti_tool_changed", this.paintTools);
+		window.removeEventListener("vizanti_selection_changed", this.onSelectionChanged);
+		this.selectionPaint = null;
 		clearInterval(this.timeTimer);
 		clearInterval(this.statusTimer);
 		if (this.toolPanelPaint)
@@ -420,6 +438,8 @@ export class RvizShell {
 					this.renderTree();
 				} else if (name === "time") {
 					this.buildTime(element);
+				} else if (name === "selection") {
+					this.buildSelection(element);
 				} else if (name === "views") {
 					buildCameraControls(element, this.app);
 					const heading = document.createElement("h4");
@@ -592,6 +612,89 @@ export class RvizShell {
 		if (this.selectedId && !registry.get(this.selectedId))
 			this.selectedId = null; // it was removed
 		this.paintActionRow();
+	}
+
+	// ---- selection panel: what the select tool picked ----
+
+	buildSelection(element) {
+		element.classList.add("selection_panel");
+		const paint = () => this.paintSelection(element);
+		this.selectionPaint = paint;
+		paint();
+	}
+
+	paintSelection(element) {
+		const selection = this.app.tools?.selection ?? null;
+		element.replaceChildren();
+		const empty = (text) => {
+			const p = document.createElement("p");
+			p.className = "comment";
+			p.textContent = text;
+			element.appendChild(p);
+		};
+		if (!selection) {
+			empty("Nothing selected. With the Select tool (S), click an object, or drag a box around points and objects; Shift + drag adds.");
+			return;
+		}
+		const header = document.createElement("div");
+		header.className = "widget_row";
+		const summary = document.createElement("span");
+		const clear = button("Clear", () => this.app.tools.clearSelection());
+		header.append(summary, clear);
+		element.appendChild(header);
+		if (selection.lines) {
+			summary.textContent = "Clicked:";
+			const pre = document.createElement("pre");
+			pre.className = "inspector_echo";
+			pre.textContent = selection.lines.join("\n");
+			element.appendChild(pre);
+			return;
+		}
+		const entries = [...selection.entries.values()];
+		const points = entries.reduce((n, e) => n + e.points, 0);
+		const objects = entries.reduce((n, e) => n + e.objects, 0);
+		summary.textContent = `${entries.length} display${entries.length === 1 ? "" : "s"}: ${points} points, ${objects} objects`;
+		if (entries.length === 0)
+			empty("The box held nothing that is shown.");
+		const f = (v) => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(3);
+		for (const entry of entries) {
+			const details = document.createElement("details");
+			details.open = true;
+			const head = document.createElement("summary");
+			head.textContent = `${entry.name} (${entry.label})`;
+			const list = document.createElement("dl");
+			list.className = "readout";
+			const row = (label, value) => {
+				const dt = document.createElement("dt");
+				dt.textContent = label;
+				const dd = document.createElement("dd");
+				dd.textContent = value;
+				list.append(dt, dd);
+			};
+			if (entry.points)
+				row("Points", String(entry.points));
+			if (entry.objects)
+				row("Objects", String(entry.objects));
+			const c = entry.centroid;
+			row("Centre", `${f(c.x)}, ${f(c.y)}, ${f(c.z)}`);
+			if (entry.count > 1) {
+				row("Min", entry.min.map(f).join(", "));
+				row("Max", entry.max.map(f).join(", "));
+				const s = entry.size;
+				row("Extent", `${f(s.x)} × ${f(s.y)} × ${f(s.z)} m`);
+			}
+			if (entry.parts.size)
+				row("Parts", [...entry.parts].join(", "));
+			details.append(head, list);
+			if (entry.samples.length) {
+				const pre = document.createElement("pre");
+				pre.className = "inspector_echo";
+				pre.textContent = `index: x, y, z (${tf.fixed_frame})\n` + entry.samples.map((p) => `${p.index}: ${f(p.x)}, ${f(p.y)}, ${f(p.z)}`).join("\n")
+					+ (entry.points > entry.samples.length ? `\n… ${entry.points - entry.samples.length} more` : "");
+				details.appendChild(pre);
+			}
+			element.appendChild(details);
+		}
 	}
 
 	// ---- status bar: connection, fixed frame, display problems, tool, render rate ----

@@ -1,4 +1,5 @@
 import * as THREE from '../lib/three.module.min.js';
+import { SelectionEntry } from '../geometry/selection.js';
 import { OrbitControls } from '../lib/three_addons/controls/OrbitControls.js';
 import { LineSegments2 } from '../lib/three_addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../lib/three_addons/lines/LineSegmentsGeometry.js';
@@ -414,6 +415,83 @@ export class Scene3D {
 			return { object: o, point: hit.point.clone(), index: hit.index, distance: hit.distance };
 		}
 		return null;
+	}
+
+	// Everything shown inside a screen rectangle (client px: left, top, right, bottom), per
+	// display: the points of clouds and scans, and meshes and markers whose centre is inside.
+	// Returns a Map of display id -> SelectionEntry. Scans at most MAX_BOX_POINTS points.
+	boxSelect(rect) {
+		const MAX_BOX_POINTS = 4000000;
+		const bounds = this.container.getBoundingClientRect();
+		const toNdcX = (x) => ((x - bounds.left) / this.width) * 2 - 1;
+		const toNdcY = (y) => -((y - bounds.top) / this.height) * 2 + 1;
+		const x0 = toNdcX(rect.left), x1 = toNdcX(rect.right);
+		const y0 = toNdcY(rect.bottom), y1 = toNdcY(rect.top);
+		this.camera.updateMatrixWorld();
+		const viewProj = new THREE.Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+		const m = new THREE.Matrix4();
+		const v = new THREE.Vector3();
+		const found = new Map();
+		let budget = MAX_BOX_POINTS;
+
+		const entryFor = (display) => {
+			let entry = found.get(display.id);
+			if (!entry) {
+				entry = new SelectionEntry(display.id, display.name, display.constructor.label);
+				found.set(display.id, entry);
+			}
+			return entry;
+		};
+		const inside = (x, y, z, w) => {
+			if (w <= 0)
+				return false; // behind the camera
+			const nx = x / w, ny = y / w;
+			return nx >= x0 && nx <= x1 && ny >= y0 && ny <= y1;
+		};
+
+		const walk = (object, display, part) => {
+			if (!object.visible)
+				return;
+			display = object.userData.display ?? display;
+			part = typeof object.userData.selectLabel === "string" ? object.userData.selectLabel : part;
+			const geometry = object.geometry;
+			if (display && geometry && object.isPoints) {
+				const position = geometry.getAttribute("position");
+				if (position) {
+					const start = geometry.drawRange.start;
+					const end = Math.min(position.count, start + geometry.drawRange.count);
+					m.multiplyMatrices(viewProj, object.matrixWorld);
+					const e = m.elements, w = object.matrixWorld.elements, a = position.array, stride = position.itemSize;
+					for (let i = start; i < end && budget > 0; i++, budget--) {
+						const px = a[i * stride], py = a[i * stride + 1], pz = a[i * stride + 2];
+						const cx = e[0] * px + e[4] * py + e[8] * pz + e[12];
+						const cy = e[1] * px + e[5] * py + e[9] * pz + e[13];
+						const cw = e[3] * px + e[7] * py + e[11] * pz + e[15];
+						if (inside(cx, cy, 0, cw))
+							entryFor(display).addPoint(
+								w[0] * px + w[4] * py + w[8] * pz + w[12],
+								w[1] * px + w[5] * py + w[9] * pz + w[13],
+								w[2] * px + w[6] * py + w[10] * pz + w[14], i);
+					}
+				}
+			} else if (display && geometry && (object.isMesh || object.isLine || object.isSprite)) {
+				if (!geometry.boundingSphere)
+					geometry.computeBoundingSphere();
+				const centre = geometry.boundingSphere?.center;
+				if (centre && Number.isFinite(geometry.boundingSphere.radius)) {
+					v.copy(centre).applyMatrix4(object.matrixWorld);
+					const world = v.clone();
+					v.applyMatrix4(viewProj); // divided by w already
+					const ahead = world.clone().applyMatrix4(this.camera.matrixWorldInverse).z < 0;
+					if (ahead && v.x >= x0 && v.x <= x1 && v.y >= y0 && v.y <= y1)
+						entryFor(display).addObject(world.x, world.y, world.z, part || object.name || "");
+				}
+			}
+			for (const child of object.children)
+				walk(child, display, part);
+		};
+		walk(this.frames.root, null, "");
+		return found;
 	}
 
 	// the pointer's ray in the fixed frame, as THREE vectors

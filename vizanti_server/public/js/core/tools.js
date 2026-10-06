@@ -1,9 +1,11 @@
+import { normalizeRect, combineSelections } from '../geometry/selection.js';
+
 // The built-in pointer tools of the 3D view, as in RViz. This module has no DOM or WebGL
 // in it: the app hands it pointer events and the few scene operations it needs.
 
 export const TOOLS = [
 	{ id: "move", label: "Move Camera", key: "m", hint: "Drag to move the camera." },
-	{ id: "select", label: "Select", key: "s", hint: "Click something in the view to see what it is." },
+	{ id: "select", label: "Select", key: "s", hint: "Click something to see what it is, or drag a box around points and objects (Shift adds)." },
 	{ id: "measure", label: "Measure", key: "n", hint: "Click two points to measure the distance between them." },
 	{ id: "point", label: "Publish Point", key: "c", hint: "Click a point to publish it." },
 	{ id: "focus", label: "Focus Camera", key: "f", hint: "Click a point to centre the camera on it." },
@@ -74,7 +76,9 @@ export class ToolManager {
 		this.active = "move";
 		this.preview = null;     // { start, yaw } while a pose is being dragged out
 		this.measurement = null; // { a, b, distance, done }
-		this.selection = null;   // { point, lines } from the select tool
+		this.selection = null;   // { point, lines } from a click, or { entries } from a box
+		this.selectBox = null;   // the box being dragged out, in client px
+		this.onSelection = null;
 		this.onChange = null;
 		this.onOptions = null;
 		this._dragStart = null;
@@ -91,7 +95,11 @@ export class ToolManager {
 		this.active = id;
 		this.preview = null;
 		this.measurement = null;
+		if (this.selection && this.onSelection)
+			this.onSelection(null);
 		this.selection = null;
+		this.selectBox = null;
+		this._boxStart = null;
 		this._dragStart = null;
 		this.deps.setInputEnabled(id === "move");
 		this.deps.requestRender();
@@ -140,12 +148,46 @@ export class ToolManager {
 				this.measureTool(kind, event);
 				break;
 			case "select":
-				// stays armed like RViz's select tool; a click on nothing clears the selection
-				if (kind === "up")
-					this.selection = this.deps.inspect(event.clientX, event.clientY);
+				this.selectTool(kind, event);
 				break;
 		}
 		this.deps.requestRender();
+	}
+
+	// Stays armed like RViz's select tool. A click shows what is under it (a click on nothing
+	// clears the selection); a drag selects everything in the box, and Shift adds to it.
+	selectTool(kind, event) {
+		if (kind === "down") {
+			this._boxStart = { x: event.clientX, y: event.clientY };
+			this.selectBox = null;
+			return;
+		}
+		const start = this._boxStart;
+		if (!start)
+			return;
+		const dragged = Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4;
+		if (kind === "move") {
+			this.selectBox = dragged ? normalizeRect(start.x, start.y, event.clientX, event.clientY) : null;
+			return;
+		}
+		this._boxStart = null;
+		if (dragged) {
+			const box = normalizeRect(start.x, start.y, event.clientX, event.clientY);
+			const found = this.deps.boxSelect?.(box) ?? new Map();
+			this.selection = { entries: combineSelections(this.selection?.entries ?? null, found, !!event.shiftKey) };
+		} else {
+			this.selection = this.deps.inspect(event.clientX, event.clientY);
+		}
+		this.selectBox = null;
+		if (this.onSelection)
+			this.onSelection(this.selection);
+	}
+
+	clearSelection() {
+		this.selection = null;
+		this.deps.requestRender();
+		if (this.onSelection)
+			this.onSelection(null);
 	}
 
 	clickTool(event) {
