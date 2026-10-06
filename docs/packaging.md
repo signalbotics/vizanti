@@ -117,3 +117,23 @@ A new vendored library needs its `*_LICENSE.txt` and an entry in `THIRD_PARTY` i
 The .deb version is the `<version>` of each `package.xml` plus `-0<ubuntu codename>`. Bump the
 version in `package.xml` (and add a section to the package's `CHANGELOG.rst` if it has one) before
 building a release, or apt will see the new build as the same version as the old one.
+
+## Releases
+
+Built packages are published as GitHub release assets on the private repository
+https://github.com/signalbotics/vizanti (git remote `signalbotics`; `origin` is still upstream
+MoffKalast/vizanti). Release `v0.1.1` holds the Lyrical and Jazzy packages.
+
+To publish a new release from `ros2`:
+
+```bash
+# bump <version> in the package.xml files first
+packaging/build_debs.sh                   # this machine's distro -> packaging/debs/<distro>/
+packaging/build_debs_docker.sh jazzy      # -> packaging/debs/jazzy/
+git tag -a vX.Y.Z -m "..." && git push signalbotics vX.Y.Z
+gh release create vX.Y.Z --repo signalbotics/vizanti --target ros2 \
+    --title "Vizanti X.Y.Z" --notes "..." packaging/debs/*/*.deb
+```
+
+Keep the credits in the notes: Vizanti by Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com>,
+packaged by Bruk (Signalbotics) <bruk@signalbotics.com>.
