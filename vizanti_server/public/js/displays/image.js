@@ -15,6 +15,14 @@ export class ImageDisplay extends Display {
 			type: "topic", label: "Topic",
 			help: "Raw images are large. Prefer the compressed topic over slow links, or raise the throttle.",
 		},
+		placement: {
+			type: "enum", label: "Show in", default: "overlay",
+			options: [
+				{ value: "overlay", label: "A corner of the 3D view" },
+				{ value: "panel", label: "Its own panel (RViz UI)" },
+			],
+			help: "In the RViz UI an image can have its own dockable panel; closing that panel disables the display. The touch UI always shows it in a corner.",
+		},
 		size: { type: "int", label: "Width on screen (px)", default: 320, min: 40, max: 4000 },
 		corner: {
 			type: "enum", label: "Position", default: "top-left",
@@ -36,10 +44,37 @@ export class ImageDisplay extends Display {
 		this.canvas.className = "image_display";
 		this.canvas.style.display = "none";
 		this.ctx.scene.container.appendChild(this.canvas);
+		this.panelHost = null; // set while a shell shows this image in its own panel
+		this.applyStyle();
+	}
+
+	// ---- own panel (the RViz UI asks for it when placement is "panel") ----
+
+	get wantsPanel() {
+		return this.props.placement === "panel";
+	}
+
+	attachPanel(host) {
+		this.panelHost = host;
+		host.appendChild(this.canvas);
+		this.applyStyle();
+	}
+
+	detachPanel() {
+		this.panelHost = null;
+		this.ctx.scene.container.appendChild(this.canvas);
 		this.applyStyle();
 	}
 
 	applyStyle() {
+		this.canvas.classList.toggle("image_in_panel", !!this.panelHost);
+		if (this.panelHost) {
+			// the panel lays it out: as large as fits, keeping its aspect ratio
+			for (const key of ["top", "bottom", "left", "right", "width"])
+				this.canvas.style[key] = "";
+			this.canvas.style.opacity = this.props.opacity;
+			return;
+		}
 		const style = this.canvas.style;
 		const [vertical, horizontal] = this.props.corner.split("-");
 		style.top = vertical === "top" ? "8px" : "auto";

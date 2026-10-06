@@ -50,6 +50,7 @@ export class RvizShell {
 		this.editors = [];
 		this.tree = null;
 		this.api = null;
+		this.displayHosts = new Map(); // display panel id -> its content element
 	}
 
 	listen(name, fn) {
@@ -129,7 +130,10 @@ export class RvizShell {
 			theme: dockview.themeDark,
 			createComponent: (options) => this.component(options.name, options.id),
 		});
-		this.removeListener = this.api.onDidRemovePanel((panel) => this.releaseLegacy(panel.id));
+		this.removeListener = this.api.onDidRemovePanel((panel) => {
+			this.releaseLegacy(panel.id);
+			this.releaseDisplayPanel(panel.id);
+		});
 
 		let restored = false;
 		if (registry.ui.rviz_layout) {
@@ -166,6 +170,11 @@ export class RvizShell {
 		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
 		this.listen("status", (event) => this.paintStatus(event.detail.item));
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
+
+		// displays that show in a panel of their own (an image with "Show in: its own panel")
+		for (const name of ["added", "removed", "property", "enabled", "loaded", "renamed"])
+			this.listen(name, () => this.syncDisplayPanels());
+		this.syncDisplayPanels();
 	}
 
 	unmount() {
@@ -182,6 +191,12 @@ export class RvizShell {
 		this.editors = [];
 		this.tree = null;
 		this.menu?.close();
+
+		// displays shown in their own panel go back to their overlay
+		for (const item of this.app.registry.items) {
+			if (item.panelHost && typeof item.detachPanel === "function")
+				item.detachPanel();
+		}
 
 		// template widgets keep their icon and modal elements across shells
 		if (this.legacyObserver)
@@ -260,6 +275,61 @@ export class RvizShell {
 
 	// ---- panels for widgets that run from their original template ----
 
+	// ---- displays with a panel of their own ----
+
+	// Opens a panel for each enabled display that wants one, and closes the rest.
+	syncDisplayPanels() {
+		if (!this.api)
+			return;
+		const wanted = new Map();
+		for (const item of this.app.registry.items) {
+			if (item.enabled && item.wantsPanel && typeof item.attachPanel === "function")
+				wanted.set("display:" + item.id, item);
+		}
+		this.closingDisplayPanels = true;
+		try {
+			for (const panel of [...this.api.panels]) {
+				if (panel.id.startsWith("display:") && !wanted.has(panel.id))
+					panel.api.close();
+			}
+		} finally {
+			this.closingDisplayPanels = false;
+		}
+		for (const [panelId, item] of wanted) {
+			const existing = this.api.getPanel(panelId);
+			if (existing) {
+				if (existing.title !== item.name)
+					existing.api.setTitle(item.name);
+				const host = this.displayHosts.get(panelId);
+				if (!item.panelHost && host)
+					item.attachPanel(host);
+				continue;
+			}
+			// beside another display panel as a tab, or to the right of the 3D view
+			const sibling = this.api.panels.find((panel) => panel.id.startsWith("display:"));
+			const position = sibling ? { referencePanel: sibling.id }
+				: (this.api.getPanel("view") ? { referencePanel: "view", direction: "right" } : undefined);
+			this.api.addPanel({ id: panelId, component: "display", title: item.name, position });
+			if (!sibling)
+				this.api.getPanel(panelId)?.api.setSize({ width: 420 });
+		}
+	}
+
+	// A display panel went away: the display shows in its overlay again. Closed by the user
+	// (not by syncDisplayPanels), it also disables the display, as the panel belongs to it.
+	releaseDisplayPanel(panelId) {
+		if (!panelId.startsWith("display:"))
+			return;
+		this.displayHosts.delete(panelId);
+		const item = this.app.registry.get(panelId.slice("display:".length));
+		if (!item)
+			return;
+		if (typeof item.detachPanel === "function" && item.panelHost)
+			item.detachPanel();
+		if (!this.closingDisplayPanels && item.enabled && item.wantsPanel)
+			this.app.registry.setEnabled(item.id, false);
+	}
+
 	openLegacy(id) {
 		const item = this.app.registry.get(id);
 		if (!item || !item.modalElement)
@@ -324,6 +394,12 @@ export class RvizShell {
 			init: () => {
 				if (name === "legacy") {
 					this.attachLegacy(element, id);
+				} else if (name === "display") {
+					element.classList.add("display_panel_host");
+					this.displayHosts.set(id, element);
+					const item = this.app.registry.get(id.slice("display:".length));
+					if (item && typeof item.attachPanel === "function")
+						item.attachPanel(element);
 				} else if (name === "view") {
 					element.appendChild(this.app.sceneElement);
 				} else if (name === "displays") {

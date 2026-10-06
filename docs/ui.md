@@ -111,6 +111,17 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   `.rviz` import maps `rviz_imu_plugin/Imu` and `rviz_default_plugins/Imu`. Checked on
   2026-10-06 with a test IMU mounted at 90° yaw: the axes matched the reported orientation in
   the world, and the acceleration arrow turned with the mount.
+- **Images in their own panel:** an Image display's "Show in" can be "Its own panel (RViz UI)".
+  - The image gets a dockable panel named after the display, which is retitled when the display
+    is renamed. The image fills the panel, keeping its aspect ratio.
+  - Closing the panel disables the display, and enabling it brings the panel back.
+  - The touch UI has no panels, so it shows the image in a corner.
+  - Other display types can use the same mechanism through `wantsPanel` / `attachPanel(host)` /
+    `detachPanel()`.
+
+  Checked on 2026-10-06 with a 5 Hz test camera: the panel opened and survived a reload; rename,
+  close, enable, switching to the corner and removal behaved as described; the touch UI used
+  the corner.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
