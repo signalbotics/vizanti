@@ -27,8 +27,8 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Unit tests
@@ -47,15 +47,15 @@ jobs:
         distro: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.distro) || '["humble", "jazzy", "lyrical"]') }}
         arch: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.arch) || '["amd64", "arm64"]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: QEMU for arm64
         if: matrix.arch == 'arm64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       - name: Build packages
         run: packaging/build_debs_docker.sh ${{ matrix.distro }} --arch ${{ matrix.arch }} --out out
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: debs-${{ matrix.distro }}-${{ matrix.arch }}
           path: out/*.deb
@@ -66,7 +66,7 @@ jobs:
     needs: debs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: debs
           merge-multiple: true
