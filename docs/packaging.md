@@ -135,6 +135,17 @@ building a release, or apt will see the new build as the same version as the old
 
 ## Releases
 
+**Automatic (CI):** `.github/workflows/ci.yml` runs the unit tests on every push to `ros2` and
+on every pull request. Pushing a version tag (`v*`) also builds the packages for Humble, Jazzy
+and Lyrical on amd64 and arm64 (arm64 under QEMU, so allow a few hours) and attaches all of
+them to that tag's GitHub release, creating the release if needed:
+
+```bash
+git tag -a vX.Y.Z -m "..." && git push signalbotics vX.Y.Z
+```
+
+**By hand:**
+
 Built packages are published as GitHub release assets on the private repository
 https://github.com/signalbotics/vizanti (git remote `signalbotics`; `origin` is still upstream
 MoffKalast/vizanti). Release `v0.1.1` holds the Lyrical and Jazzy packages.
