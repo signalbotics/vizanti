@@ -149,6 +149,67 @@
 	border-color: #6c8ebf;
 }
 
+/* icon buttons: the glyph is an assets/toolbar SVG used as a mask over the text colour */
+.rviz_toolbar .toolbar_icon_button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	color: #dfe6ee;
+	background-color: transparent;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.rviz_toolbar .toolbar_icon_button:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+.rviz_toolbar .toolbar_icon_button:focus-visible {
+	outline: 2px solid #6c8ebf;
+	outline-offset: 1px;
+}
+
+.rviz_toolbar .toolbar_icon_button.tool_active {
+	padding: 0;
+	color: #ffffff;
+	background-color: #2c4a6e;
+	border-color: #6c8ebf;
+}
+
+/* the pose tools keep the colours of their arrows in the 3D view */
+.rviz_toolbar .toolbar_icon_button[data-tool="goal"] {
+	color: #c27dff;
+}
+
+.rviz_toolbar .toolbar_icon_button[data-tool="estimate"] {
+	color: #4fd68a;
+}
+
+.toolbar_icon {
+	display: block;
+	width: 20px;
+	height: 20px;
+	background-color: currentColor;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+}
+
+.rviz_toolbar .toolbar_separator {
+	width: 1px;
+	height: 22px;
+	margin: 0 4px;
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
 .rviz_dock {
 	flex: 1;
 	min-height: 0;

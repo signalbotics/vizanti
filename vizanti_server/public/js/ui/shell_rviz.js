@@ -19,6 +19,23 @@ function button(text, onClick) {
 	return element;
 }
 
+// A toolbar button showing one of the assets/toolbar icons, drawn in the button's text colour
+// (a CSS mask), with its name as tooltip and accessible label.
+function iconButton(icon, label, tooltip, onClick) {
+	const element = document.createElement("button");
+	element.className = "toolbar_icon_button";
+	element.title = tooltip;
+	element.setAttribute("aria-label", label);
+	const glyph = document.createElement("span");
+	glyph.className = "toolbar_icon";
+	const url = `url("assets/toolbar/${icon}.svg")`;
+	glyph.style.setProperty("-webkit-mask-image", url);
+	glyph.style.setProperty("mask-image", url);
+	element.appendChild(glyph);
+	element.addEventListener("click", onClick);
+	return element;
+}
+
 // The desktop UI: a toolbar, the 3D view and dockable panels, with the Displays tree
 // generated from each display's property declaration.
 export class RvizShell {
@@ -49,19 +66,24 @@ export class RvizShell {
 		shell.append(toolbar, dock);
 		root.appendChild(shell);
 
-		toolbar.appendChild(button("Add", () => openAddDialog(this.app)));
+		toolbar.appendChild(iconButton("add", "Add display", "Add display", () => openAddDialog(this.app)));
+		toolbar.appendChild(Object.assign(document.createElement("span"), { className: "toolbar_separator" }));
 		// the pointer tools; the lit one is active
 		this.toolButtons = [];
 		for (const tool of TOOLS) {
-			const element = button(tool.label, () => this.app.tools.select(tool.id));
+			const element = iconButton(tool.id, tool.label, `${tool.label} (${tool.key.toUpperCase()}): ${tool.hint}`,
+				() => this.app.tools.select(tool.id));
 			element.dataset.tool = tool.id;
-			element.title = `${tool.hint} Shortcut: ${tool.key}`;
 			toolbar.appendChild(element);
 			this.toolButtons.push(element);
 		}
 		this.paintTools = () => {
 			for (const element of this.toolButtons)
-				element.classList.toggle("tool_active", element.dataset.tool === this.app.tools.active);
+			{
+				const active = element.dataset.tool === this.app.tools.active;
+				element.classList.toggle("tool_active", active);
+				element.setAttribute("aria-pressed", String(active));
+			}
 		};
 		window.addEventListener("vizanti_tool_changed", this.paintTools);
 		this.paintTools();
@@ -84,11 +106,14 @@ export class RvizShell {
 		// each panel has a toggle: lit while the panel is open, click to close or bring it back
 		this.panelButtons = {};
 		for (const id of Object.keys(PANELS)) {
-			this.panelButtons[id] = button(PANELS[id].title, () => this.togglePanel(id));
+			this.panelButtons[id] = iconButton(id, `${PANELS[id].title} panel`, `${PANELS[id].title} panel: click to show or hide`,
+				() => this.togglePanel(id));
 			this.panelButtons[id].classList.add("panel_toggle");
 			toolbar.appendChild(this.panelButtons[id]);
 		}
-		toolbar.appendChild(button("Touch UI", () => this.app.switchShell("touch")));
+		toolbar.appendChild(Object.assign(document.createElement("span"), { className: "toolbar_separator" }));
+		toolbar.appendChild(iconButton("touch", "Switch to Touch UI", "Switch to the touch UI (phones and tablets)",
+			() => this.app.switchShell("touch")));
 
 		this.api = dockview.createDockview(dock, {
 			theme: dockview.themeDark,
@@ -176,6 +201,7 @@ export class RvizShell {
 		for (const [id, element] of Object.entries(this.panelButtons)) {
 			const open = !!this.api.getPanel(id);
 			element.classList.toggle("panel_open", open);
+			element.setAttribute("aria-pressed", String(open));
 			element.title = open ? `Hide the ${PANELS[id].title} panel` : `Show the ${PANELS[id].title} panel`;
 		}
 	}

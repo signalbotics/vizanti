@@ -26,9 +26,18 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   in the toolbar; their settings open as docked panels. Drag a panel's tab to move it (drop on
   an edge of another panel to split, or on its tab bar to stack); drag the borders between
   panels to resize them. The arrangement is saved with the layout.
+- **Toolbar** (RViz UI): icons, with the name and shortcut in each tooltip. From the left:
+  - Add display, then the tools: Move Camera, Select, Measure, Publish Point, Focus Camera,
+    2D Goal Pose (purple) and 2D Pose Estimate (green). The active tool is highlighted.
+  - Then the widget icons.
+  - At the right, one toggle per panel: 3D View (cube), Displays (layers), Views (camera) and
+    Time (clock). A lit toggle means the panel is open.
+  - Last, the switch to the touch UI (phone).
+
+  The icons are SVGs in `public/assets/toolbar/`, drawn in the button's text colour.
 - **Touch UI** (phones and tablets): icon bar, one modal per widget, folders.
 
-Both drive the same displays. Switch with the "Touch UI" toolbar button or
+Both drive the same displays. Switch with the phone icon at the right of the toolbar or
 Global Settings → "Switch to RViz UI". Force one with `?ui=rviz` or `?ui=touch`. The choice is
 remembered per browser (storage key `vizanti_ui`).
 
