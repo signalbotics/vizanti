@@ -617,7 +617,8 @@ async function start() {
 		return { x: event.clientX - rect.left, y: event.clientY - rect.top, event };
 	};
 	sceneElement.addEventListener("pointerdown", (event) => {
-		if (event.button !== 0 || !scene.inputEnabled)
+		// only presses on the view itself, not on what sits over it (the teleop joystick)
+		if (event.button !== 0 || !scene.inputEnabled || event.target !== scene.canvas)
 			return;
 		const info = hudInfo(event);
 		// the widget drawn last is on top
@@ -669,7 +670,7 @@ async function start() {
 	});
 	const editorActive = () => editor && editor._alive && editor.enabled && tools.active === "move";
 	sceneElement.addEventListener("pointerdown", (event) => {
-		if (!editorActive() || event.button !== 0 || !scene.inputEnabled)
+		if (!editorActive() || event.button !== 0 || !scene.inputEnabled || event.target !== scene.canvas)
 			return;
 		const claimed = editor._safe("onEditPointer", "down", editInfo(event)) === true;
 		editing = { claimed, x: event.clientX, y: event.clientY };
@@ -703,7 +704,7 @@ async function start() {
 	// camera sees it; the camera is paused until the pointer is released.
 	let interaction = null;
 	sceneElement.addEventListener("pointerdown", (event) => {
-		if (tools.active !== "move" || event.button !== 0 || !scene.inputEnabled)
+		if (tools.active !== "move" || event.button !== 0 || !scene.inputEnabled || event.target !== scene.canvas)
 			return;
 		const hit = scene.pickInteractive(event.clientX, event.clientY);
 		if (!hit)

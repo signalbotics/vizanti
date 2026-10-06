@@ -25,15 +25,6 @@ export const CATALOG = {
 		"description": "Group your widgets together",
 		"msgTypes": []
 	},
-	"teleop": {
-		"label": "Teleop Joystick",
-		"icon": "assets/joystick.svg",
-		"description": "Send velocity with [geometry_msgs/Twist] or [geometry_msgs/TwistStamped]",
-		"msgTypes": [
-			"geometry_msgs/msg/Twist",
-			"geometry_msgs/msg/TwistStamped"
-		]
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",

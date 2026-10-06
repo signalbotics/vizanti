@@ -449,11 +449,15 @@ export class RvizShell {
 				element.type = "button";
 				element.className = "widget_button";
 				element.appendChild(item.makeIconFace() ?? document.createElement("img"));
-				// an action widget (Button) acts on a click; its panel opens on a right-click
+				// an action widget (Button) acts on a click and opens its panel on a right-click; a
+				// right-click does a widget's long-press action (Teleop's lock) where it has one
 				element.addEventListener("click", () => (item.onIconClick ? item.onIconClick() : item.togglePanel()));
 				element.addEventListener("contextmenu", (event) => {
 					event.preventDefault();
-					item.togglePanel();
+					if (item.onIconLongPress)
+						item.onIconLongPress();
+					else
+						item.togglePanel();
 				});
 				this.widgetButtons.set(item.id, element);
 			}
@@ -478,7 +482,7 @@ export class RvizShell {
 				image.src = item.icon;
 			image.alt = "";
 		}
-		element.title = `${item.name}: ${item.status.text}` + (item.onIconClick ? " (right-click for its panel)" : item.wantsPanel ? "" : " (click to open)");
+		element.title = `${item.name}: ${item.status.text}` + (item.onIconClick ? " (right-click for its panel)" : item.onIconLongPress ? ` (right-click: ${item.longPressHint ?? "more"})` : item.wantsPanel ? "" : " (click to open)");
 		element.setAttribute("aria-label", item.name);
 		element.setAttribute("aria-pressed", String(!!item.wantsPanel));
 		element.classList.toggle("widget_open", !!item.wantsPanel);

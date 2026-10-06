@@ -1035,3 +1035,57 @@ button.status_segment:disabled {
 	margin-left: 8px;
 	font-size: 0.85em;
 }
+
+/* teleop joystick over the view */
+.teleop_zone {
+	position: absolute;
+	transform: translate(-50%, -50%);
+	z-index: 3;
+	touch-action: none;
+}
+
+.teleop_grip {
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 22px;
+	height: 22px;
+	line-height: 22px;
+	text-align: center;
+	color: white;
+	background: rgba(0, 0, 0, 0.5);
+	border-radius: 4px;
+	cursor: move;
+	z-index: 2;
+}
+
+.teleop_key {
+	position: absolute;
+	color: white;
+	font-weight: bold;
+	text-shadow: 0 0 3px black;
+	pointer-events: none;
+	transform: translate(-50%, -50%);
+}
+
+.teleop_key.teleop_key_up { left: 50%; top: 4px; }
+.teleop_key.teleop_key_down { left: 50%; bottom: -8px; top: auto; }
+.teleop_key.teleop_key_left { left: 6px; top: 50%; }
+.teleop_key.teleop_key_right { right: -8px; left: auto; top: 50%; }
+
+.widget_panel .teleop_keys {
+	display: grid;
+	grid-template-columns: repeat(3, 56px);
+	grid-template-rows: repeat(2, 36px);
+	gap: 4px;
+	margin: 6px 0;
+}
+
+.widget_panel .teleop_keybind.teleop_key_up { grid-column: 2; grid-row: 1; }
+.widget_panel .teleop_keybind.teleop_key_left { grid-column: 1; grid-row: 2; }
+.widget_panel .teleop_keybind.teleop_key_down { grid-column: 2; grid-row: 2; }
+.widget_panel .teleop_keybind.teleop_key_right { grid-column: 3; grid-row: 2; }
+
+.widget_panel .teleop_keybind.listening {
+	outline: 2px solid #6c8ebf;
+}

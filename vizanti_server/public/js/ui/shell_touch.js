@@ -150,11 +150,13 @@ export class TouchShell {
 		return wrapper;
 	}
 
-	// A tap opens the item's settings; an action widget (Button) acts on a tap instead, and a
-	// long press opens its settings.
+	// A tap opens the item's settings. An action widget (Button) acts on a tap instead and opens
+	// its settings on a long press; a widget with a long-press action (Teleop's lock) does that.
 	onIconPress(icon, item) {
-		if (!item.onIconClick) {
-			icon.addEventListener("click", () => this.openItem(item));
+		const tap = item.onIconClick ? () => item.onIconClick() : () => this.openItem(item);
+		const hold = item.onIconLongPress ? () => item.onIconLongPress() : item.onIconClick ? () => this.openItem(item) : null;
+		if (!hold) {
+			icon.addEventListener("click", tap);
 			return;
 		}
 		let timer = null;
@@ -164,7 +166,7 @@ export class TouchShell {
 			long = false;
 			timer = setTimeout(() => {
 				long = true;
-				this.openItem(item);
+				hold();
 			}, 500);
 		});
 		for (const type of ["pointerup", "pointerleave", "pointercancel"])
@@ -174,7 +176,7 @@ export class TouchShell {
 			if (long)
 				long = false;
 			else
-				item.onIconClick();
+				tap();
 		});
 	}
 

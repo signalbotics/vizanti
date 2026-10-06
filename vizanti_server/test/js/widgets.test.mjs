@@ -196,3 +196,47 @@ test('diagnostics model: statuses keep key / value entries; icon by worst status
 	const { values } = resolveProps(DiagnosticsWidget.properties, DiagnosticsWidget.migrateProps({ state: { topic: "/rosout", throttle: "0", opened: ["planner"] } }));
 	assert.deepEqual([values.topic, values.throttle, values.opened], ["/rosout", 0, ["planner"]]);
 });
+
+import { TeleopDrive, ramp, twistFor, presetProps, keyLabel } from '../../public/js/geometry/teleop.js';
+import { TeleopWidget } from '../../public/js/displays/teleop_widget.js';
+
+test('teleop drive: ramp, stick mapping, car-like reverse, coast and instant stop', () => {
+	const cfg = { axis_vert: "linear_x", axis_horiz: "angular_z", vel_vert: 1, vel_horiz: 2, accel_vert: 2, accel_horiz: 12, invert_vert: false, invert_horiz: false, ackermann_emulation: true, instant_stop: false };
+	assert.equal(ramp(0, 1, 2), 0.1);
+	assert.equal(ramp(0, 1, 12), 1);
+	const d = new TeleopDrive();
+	d.setTargets(cfg, { angle: Math.PI / 2, force: 1 }); // stick straight up
+	let t = d.step(cfg);
+	assert.ok(Math.abs(t.linear.x - 0.1) < 1e-9);
+	assert.ok(Math.abs(t.angular.z) < 1e-9);
+	d.setTargets(cfg, { angle: 0, force: 1 }); // stick right: turn right (negative yaw), instantly
+	t = d.step(cfg);
+	assert.equal(t.angular.z, -2);
+	d.setTargets(cfg, { vert: -1, horiz: 1 }); // backing up while steering right: car-like swap
+	assert.equal(d.horizTarget, 2);
+	for (let i = 0; i < 5; i++)
+		d.step(cfg); // build up speed: -0.4 m/s
+	d.release(cfg);
+	let steps = 0;
+	while (d.step(cfg) && steps < 100)
+		steps++;
+	assert.ok(steps > 0 && steps < 100 && !d.moving);
+	d.setTargets(cfg, { vert: 1 });
+	d.step(cfg);
+	d.release({ ...cfg, instant_stop: true });
+	assert.equal(d.moving, false);
+	assert.deepEqual(twistFor(1, 2, { axis_vert: "linear_z", axis_horiz: "none", invert_vert: true }), { linear: { x: 0, y: 0, z: -1 }, angular: { x: 0, y: 0, z: 0 } });
+	assert.equal(presetProps("holonomic").axis_horiz, "linear_y");
+	assert.equal(presetProps("diffdrive").keybindings.key_up, "w");
+	assert.equal(keyLabel(" "), "SPACE");
+});
+
+test('teleop reads both old template formats', () => {
+	const values = (s) => resolveProps(TeleopWidget.properties, TeleopWidget.migrateProps({ state: s })).values;
+	const v = values({ topic: "/cmd_vel", typedict: { "/cmd_vel": "geometry_msgs/msg/TwistStamped" }, color: "#ff0000", opacity: "0.5", joy_offset_x: "30%", joy_offset_y: "70%", joy_locked: true,
+		axis_vert: "linear_x", axis_horiz: "linear_y", vel_vert: 1.5, vel_horiz: 0.5, accel_vert: 3, accel_horiz: 12, keyboard_control: true, keybindings: { key_up: "i", key_down: "k", key_left: "j", key_right: "l" } });
+	assert.deepEqual([v.topic_type, v.color, v.opacity, v.pos_x, v.pos_y, v.locked, v.axis_horiz, v.accel_horiz, v.keyboard, v.keybindings.key_up],
+		["geometry_msgs/msg/TwistStamped", "#ff0000", 0.5, 30, 70, true, "linear_y", 12, true, "i"]);
+	const old = values({ topic: "/cmd_vel", linear_velocity: 0.5, angular_velocity: 1, accel: 0.1, holonomic_swap: true, invert_angular: false });
+	assert.deepEqual([old.vel_vert, old.vel_horiz, old.accel_vert, old.axis_horiz, old.ackermann_emulation], [0.5, 1, 2, "linear_y", false]);
+});

@@ -300,6 +300,10 @@ the toolbar's widget strip and opens the panel as a dock tab; in the touch UI th
 bar and the panel is at the top of its settings modal. Settings saved by the old template
 widgets (`{state: {...}}`) are converted on load.
 
+- **Joystick Teleop**: an on-screen stick (drag its ✥ grip, shown while the panel is open, to
+  move it) and optional keyboard driving; Twist or TwistStamped, two configurable axes with
+  max speed, acceleration and presets. Keys typed into a text field do not drive. Leaving the
+  window stops the robot. Right-click (RViz UI) or long-press (touch UI) the icon to lock it.
 - **Rosbridge, Battery, Temperature, Speedometer**: the icon shows the state (connection,
   charge, hot / cold, a speed gauge); the panel has the readings.
 - **Altimeter, Attitude Indicator**: drawn on the view's 2D overlay in both UIs (a height /
@@ -323,8 +327,8 @@ widgets (`{state: {...}}`) are converted on load.
 
 **Compressed Image** is a native display like Image, plus rotation, rate and bandwidth.
 
-**Template widgets** (`templates/`): Teleop and Folder still run
-their original scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
+**Template widgets** (`templates/`): only Folder still runs
+its original script. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
 `js/modules/persistent.js`) gives them the page functions and the settings object they expect,
 and projects their drawing through the 3D camera onto the ground plane (z = 0).
 
@@ -396,7 +400,8 @@ A widget that draws on the view implements `onOverlay(ctx, scene)` (CSS pixels) 
 presses on what it drew, `onHudPointer(kind, {x, y, event})`: return true from "down" to claim
 the press (with any tool active); "move" and "up" follow. A display that gets its data from
 somewhere other than its `topic` can return false from `get subscribes()`. A widget with
-`onIconClick()` acts on a click instead of opening its panel (the Button). A `topic` property may
+`onIconClick()` acts on a click instead of opening its panel (the Button); `onIconLongPress()`
+is a second action on a long press / right-click (Teleop's lock). A `topic` property may
 set `optional: true` (adds "(none)"), its own `msgTypes`, `serviceTypes` to offer services too,
 or `anyType: true` to list every topic.
 
