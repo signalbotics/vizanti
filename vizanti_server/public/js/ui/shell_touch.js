@@ -126,6 +126,14 @@ export class TouchShell {
 		const icon = document.createElement("div");
 		icon.className = "icon noselect";
 		icon.title = item.name;
+		const face = item.makeIconFace?.();
+		if (face) {
+			// a widget that draws its own icon
+			icon.appendChild(face);
+			icon.addEventListener("click", () => this.openItem(item));
+			wrapper.appendChild(icon);
+			return wrapper;
+		}
 		const image = document.createElement("object");
 		image.type = "image/svg+xml";
 		image.width = 50;
@@ -196,6 +204,8 @@ export class TouchShell {
 		const icon = wrapper.firstElementChild;
 		icon.classList.toggle("icon-disabled", !item.enabled);
 		const image = icon.querySelector("object");
+		if (!image)
+			return; // a widget's own face, painted by the widget
 		if (image.getAttribute("data") !== item.icon)
 			image.data = item.icon; // recoloured by its load handler
 		else if (item.iconColor && image.dataset.color !== item.iconColor)

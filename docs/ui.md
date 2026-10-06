@@ -295,14 +295,18 @@ TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>
 `/package/<pkg>/<path>`; only mesh and texture file types are served, and paths cannot leave
 the package. `file://` mesh paths are not supported.
 
-**Template widgets** (`templates/`): the tools (2D Pose Estimate, 2D Nav Goal, Waypoint Mission,
-Survey Mission, Bounding Box), Teleop, Button, and the panels (Node Manager, Bag Recorder,
-Parameter Reconfigure, Diagnostics, Topic Inspector, Battery, Temperature, Speedometer,
-Altimeter, Attitude Indicator, Compressed Image, Rosbridge, Folder). These still run their
-original scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
-`js/modules/persistent.js`) gives them the page functions and the settings object they expect,
-and projects their drawing through the 3D camera onto the ground plane (z = 0), so the tools
-work in both the top-down and the orbit view.
+**Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature and Speedometer are native
+widgets: a live icon and a panel. In the RViz UI the icon sits in the toolbar's widget strip
+and opens the panel as a dock tab; in the touch UI the icon is in the bar and the panel is at the
+top of its settings modal. Their old saved settings (`{state: {...}}`) are converted on load.
+
+**Template widgets** (`templates/`): 2D Pose Estimate, 2D Nav Goal, Teleop, Button, and the
+panels (Node Manager, Bag Recorder, Parameter Reconfigure, Diagnostics, Topic Inspector,
+Altimeter, Attitude Indicator, Compressed Image, Folder). These still run their original
+scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)
+gives them the page functions and the settings object they expect, and projects their drawing
+through the 3D camera onto the ground plane (z = 0), so the tools work in both the top-down and
+the orbit view.
 
 ## Run the tests
 
@@ -358,6 +362,15 @@ export class MyDisplay extends Display {
 - Keep the message-to-geometry conversion in a pure function under `js/geometry/` so it can be
   unit tested without a browser.
 - An exception in any hook is caught and shown as that display's error status.
+
+## Add a widget
+
+A widget extends `WidgetDisplay` (`js/core/widget.js`) and spreads `WIDGET_PROPERTIES` into its
+properties. It shows `this.icon` (or, with `buildIcon(face)`, draws its own 50×50 icon: fill
+`face` and return a function that repaints it) and calls `this.refreshIcon()` when the icon
+changes. `buildPanel(container)` builds the panel once; `static migrateProps(props)` converts
+the settings a template widget of the same type saved. See `displays/battery_widget.js` (an
+icon per level) and `displays/speedometer_widget.js` (a drawn gauge).
 
 ## Display plugins from other packages
 

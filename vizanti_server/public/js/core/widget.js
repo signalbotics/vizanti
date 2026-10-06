@@ -37,13 +37,44 @@ export class WidgetDisplay extends Display {
 		this.panelHost = null;
 	}
 
-	// widgets call this when their icon (this.icon) changes
+	// widgets call this when their icon (this.icon, or what buildIcon draws) changes
 	refreshIcon() {
+		// faces that were shown and are now gone (the other UI, a rebuilt bar) are dropped
+		this._faces = (this._faces ?? []).filter((face) => face.element.isConnected || !face.shown);
+		for (const face of this._faces) {
+			if (face.element.isConnected) {
+				face.shown = true;
+				this._safe("_paintFace", face);
+			}
+		}
 		this.onIcon?.();
+	}
+
+	// A 50×50 element showing this widget's icon, for a widget that draws its own (a gauge with
+	// a needle and a reading); null for one that is a single image (this.icon). Each call makes
+	// a new face, and refreshIcon repaints all of them.
+	makeIconFace() {
+		if (typeof this.buildIcon !== "function")
+			return null;
+		const element = document.createElement("span");
+		element.className = "widget_face";
+		const face = { element, paint: null, shown: false };
+		face.paint = this.buildIcon(element) ?? null;
+		this._faces = [...(this._faces ?? []), face];
+		this._safe("_paintFace", face);
+		return element;
+	}
+
+	_paintFace(face) {
+		face.paint?.();
 	}
 
 	// override: the panel's content, built once and kept while the widget lives
 	buildPanel(container) {}
+
+	// optional override: fill `face` (a 50×50 box) with the icon's parts and return a function
+	// that repaints them from the widget's state
+	// buildIcon(face) { return () => {}; }
 
 	_destroy() {
 		this.detachPanel();

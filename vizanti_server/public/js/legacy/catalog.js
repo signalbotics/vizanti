@@ -98,12 +98,6 @@ export const CATALOG = {
 		"description": "Track Z height of a TF link, send a [std_msgs/Float32] target.",
 		"msgTypes": []
 	},
-	"speedometer": {
-		"label": "Speedometer",
-		"icon": "assets/speedometer_icon.svg",
-		"description": "Track the speed of a TF link.",
-		"msgTypes": []
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",
@@ -142,14 +136,6 @@ export const CATALOG = {
 		"description": "nav_msgs/GridCells",
 		"msgTypes": [
 			"nav_msgs/msg/GridCells"
-		]
-	},
-	"battery": {
-		"label": "Battery",
-		"icon": "assets/battery_80.svg",
-		"description": "sensor_msgs/BatteryState",
-		"msgTypes": [
-			"sensor_msgs/msg/BatteryState"
 		]
 	},
 	"compressedimage": {
@@ -216,14 +202,6 @@ export const CATALOG = {
 		"description": "sensor_msgs/Range",
 		"msgTypes": [
 			"sensor_msgs/msg/Range"
-		]
-	},
-	"temperature": {
-		"label": "Temperature",
-		"icon": "assets/temp_warm.svg",
-		"description": "sensor_msgs/Temperature",
-		"msgTypes": [
-			"sensor_msgs/msg/Temperature"
 		]
 	},
 };

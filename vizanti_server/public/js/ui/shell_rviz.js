@@ -448,7 +448,7 @@ export class RvizShell {
 				element = document.createElement("button");
 				element.type = "button";
 				element.className = "widget_button";
-				element.appendChild(document.createElement("img"));
+				element.appendChild(item.makeIconFace() ?? document.createElement("img"));
 				element.addEventListener("click", () => item.togglePanel());
 				this.widgetButtons.set(item.id, element);
 			}
@@ -468,9 +468,11 @@ export class RvizShell {
 		if (!element)
 			return;
 		const image = element.firstElementChild;
-		if (image.getAttribute("src") !== item.icon)
-			image.src = item.icon;
-		image.alt = "";
+		if (image.tagName === "IMG") {
+			if (image.getAttribute("src") !== item.icon)
+				image.src = item.icon;
+			image.alt = "";
+		}
 		element.title = `${item.name}: ${item.status.text}` + (item.wantsPanel ? "" : " (click to open)");
 		element.setAttribute("aria-label", item.name);
 		element.setAttribute("aria-pressed", String(!!item.wantsPanel));
