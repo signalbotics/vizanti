@@ -116,3 +116,14 @@ export function fromLegacyWaypoints(state = {}) {
 	};
 	return Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined));
 }
+
+// The axis-aligned box dragged from `start` to `end` (opposite corners), as the four corners of
+// a geometry_msgs/Polygon in the order the old Area widget sent them.
+export function boxPolygon(start, end) {
+	return [
+		{ x: start.x, y: start.y, z: 0 },
+		{ x: end.x, y: start.y, z: 0 },
+		{ x: end.x, y: end.y, z: 0 },
+		{ x: start.x, y: end.y, z: 0 },
+	];
+}

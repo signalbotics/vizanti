@@ -63,3 +63,11 @@ test('fromLegacyWaypoints carries over the old widget settings', () => {
 	});
 	assert.deepEqual(fromLegacyWaypoints({}).points, []);
 });
+
+import { boxPolygon } from '../../public/js/geometry/waypoints.js';
+
+test('boxPolygon turns a dragged diagonal into the four corners, in the old widget order', () => {
+	assert.deepEqual(boxPolygon({ x: 1, y: 2 }, { x: 4, y: -1 }), [
+		{ x: 1, y: 2, z: 0 }, { x: 4, y: 2, z: 0 }, { x: 4, y: -1, z: 0 }, { x: 1, y: -1, z: 0 },
+	]);
+});

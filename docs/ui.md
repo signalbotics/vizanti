@@ -141,7 +141,12 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - the latched Path received after sending, with headings facing the next waypoint;
   - start-from-closest, Stop (empty Path), and migration of an old widget's saved mission.
 
-  Survey and area are still the old 2D widgets.
+- **Bounding Box** (native, replaces the old 2D area widget and keeps its topic): press "Draw
+  box", then drag on the ground from one corner to the opposite one. On release, the box is
+  published as `geometry_msgs/PolygonStamped` in the fixed frame, and stays drawn. Checked on
+  2026-10-06: ROS received the dragged box with the expected corners.
+
+  Survey is still the old 2D widget.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
