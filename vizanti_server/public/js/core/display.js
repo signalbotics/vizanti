@@ -87,6 +87,11 @@ export class Display {
 		return this.props.color ?? this.props.colour ?? null;
 	}
 
+	// false while the display gets its data elsewhere (the attitude indicator reading TF)
+	get subscribes() {
+		return true;
+	}
+
 	// the message type being received; displays that accept several declare a hidden
 	// `topic_type` property, which the framework fills in
 	get topicType() {
@@ -221,7 +226,7 @@ export class Display {
 		this._subscribeSeq++;
 		clearTimeout(this._retryTimer);
 		clearTimeout(this._noDataTimer);
-		if (!("topic" in this.props) || !this._alive || !this.enabled)
+		if (!("topic" in this.props) || !this._alive || !this.enabled || !this.subscribes)
 			return;
 		if (this.props.topic === "") {
 			this.status.error("Empty topic.");

@@ -592,6 +592,50 @@ async function start() {
 		});
 	}
 
+	// Widgets that draw on the view (Altimeter, Attitude Indicator) take a press that lands on
+	// what they drew, with any tool: onHudPointer("down", {x, y, event}) returns true to claim it,
+	// then gets "move" and "up". x and y are CSS pixels from the view's top left.
+	let hud = null;
+	const hudInfo = (event) => {
+		const rect = scene.canvas.getBoundingClientRect();
+		return { x: event.clientX - rect.left, y: event.clientY - rect.top, event };
+	};
+	sceneElement.addEventListener("pointerdown", (event) => {
+		if (event.button !== 0 || !scene.inputEnabled)
+			return;
+		const info = hudInfo(event);
+		// the widget drawn last is on top
+		for (const item of [...registry.items].reverse()) {
+			if (!item.enabled || typeof item.onHudPointer !== "function")
+				continue;
+			if (item._safe("onHudPointer", "down", info) === true) {
+				hud = item;
+				event.stopImmediatePropagation();
+				scene.setInputEnabled(false);
+				sceneElement.setPointerCapture?.(event.pointerId);
+				return;
+			}
+		}
+	}, true);
+	sceneElement.addEventListener("pointermove", (event) => {
+		if (hud) {
+			event.stopImmediatePropagation();
+			hud._safe("onHudPointer", "move", hudInfo(event));
+		}
+	}, true);
+	const endHud = (event) => {
+		if (!hud)
+			return;
+		const item = hud;
+		hud = null;
+		event.stopImmediatePropagation();
+		scene.setInputEnabled(true);
+		if (item._alive)
+			item._safe("onHudPointer", "up", hudInfo(event));
+	};
+	sceneElement.addEventListener("pointerup", endHud, true);
+	sceneElement.addEventListener("pointercancel", endHud, true);
+
 	// A display in edit mode (Waypoints) gets the view's pointer while the Move Camera tool is on:
 	// "down" may claim the press (to drag one of its points; the camera then waits), and a press
 	// that was not claimed and did not move becomes a "click". Unclaimed drags still move the camera.

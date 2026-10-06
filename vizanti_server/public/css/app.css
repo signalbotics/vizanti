@@ -967,3 +967,18 @@ button.status_segment:disabled {
 .rviz_widgets .widget_button .widget_face {
 	zoom: 0.56;
 }
+
+.widget_panel .widget_row {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	margin: 6px 0;
+}
+
+.widget_panel .navball_preview {
+	display: block;
+	position: static; /* style.css makes every canvas a full-size layer */
+	width: 160px;
+	height: 160px;
+	margin: 0 auto 6px;
+}

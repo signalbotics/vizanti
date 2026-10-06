@@ -92,26 +92,12 @@ export const CATALOG = {
 			"std_msgs/msg/Empty"
 		]
 	},
-	"altimeter": {
-		"label": "Altimeter",
-		"icon": "assets/altimeter.svg",
-		"description": "Track Z height of a TF link, send a [std_msgs/Float32] target.",
-		"msgTypes": []
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",
 		"description": "Track a TF link or [nav_msgs/Odometry] data over time.",
 		"msgTypes": [
 			"nav_msgs/msg/Odometry"
-		]
-	},
-	"navball": {
-		"label": "Attitude Indicator",
-		"icon": "assets/navball_icon.svg",
-		"description": "Display the orientation of a TF link or [sensor_msgs/Imu].",
-		"msgTypes": [
-			"sensor_msgs/msg/Imu"
 		]
 	},
 	"map": {

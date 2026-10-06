@@ -295,14 +295,17 @@ TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>
 `/package/<pkg>/<path>`; only mesh and texture file types are served, and paths cannot leave
 the package. `file://` mesh paths are not supported.
 
-**Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature and Speedometer are native
-widgets: a live icon and a panel. In the RViz UI the icon sits in the toolbar's widget strip
+**Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature, Speedometer, Altimeter and
+Attitude Indicator are native widgets: a live icon and a panel. In the RViz UI the icon sits in the toolbar's widget strip
 and opens the panel as a dock tab; in the touch UI the icon is in the bar and the panel is at the
 top of its settings modal. Their old saved settings (`{state: {...}}`) are converted on load.
+The Altimeter (a height / depth tape along a side of the view) and the Attitude Indicator (a
+navball) draw on the view's 2D overlay in both UIs. Drag the navball to move it; with a target
+topic set, click the altimeter tape near its ticks to publish that target (std_msgs/Float32).
 
 **Template widgets** (`templates/`): 2D Pose Estimate, 2D Nav Goal, Teleop, Button, and the
 panels (Node Manager, Bag Recorder, Parameter Reconfigure, Diagnostics, Topic Inspector,
-Altimeter, Attitude Indicator, Compressed Image, Folder). These still run their original
+Compressed Image, Folder). These still run their original
 scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)
 gives them the page functions and the settings object they expect, and projects their drawing
 through the 3D camera onto the ground plane (z = 0), so the tools work in both the top-down and
@@ -371,6 +374,11 @@ properties. It shows `this.icon` (or, with `buildIcon(face)`, draws its own 50×
 changes. `buildPanel(container)` builds the panel once; `static migrateProps(props)` converts
 the settings a template widget of the same type saved. See `displays/battery_widget.js` (an
 icon per level) and `displays/speedometer_widget.js` (a drawn gauge).
+
+A widget that draws on the view implements `onOverlay(ctx, scene)` (CSS pixels) and, to take
+presses on what it drew, `onHudPointer(kind, {x, y, event})`: return true from "down" to claim
+the press (with any tool active); "move" and "up" follow. A display that gets its data from
+somewhere other than its `topic` can return false from `get subscribes()`.
 
 ## Display plugins from other packages
 
