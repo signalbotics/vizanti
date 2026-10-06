@@ -3,6 +3,7 @@ import { buildGlobalOptions, buildCameraControls, buildToolControls } from './gl
 import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
 import { AppMenu, openContextMenu } from './app_menu.js';
+import { dropIndex } from './reorder.js';
 import { summarizeStatus, renderRate } from '../core/status_summary.js';
 import { rosbridge } from '../modules/rosbridge.js';
 import { tf } from '../modules/tf.js';
@@ -486,6 +487,7 @@ export class RvizShell {
 				this.openItemMenu(item, event.clientX, event.clientY);
 			});
 			details.classList.toggle("tree_selected", item.id === this.selectedId);
+			this.makeDraggable(details, summary, item);
 
 			const body = document.createElement("div");
 			body.className = "tree_body";
@@ -575,6 +577,52 @@ export class RvizShell {
 			row.open = true;
 			row.scrollIntoView({ block: "nearest" });
 		}
+	}
+
+	// ---- drag a display's row up or down the list ----
+
+	makeDraggable(details, summary, item) {
+		const DRAG_TYPE = "application/x-vizanti-display";
+		summary.draggable = true;
+		summary.addEventListener("dragstart", (event) => {
+			this.draggingId = item.id;
+			event.dataTransfer.setData(DRAG_TYPE, item.id);
+			event.dataTransfer.effectAllowed = "move";
+			details.classList.add("tree_dragging");
+		});
+		summary.addEventListener("dragend", () => {
+			this.draggingId = null;
+			details.classList.remove("tree_dragging");
+			for (const row of this.tree?.querySelectorAll(".drop_before, .drop_after") ?? [])
+				row.classList.remove("drop_before", "drop_after");
+		});
+		const below = (event) => {
+			const rect = summary.getBoundingClientRect();
+			return event.clientY > rect.top + rect.height / 2;
+		};
+		details.addEventListener("dragover", (event) => {
+			if (!this.draggingId || this.draggingId === item.id)
+				return;
+			event.preventDefault(); // accept the drop
+			event.dataTransfer.dropEffect = "move";
+			const after = below(event);
+			details.classList.toggle("drop_before", !after);
+			details.classList.toggle("drop_after", after);
+		});
+		details.addEventListener("dragleave", (event) => {
+			if (!details.contains(event.relatedTarget))
+				details.classList.remove("drop_before", "drop_after");
+		});
+		details.addEventListener("drop", (event) => {
+			const id = this.draggingId;
+			if (!id || id === item.id)
+				return;
+			event.preventDefault();
+			const items = this.app.registry.items;
+			const to = dropIndex(items.findIndex((i) => i.id === id), items.indexOf(item), below(event));
+			this.app.registry.move(id, to);
+			this.select(id);
+		});
 	}
 
 	// ---- the selected display, its action row and right-click menu ----

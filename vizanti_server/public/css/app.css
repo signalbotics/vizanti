@@ -819,3 +819,20 @@ button.status_segment:disabled {
 	border: none;
 	box-shadow: none;
 }
+
+/* dragging a display's row to reorder the list */
+.tree_item > summary[draggable="true"] {
+	cursor: grab;
+}
+
+.tree_item.tree_dragging {
+	opacity: 0.45;
+}
+
+.tree_item.drop_before {
+	box-shadow: inset 0 2px 0 #6c8ebf;
+}
+
+.tree_item.drop_after {
+	box-shadow: inset 0 -2px 0 #6c8ebf;
+}

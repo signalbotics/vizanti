@@ -51,6 +51,7 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
     move down and remove.
   - Right-clicking a row gives the same actions, plus enable/disable.
   - Keys: F2 renames (Enter keeps the new name, Escape cancels) and Delete removes.
+  - Drag a row up or down to reorder; a line shows where it will land.
   - Widgets that still run from their original template (rosbridge, teleop, …) can't be
     duplicated.
 - **Property editor:**
