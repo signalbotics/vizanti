@@ -23,7 +23,9 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
 ## Two interfaces, one scene
 
 - **RViz UI** (desktop): toolbar, 3D view, dockable Displays and Views panels. Widget icons sit
-  in the toolbar; their settings open as docked panels.
+  in the toolbar; their settings open as docked panels. Drag a panel's tab to move it (drop on
+  an edge of another panel to split, or on its tab bar to stack); drag the borders between
+  panels to resize them. The arrangement is saved with the layout.
 - **Touch UI** (phones and tablets): icon bar, one modal per widget, folders.
 
 Both drive the same displays. Switch with the "Touch UI" toolbar button or

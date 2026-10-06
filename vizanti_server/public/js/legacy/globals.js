@@ -5,7 +5,12 @@ export function installLegacyGlobals(app) {
 	window.isMobile = /android|iphone|ipad|ipod|mobile|silk|kindle/i.test(navigator.userAgent);
 	window.isTouchscreen = false;
 	document.documentElement.addEventListener("touchstart", () => { window.isTouchscreen = true; }, { passive: true });
-	document.documentElement.ondragstart = () => false; // Safari image dragging
+	// Stop images being dragged out of widgets (Safari). Only images: cancelling every
+	// dragstart would also kill the dockable panel tabs of the RViz UI.
+	document.documentElement.addEventListener("dragstart", (event) => {
+		if (event.target instanceof HTMLImageElement)
+			event.preventDefault();
+	});
 
 	window.openModal = (id, target = "") => {
 		if (id === "modal_add_element") {
