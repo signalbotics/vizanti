@@ -217,3 +217,15 @@ test('duplicate copies type, settings and enabled state, and sits right after th
 	assert.deepEqual(reg.items.map((i) => i.id), [first.id, copy.id, last.id]);
 	assert.equal(reg.duplicate("nope"), null);
 });
+
+test('a display class can migrate props saved by the widget it replaced', () => {
+	class Migrating extends Fake {
+		static type = "migrating";
+		static migrateProps(props) {
+			return props.state ? { topic: props.state.old_topic } : props;
+		}
+	}
+	const reg = new Registry({ types: new Map([["migrating", Migrating]]), context: {} });
+	assert.equal(reg.add("migrating", { state: { old_topic: "/legacy" } }).props.topic, "/legacy");
+	assert.equal(reg.add("migrating", { topic: "/new" }).props.topic, "/new");
+});

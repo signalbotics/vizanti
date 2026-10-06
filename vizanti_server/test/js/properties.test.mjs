@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { flattenSchema, defaultsOf, coerce, resolveProps, enumValues } from '../../public/js/core/properties.js';
+import { flattenSchema, defaultsOf, defaultOf, coerce, resolveProps, enumValues } from '../../public/js/core/properties.js';
 
 const schema = {
 	topic: { type: "topic" },
@@ -91,4 +91,12 @@ test('resolveProps keeps valid saved values, defaults the rest, ignores unknown 
 
 test('resolveProps accepts a missing saved object', () => {
 	assert.deepEqual(resolveProps(schema, undefined).values, defaultsOf(schema));
+});
+
+test('array properties default to an empty list and accept only lists', () => {
+	const def = { type: "array" };
+	assert.deepEqual(defaultOf(def), []);
+	assert.deepEqual(coerce(def, [1, 2]), { ok: true, value: [1, 2] });
+	assert.equal(coerce(def, { a: 1 }).ok, false);
+	assert.equal(coerce(def, "x").ok, false);
 });

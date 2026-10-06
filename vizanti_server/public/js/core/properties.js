@@ -1,4 +1,4 @@
-export const LEAF_TYPES = ["topic", "frame", "bool", "int", "float", "color", "enum", "string", "object"];
+export const LEAF_TYPES = ["topic", "frame", "bool", "int", "float", "color", "enum", "string", "object", "array"];
 
 const TYPE_DEFAULTS = { topic: "", frame: "", bool: false, int: 0, float: 0, color: "#ffffff", string: "" };
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -36,6 +36,8 @@ export function defaultOf(def) {
 		return enumValues(def)[0];
 	if (def.type === "object")
 		return {};
+	if (def.type === "array")
+		return [];
 	return TYPE_DEFAULTS[def.type];
 }
 
@@ -88,6 +90,9 @@ export function coerce(def, value) {
 		case "object":
 			if (value !== null && typeof value === "object" && !Array.isArray(value)) return { ok: true, value };
 			return { ok: false, error: "Must be an object." };
+		case "array":
+			if (Array.isArray(value)) return { ok: true, value };
+			return { ok: false, error: "Must be a list." };
 	}
 	return { ok: false, error: `Unknown property type "${def.type}".` };
 }

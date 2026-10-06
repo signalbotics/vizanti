@@ -152,7 +152,7 @@ export function createControl(def, value, commit, env) {
 			return element;
 		}
 	}
-	return null; // "object" properties have no generated control
+	return null; // "object" and "array" properties have no generated control
 }
 
 // Appends a labelled row per property. commit(key, raw) returns the same result as above.

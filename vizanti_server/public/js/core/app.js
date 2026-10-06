@@ -199,7 +199,9 @@ async function start() {
 		legacy,
 		requestRender: () => scene.requestRender(),
 		// message type of a topic as rosapi reports it, or null when it is not being published
-		publish: (topic, type, msg) => publish(topic, type, msg, false),
+		publish: (topic, type, msg, options = {}) => publish(topic, type, msg, false, options),
+		// a display that edits by pointer (the Waypoints editor) while its edit mode is on
+		setPointerEditor: (display) => setPointerEditor(display),
 		// resolves with the response, rejects on failure or after 5 s
 		callService: (name, type, request) => new Promise((resolve, reject) => {
 			const timer = setTimeout(() => reject(new Error("no answer within 5 s")), 5000);
@@ -224,6 +226,7 @@ async function start() {
 
 	// set up with the tools below; displays can publish from the start
 	let publish = () => {};
+	let setPointerEditor = () => {};
 
 	// An RViz config replaces the displays, fixed frame, background and camera; the widgets
 	// (connection, teleop, tools, ...) of the current layout stay as they are.
@@ -521,10 +524,11 @@ async function start() {
 
 	const publishers = new Map();
 
-	publish = (topic, type, msg, announce = true) => {
-		const key = topic + "|" + type;
+	// latched: late subscribers still get the last message (transient local), as for missions
+	publish = (topic, type, msg, announce = true, { latched = false } = {}) => {
+		const key = topic + "|" + type + (latched ? "|latched" : "");
 		if (!publishers.has(key))
-			publishers.set(key, new ROSLIB.Topic({ ros: rosbridge.ros, name: topic, messageType: type }));
+			publishers.set(key, new ROSLIB.Topic({ ros: rosbridge.ros, name: topic, messageType: type, latch: latched }));
 		publishers.get(key).publish(new ROSLIB.Message(msg));
 		if (announce)
 			notify(`Published to ${topic}`);
@@ -587,6 +591,53 @@ async function start() {
 				tools.pointer(kind, event);
 		});
 	}
+
+	// A display in edit mode (Waypoints) gets the view's pointer while the Move Camera tool is on:
+	// "down" may claim the press (to drag one of its points; the camera then waits), and a press
+	// that was not claimed and did not move becomes a "click". Unclaimed drags still move the camera.
+	let editor = null;
+	let editing = null;
+	setPointerEditor = (display) => {
+		editor = display;
+		editing = null;
+		sceneElement.classList.toggle("pointer_editing", !!display);
+	};
+	const editInfo = (event) => ({
+		event,
+		ray: scene.ray(event.clientX, event.clientY),
+		ground: scene.groundPoint(event.clientX, event.clientY),
+	});
+	const editorActive = () => editor && editor._alive && editor.enabled && tools.active === "move";
+	sceneElement.addEventListener("pointerdown", (event) => {
+		if (!editorActive() || event.button !== 0 || !scene.inputEnabled)
+			return;
+		const claimed = editor._safe("onEditPointer", "down", editInfo(event)) === true;
+		editing = { claimed, x: event.clientX, y: event.clientY };
+		if (claimed) {
+			event.stopImmediatePropagation(); // not the camera, nor the interactive-marker handler
+			scene.setInputEnabled(false);
+			sceneElement.setPointerCapture?.(event.pointerId);
+		}
+	}, true);
+	sceneElement.addEventListener("pointermove", (event) => {
+		if (editing?.claimed && editorActive())
+			editor._safe("onEditPointer", "move", editInfo(event));
+	});
+	const endEdit = (event) => {
+		if (!editing)
+			return;
+		const { claimed, x, y } = editing;
+		editing = null;
+		if (claimed) {
+			scene.setInputEnabled(true);
+			if (editorActive())
+				editor._safe("onEditPointer", "up", editInfo(event));
+		} else if (event.type === "pointerup" && Math.hypot(event.clientX - x, event.clientY - y) < 5 && editorActive()) {
+			editor._safe("onEditPointer", "click", editInfo(event));
+		}
+	};
+	sceneElement.addEventListener("pointerup", endEdit);
+	sceneElement.addEventListener("pointercancel", endEdit);
 
 	// Interactive objects (interactive markers) take a press that starts on them, before the
 	// camera sees it; the camera is paused until the pointer is released.

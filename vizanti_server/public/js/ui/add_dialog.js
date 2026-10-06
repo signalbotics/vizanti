@@ -6,7 +6,7 @@ const CATEGORIES = [
 	["Maps and navigation", ["map", "gridcells", "path", "posearray", "posewithcovariancestamped", "pointstamped", "polygon", "wrench", "satelite"]],
 	["Markers", ["marker", "markerarray", "interactivemarkers"]],
 	["Scene", ["grid"]],
-	["Tools (2D)", ["waypoints", "survey", "area", "initialpose", "simplegoal"]],
+	["Tools", ["waypoints", "survey", "area", "initialpose", "simplegoal"]],
 	["Panels and widgets", []], // every other template widget
 ];
 

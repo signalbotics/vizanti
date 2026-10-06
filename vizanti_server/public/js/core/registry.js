@@ -65,6 +65,9 @@ export class Registry extends EventTarget {
 		item.onInfo = () => this._notify("info", { item });
 
 		this.items.push(item);
+		// a display that replaced an older widget converts that widget's saved props
+		if (typeof Cls.migrateProps === "function")
+			props = Cls.migrateProps(props ?? {});
 		try {
 			item._create(resolveProps(Cls.properties, props).values, opts.enabled ?? true);
 		} catch (e) {

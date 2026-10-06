@@ -123,6 +123,25 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   Checked on 2026-10-06 with a 5 Hz test camera: the panel opened and survived a reload; rename,
   close, enable, switching to the corner and removal behaved as described; the touch UI used
   the corner.
+- **Waypoints** (native 3D, replaces the old 2D widget; saved missions carry over):
+  - **Edit positions:** click the ground to add a waypoint. Near the path, it is inserted into
+    that leg. Drag a waypoint to move it (Shift snaps to 0.5 m); tap one to delete it. Dragging
+    empty ground still moves the camera.
+  - **Edit heights:** drag a waypoint up or down.
+  - **Buttons:** Send mission publishes it latched, as `nav_msgs/Path` or
+    `geometry_msgs/PoseArray`, in the mission frame, with each pose facing the next waypoint.
+    Stop publishes an empty mission. There are also Flip order, Set all heights, Import CSV
+    (x,y[,z]) and Clear (click twice).
+  - **Start from the closest waypoint** skips the waypoints before the one nearest the robot
+    frame.
+  - The safety margin is drawn on both sides of the path.
+
+  Checked on 2026-10-06 in the app, reading the result back from ROS:
+  - add, insert, move, delete and height edits;
+  - the latched Path received after sending, with headings facing the next waypoint;
+  - start-from-closest, Stop (empty Path), and migration of an old widget's saved mission.
+
+  Survey and area are still the old 2D widgets.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
