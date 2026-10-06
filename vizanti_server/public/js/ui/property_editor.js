@@ -132,6 +132,12 @@ export function createControl(def, value, commit, env) {
 			// (the Button calls a service or publishes); those entries show their type
 			const refresh = async () => {
 				const none = def.optional ? [{ value: "", label: "(none)" }] : [];
+				if (def.anyType) {
+					// every topic, of any type (the Topic Inspector)
+					const all = await env.listAllTopics();
+					setOptions(element, [...none, ...all.topics.map((name, i) => ({ value: name, label: `${name} (${all.types[i]})` }))], element.value);
+					return;
+				}
 				if (!def.serviceTypes) {
 					const topics = await env.listTopics(def.msgTypes ?? env.msgTypes);
 					setOptions(element, [...none, ...topics.map((topic) => ({ value: topic, label: topic }))], element.value);

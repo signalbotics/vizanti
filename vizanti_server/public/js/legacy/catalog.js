@@ -43,12 +43,6 @@ export const CATALOG = {
 		"description": "Group your widgets together",
 		"msgTypes": []
 	},
-	"inspector": {
-		"label": "Topic Inspector",
-		"icon": "assets/inspector.svg",
-		"description": "View raw messages as text",
-		"msgTypes": []
-	},
 	"diagnostics": {
 		"label": "Diagnostics",
 		"icon": "assets/diagnostics.svg",

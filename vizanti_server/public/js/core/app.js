@@ -215,6 +215,8 @@ async function start() {
 		}),
 		// names of the services of one type
 		listServices: (type) => rosbridge.get_services(type),
+		// { publishers: [node names], subscribers: [node names] } of a topic
+		topicInfo: (topic) => rosbridge.get_topic_publishers_and_subscribers(topic),
 		resolveType: async (topic) => {
 			const all = await rosbridge.get_all_topics();
 			const index = all.topics.indexOf(topic);
@@ -280,6 +282,7 @@ async function start() {
 					// Vizanti's own services are not something to point a widget at
 					return lists.flat().filter((name) => !name.includes("/vizanti/")).sort();
 				},
+				listAllTopics: () => rosbridge.get_all_topics(),
 				listFrames: () => [...tf.frame_list],
 			};
 		},

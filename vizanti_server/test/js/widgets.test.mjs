@@ -113,3 +113,17 @@ test('compressed image reads the old template settings', () => {
 	assert.deepEqual([values.topic, values.opacity, values.throttle, values.rotation, values.corner], ["/cam/compressed", 0.7, 250, 90, "top-right"]);
 	assert.equal(values.size, Math.round(0.25 * 1920));
 });
+
+import { echoLines } from '../../public/js/displays/inspector_widget.js';
+
+test('echoLines indents nested fields and cuts long arrays and strings', () => {
+	const lines = echoLines({ header: { frame_id: "map" }, data: new Uint8Array(5), ranges: [1, 2, 3], note: "x".repeat(10) },
+		{ maxArray: 2, maxString: 4 });
+	assert.deepEqual(lines.map((l) => "  ".repeat(l.depth) + l.text), [
+		"header:", "  frame_id: map",
+		"data: Uint8Array(5)", "  [0]: 0", "  [1]: 0", "  … 3 more",
+		"ranges: array(3)", "  [0]: 1", "  [1]: 2", "  … 1 more",
+		"note: xxxx… [10 characters]",
+	]);
+	assert.equal(echoLines({ a: new Array(10).fill(0) }, { maxLines: 3, maxArray: 100 }).at(-1).text, "… (cut at 3 lines)");
+});
