@@ -230,6 +230,177 @@
 	font-size: 0.85rem;
 }
 
+/* the display list scrolls; the action row stays at the bottom */
+.rviz_panel_displays {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding-bottom: 0;
+}
+
+.display_tree {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	outline: none;
+}
+
+.display_actions {
+	flex: 0 0 auto;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 6px 0;
+	border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.display_actions button:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+/* the action row uses the toolbar's icon buttons, a little smaller */
+.display_actions {
+	flex-wrap: nowrap;
+	align-items: center;
+}
+
+.display_actions .toolbar_icon_button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	color: #dfe6ee;
+	background-color: transparent;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.display_actions .toolbar_icon_button:hover:not(:disabled) {
+	background-color: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+.display_actions .toolbar_icon_button:focus-visible {
+	outline: 2px solid #6c8ebf;
+	outline-offset: 1px;
+}
+
+.display_actions .toolbar_icon {
+	width: 18px;
+	height: 18px;
+}
+
+.display_actions .action_danger {
+	margin-left: auto;
+	color: #ff8a80;
+}
+
+.tree_item.tree_selected > summary {
+	background-color: rgba(108, 142, 191, 0.28);
+	border-radius: 4px;
+	outline: 1px solid rgba(108, 142, 191, 0.7);
+}
+
+.tree_item > summary .tree_rename {
+	flex: 1;
+	min-width: 0;
+	font: inherit;
+	padding: 1px 4px;
+}
+
+/* main menu and right-click menu */
+.app_menu {
+	position: fixed;
+	z-index: 40;
+	min-width: 230px;
+	max-height: 80vh;
+	overflow: auto;
+	padding: 4px;
+	background-color: #1b222b;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+	font-size: 0.85rem;
+}
+
+.app_menu_heading {
+	padding: 6px 10px 2px;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #8d9aab;
+}
+
+.app_menu_item {
+	display: block;
+	width: 100%;
+	padding: 6px 10px;
+	text-align: left;
+	color: #dfe6ee;
+	background: none;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font: inherit;
+}
+
+.app_menu_item:hover:not(:disabled),
+.app_menu_item:focus-visible {
+	background-color: #2c4a6e;
+	outline: none;
+}
+
+.app_menu_item:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.app_menu_danger {
+	color: #ff8a80;
+}
+
+.app_menu_separator {
+	height: 1px;
+	margin: 4px 6px;
+	background-color: rgba(255, 255, 255, 0.15);
+}
+
+.app_menu_robot_list {
+	padding: 2px 10px;
+	color: #8d9aab;
+}
+
+.app_menu_robot_list:has(.app_menu_robot_row) {
+	padding: 0;
+}
+
+.app_menu_robot_row {
+	display: flex;
+	align-items: center;
+}
+
+.app_menu_robot_row .app_menu_item {
+	flex: 1;
+}
+
+.app_menu_remove {
+	padding: 4px 8px;
+	color: #8d9aab;
+	background: none;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.app_menu_remove:hover {
+	color: #ff8a80;
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
 .rviz_panel_view {
 	overflow: hidden;
 }
@@ -265,12 +436,6 @@
 
 .tree_body {
 	padding: 4px 0 8px 22px;
-}
-
-.tree_buttons {
-	display: flex;
-	gap: 6px;
-	margin-top: 6px;
 }
 
 /* ---- hosts for widgets that still run from their original template ---- */
@@ -429,4 +594,31 @@
 	width: 100%;
 	box-sizing: border-box;
 	margin: 4px 0;
+}
+
+/* add dialog */
+.add_dialog .add_search {
+	box-sizing: border-box;
+	width: 100%;
+	margin: 4px 0 8px;
+	padding: 6px 8px;
+	font: inherit;
+}
+
+.add_dialog .add_section_title {
+	margin: 12px 0 4px;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #8d9aab;
+}
+
+.add_dialog .widget_entry:focus-visible {
+	outline: 2px solid #6c8ebf;
+	outline-offset: -2px;
+}
+
+.add_dialog .add_empty {
+	color: #8d9aab;
+	padding: 8px 0;
 }

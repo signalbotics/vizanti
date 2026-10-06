@@ -12,9 +12,9 @@ function spriteName(file) {
 export class RobotModelDisplay extends Display {
 
 	static type = "robotmodel";
-	static label = "Robot Model";
+	static label = "Robot Sprite (2D)";
 	static icon = "assets/robotmodel.svg";
-	static description = "Custom robot sprite";
+	static description = "A flat robot picture at a TF frame (for the 3D robot, use Robot Model (URDF))";
 
 	static properties = {
 		frame: { type: "frame", label: "TF Frame", noDefault: true, help: "Renders a simple 2D sprite of a fixed size relative to a TF link, for scale." },

@@ -35,7 +35,7 @@ function make() {
 	const context = { marker: true };
 	const reg = new Registry({ types: new Map([["fake", Fake], ["broken", Broken]]), context });
 	const events = [];
-	for (const name of ["added", "removed", "property", "enabled", "reordered", "global", "ui", "loaded", "status", "info", "changed"])
+	for (const name of ["added", "removed", "property", "enabled", "reordered", "renamed", "global", "ui", "loaded", "status", "info", "changed"])
 		reg.addEventListener(name, (e) => events.push(name === "changed" ? `changed:${e.detail.cause}` : name));
 	return { reg, events, context };
 }
@@ -189,4 +189,31 @@ test('removing a folder moves the widgets that were inside it back to the main b
 	assert.equal(inside.container, "");
 	assert.equal(outside.container, "folder_2_widget_container");
 	assert.ok(events.includes("removed"));
+});
+
+test('rename trims the new name, refuses an empty one and notifies', () => {
+	const { reg, events } = make();
+	const item = reg.add("fake");
+	events.length = 0;
+	assert.equal(reg.rename(item.id, "  Front lidar "), true);
+	assert.equal(item.name, "Front lidar");
+	assert.deepEqual(events, ["renamed", "changed:renamed"]);
+	assert.equal(reg.rename(item.id, "   "), false);
+	assert.equal(item.name, "Front lidar");
+	assert.equal(reg.rename("nope", "x"), false);
+});
+
+test('duplicate copies type, settings and enabled state, and sits right after the original', () => {
+	const { reg } = make();
+	const first = reg.add("fake", { topic: "/scan", size: 3 }, { name: "Laser", container: "folder_widget_container" });
+	const last = reg.add("fake");
+	reg.setEnabled(first.id, false);
+	const copy = reg.duplicate(first.id);
+	assert.notEqual(copy.id, first.id);
+	assert.deepEqual(copy.props, { topic: "/scan", size: 3 });
+	assert.equal(copy.name, "Laser (copy)");
+	assert.equal(copy.enabled, false);
+	assert.equal(copy.container, "folder_widget_container");
+	assert.deepEqual(reg.items.map((i) => i.id), [first.id, copy.id, last.id]);
+	assert.equal(reg.duplicate("nope"), null);
 });

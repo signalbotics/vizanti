@@ -66,7 +66,7 @@ export class TouchShell {
 		if (saved)
 			this.setBarHeight(saved);
 
-		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
+		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed"])
 			this.listen(name, () => this.renderIcons());
 		this.listen("property", (event) => this.paintIcon(event.detail.item));
 		this.listen("status", (event) => this.paintStatus(event.detail.item));

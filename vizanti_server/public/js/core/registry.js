@@ -114,6 +114,30 @@ export class Registry extends EventTarget {
 		this._emit("enabled", { item });
 	}
 
+	rename(id, name) {
+		const item = this.get(id);
+		const trimmed = typeof name === "string" ? name.trim() : "";
+		if (!item || trimmed === "")
+			return false;
+		item.name = trimmed;
+		this._emit("renamed", { item });
+		return true;
+	}
+
+	// A copy of a display (same type, settings, enabled state and folder), placed right after it.
+	duplicate(id) {
+		const item = this.get(id);
+		if (!item)
+			return null;
+		const copy = this.add(item.constructor.type, { ...item.props }, {
+			name: `${item.name} (copy)`,
+			enabled: item.enabled,
+			container: item.container,
+		});
+		this.move(copy.id, this.items.indexOf(item) + 1);
+		return copy;
+	}
+
 	move(id, index) {
 		const from = this.items.findIndex((item) => item.id === id);
 		if (from === -1)

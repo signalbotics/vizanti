@@ -1,7 +1,8 @@
 import { buildItemEditor } from './item_editor.js';
-import { buildGlobalOptions, buildCameraControls, buildLayoutControls, buildToolControls } from './global_controls.js';
+import { buildGlobalOptions, buildCameraControls, buildToolControls } from './global_controls.js';
 import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
+import { AppMenu, openContextMenu } from './app_menu.js';
 
 const dockview = globalThis["dockview-core"];
 
@@ -66,6 +67,11 @@ export class RvizShell {
 		shell.append(toolbar, dock);
 		root.appendChild(shell);
 
+		const menuButton = iconButton("menu", "Main menu", "Menu: import, export, robot configs, screenshot, reset", () => this.menu.toggle());
+		menuButton.setAttribute("aria-haspopup", "menu");
+		menuButton.setAttribute("aria-expanded", "false");
+		this.menu = new AppMenu(this.app, menuButton);
+		toolbar.appendChild(menuButton);
 		toolbar.appendChild(iconButton("add", "Add display", "Add display", () => openAddDialog(this.app)));
 		toolbar.appendChild(Object.assign(document.createElement("span"), { className: "toolbar_separator" }));
 		// the pointer tools; the lit one is active
@@ -150,7 +156,7 @@ export class RvizShell {
 		});
 		this.paintPanelButtons();
 
-		for (const name of ["added", "removed", "reordered", "loaded", "enabled"])
+		for (const name of ["added", "removed", "reordered", "loaded", "enabled", "renamed"])
 			this.listen(name, () => this.renderTree());
 		this.renderWidgets();
 		this.listen("removed", (event) => this.api.getPanel("legacy:" + event.detail.item.id)?.api.close());
@@ -170,6 +176,7 @@ export class RvizShell {
 			editor.dispose();
 		this.editors = [];
 		this.tree = null;
+		this.menu?.close();
 
 		// template widgets keep their icon and modal elements across shells
 		if (this.legacyObserver)
@@ -315,7 +322,12 @@ export class RvizShell {
 				} else if (name === "view") {
 					element.appendChild(this.app.sceneElement);
 				} else if (name === "displays") {
-					this.tree = element;
+					this.tree = document.createElement("div");
+					this.tree.className = "display_tree";
+					this.tree.tabIndex = -1;
+					this.tree.addEventListener("keydown", (event) => this.treeKey(event));
+					this.actionRow = this.buildActionRow();
+					element.append(this.tree, this.actionRow);
 					this.renderTree();
 				} else if (name === "time") {
 					this.buildTime(element);
@@ -362,11 +374,10 @@ export class RvizShell {
 		const globalBody = document.createElement("div");
 		globalBody.className = "tree_body";
 		buildGlobalOptions(globalBody, this.app);
-		buildLayoutControls(globalBody, this.app);
 		global.append(globalSummary, globalBody);
 		this.tree.appendChild(global);
 
-		registry.items.forEach((item, index) => {
+		registry.items.forEach((item) => {
 			const details = document.createElement("details");
 			details.className = "tree_item";
 			details.dataset.id = item.id;
@@ -387,6 +398,13 @@ export class RvizShell {
 			const status = document.createElement("span");
 			status.className = "tree_status";
 			summary.append(enabled, icon, name, status);
+			summary.addEventListener("click", () => this.select(item.id));
+			summary.addEventListener("contextmenu", (event) => {
+				event.preventDefault();
+				this.select(item.id);
+				this.openItemMenu(item, event.clientX, event.clientY);
+			});
+			details.classList.toggle("tree_selected", item.id === this.selectedId);
 
 			const body = document.createElement("div");
 			body.className = "tree_body";
@@ -400,19 +418,143 @@ export class RvizShell {
 				body.appendChild(editor.element);
 			}
 
-			const buttons = document.createElement("div");
-			buttons.className = "tree_buttons";
-			buttons.append(
-				button("▲", () => registry.move(item.id, index - 1)),
-				button("▼", () => registry.move(item.id, index + 1)),
-				button("Remove", () => registry.remove(item.id))
-			);
-			body.appendChild(buttons);
-
 			details.append(summary, body);
 			this.tree.appendChild(details);
 			this.paintStatus(item);
 		});
+		if (this.selectedId && !registry.get(this.selectedId))
+			this.selectedId = null; // it was removed
+		this.paintActionRow();
+	}
+
+	// ---- the selected display, its action row and right-click menu ----
+
+	selected() {
+		return this.selectedId ? this.app.registry.get(this.selectedId) ?? null : null;
+	}
+
+	select(id) {
+		this.selectedId = id;
+		if (this.tree) {
+			for (const child of this.tree.children)
+				child.classList.toggle("tree_selected", child.dataset.id === id);
+		}
+		this.paintActionRow();
+	}
+
+	buildActionRow() {
+		const row = document.createElement("div");
+		row.className = "display_actions";
+		const make = (icon, label, hint, onClick) => {
+			const element = iconButton(icon, label, hint, onClick);
+			row.appendChild(element);
+			return element;
+		};
+		const withSelected = (fn) => () => {
+			const item = this.selected();
+			if (item)
+				fn(item);
+		};
+		this.actionButtons = {
+			add: make("add", "Add display", "Add a display", () => openAddDialog(this.app)),
+			duplicate: make("duplicate", "Duplicate", "Duplicate: add a copy of the selected display", withSelected((item) => this.duplicate(item))),
+			rename: make("rename", "Rename", "Rename the selected display (F2)", withSelected((item) => this.startRename(item))),
+			up: make("up", "Move up", "Move the selected display up", withSelected((item) => this.moveBy(item, -1))),
+			down: make("down", "Move down", "Move the selected display down", withSelected((item) => this.moveBy(item, 1))),
+			remove: make("remove", "Remove", "Remove the selected display (Delete)", withSelected((item) => this.app.registry.remove(item.id))),
+		};
+		this.actionButtons.remove.classList.add("action_danger");
+		return row;
+	}
+
+	paintActionRow() {
+		if (!this.actionButtons)
+			return;
+		const item = this.selected();
+		const index = item ? this.app.registry.items.indexOf(item) : -1;
+		this.actionButtons.duplicate.disabled = !item || item.constructor.kind === "template";
+		this.actionButtons.rename.disabled = !item;
+		this.actionButtons.remove.disabled = !item;
+		this.actionButtons.up.disabled = !item || index <= 0;
+		this.actionButtons.down.disabled = !item || index >= this.app.registry.items.length - 1;
+	}
+
+	duplicate(item) {
+		if (item.constructor.kind === "template")
+			return; // template widgets own page elements by id; one per widget
+		const copy = this.app.registry.duplicate(item.id);
+		if (copy)
+			this.select(copy.id);
+	}
+
+	moveBy(item, step) {
+		this.app.registry.move(item.id, this.app.registry.items.indexOf(item) + step);
+	}
+
+	openItemMenu(item, x, y) {
+		const index = this.app.registry.items.indexOf(item);
+		const last = this.app.registry.items.length - 1;
+		openContextMenu(x, y, [
+			{ label: "Rename", action: () => this.startRename(item) },
+			{ label: "Duplicate", action: () => this.duplicate(item), disabled: item.constructor.kind === "template" },
+			{ label: item.enabled ? "Disable" : "Enable", action: () => this.app.registry.setEnabled(item.id, !item.enabled) },
+			"-",
+			{ label: "Move up", action: () => this.moveBy(item, -1), disabled: index <= 0 },
+			{ label: "Move down", action: () => this.moveBy(item, 1), disabled: index >= last },
+			"-",
+			{ label: "Remove", action: () => this.app.registry.remove(item.id), danger: true },
+		]);
+	}
+
+	// Swaps the row's name for a text field: Enter or leaving the field keeps it, Escape cancels.
+	startRename(item) {
+		const row = this.row(item);
+		const name = row?.querySelector(".tree_name");
+		if (!name)
+			return;
+		const input = document.createElement("input");
+		input.type = "text";
+		input.className = "tree_rename";
+		input.value = item.name;
+		input.setAttribute("aria-label", "Display name");
+		let done = false;
+		const finish = (keep) => {
+			if (done)
+				return;
+			done = true;
+			if (!(keep && this.app.registry.rename(item.id, input.value)))
+				input.replaceWith(name); // unchanged, or an empty name
+		};
+		// a click, space or Enter inside a <summary> would open or close the row
+		input.addEventListener("click", (event) => event.preventDefault());
+		input.addEventListener("keydown", (event) => {
+			event.stopPropagation();
+			if (event.key === "Enter") {
+				event.preventDefault();
+				finish(true);
+			} else if (event.key === "Escape") {
+				event.preventDefault();
+				finish(false);
+			}
+		});
+		input.addEventListener("keyup", (event) => event.preventDefault());
+		input.addEventListener("blur", () => finish(true));
+		name.replaceWith(input);
+		input.focus();
+		input.select();
+	}
+
+	treeKey(event) {
+		const item = this.selected();
+		if (!item || event.target.closest("input, select, textarea"))
+			return;
+		if (event.key === "F2") {
+			event.preventDefault();
+			this.startRename(item);
+		} else if (event.key === "Delete") {
+			event.preventDefault();
+			this.app.registry.remove(item.id);
+		}
 	}
 
 	row(item) {

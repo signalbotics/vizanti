@@ -1,6 +1,7 @@
 import { renderProperties } from './property_editor.js';
 import { TOOLS } from '../core/tools.js';
 import { saveView, removeView, sanitizeViews } from '../core/views.js';
+import { exportLayoutFile, importLayoutFile, resetLayoutAsk, loadRobotConfig, saveRobotConfigAs, deleteRobotConfigAsk } from './layout_actions.js';
 
 function button(text, onClick, className = "") {
 	const element = document.createElement("button");
@@ -153,35 +154,8 @@ export function buildToolControls(container, app, onSelect = () => {}) {
 
 export function buildLayoutControls(container, app) {
 	const row = document.createElement("span");
-
-	row.appendChild(button("⇑ Export", () => {
-		const filename = prompt("Save as file (.json will be appended automatically):", "robot_config");
-		if (filename === null)
-			return;
-		const blob = new Blob([JSON.stringify(app.exportLayout(), null, 2)], { type: "application/json" });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = filename + ".json";
-		link.click();
-		URL.revokeObjectURL(url);
-	}, "export_button"));
-
-	row.appendChild(button("⇓ Import", () => {
-		const picker = document.createElement("input");
-		picker.type = "file";
-		picker.accept = ".json,.rviz";
-		picker.onchange = () => {
-			const reader = new FileReader();
-			reader.onload = () => {
-				if (!app.importLayout(reader.result))
-					app.notify("That file is not a Vizanti layout or RViz config this version can read, so nothing was changed.");
-			};
-			reader.readAsText(picker.files[0]);
-		};
-		picker.click();
-	}, "export_button"));
-
+	row.appendChild(button("⇑ Export", () => exportLayoutFile(app), "export_button"));
+	row.appendChild(button("⇓ Import", () => importLayoutFile(app), "export_button"));
 	container.appendChild(row);
 	container.appendChild(comment("Exporting the current configuration will save the widget layout, settings, camera pose, and other info, so it can be imported later. Import also takes RViz .rviz configs."));
 
@@ -219,38 +193,18 @@ export function buildLayoutControls(container, app) {
 	refresh();
 
 	const robotButtons = document.createElement("span");
-	robotButtons.appendChild(button("Load", async () => {
-		if (!select.value)
-			return;
-		try {
-			const layout = await app.configs.load(select.value);
-			if (!app.importLayout(JSON.stringify(layout)))
-				app.notify(`"${select.value}" is not a layout this version of Vizanti can read.`);
-		} catch (e) {
-			app.notify(e.message);
-		}
+	robotButtons.appendChild(button("Load", () => {
+		if (select.value)
+			loadRobotConfig(app, select.value);
 	}, "export_button"));
 	robotButtons.appendChild(button("Save as…", async () => {
-		const name = prompt("Save the current layout on the robot as:", select.value || "robot_config");
-		if (name === null)
-			return;
-		try {
-			await app.configs.save(name.trim(), app.exportLayout());
-			app.notify(`Saved "${name.trim()}" on the robot.`);
-			refresh(name.trim());
-		} catch (e) {
-			app.notify(e.message);
-		}
+		const saved = await saveRobotConfigAs(app, select.value || "robot_config");
+		if (saved)
+			refresh(saved);
 	}, "export_button"));
 	robotButtons.appendChild(button("Delete", async () => {
-		if (!select.value || !confirm(`Delete the config "${select.value}" from the robot?`))
-			return;
-		try {
-			await app.configs.remove(select.value);
+		if (await deleteRobotConfigAsk(app, select.value))
 			refresh();
-		} catch (e) {
-			app.notify(e.message);
-		}
 	}, "export_button"));
 	container.appendChild(robotButtons);
 	container.appendChild(comment("Configs saved on the robot are available to every browser that opens Vizanti."));
@@ -258,10 +212,7 @@ export function buildLayoutControls(container, app) {
 	container.appendChild(button("Save screenshot", () => app.saveScreenshot()));
 	container.appendChild(comment("Downloads the 3D view as a PNG image."));
 
-	container.appendChild(button("Reset Layout to default", () => {
-		if (confirm("Are you sure you want to delete your saved widget setup? This will refresh the page."))
-			app.resetLayout();
-	}));
+	container.appendChild(button("Reset Layout to default", () => resetLayoutAsk(app)));
 	container.appendChild(comment("Clear layout and import server defaults."));
 
 	const other = app.shellName === "rviz" ? "touch" : "rviz";
