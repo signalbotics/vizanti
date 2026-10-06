@@ -77,10 +77,20 @@ export function createControl(def, value, commit, env) {
 		}
 
 		case "color": {
+			// the swatch alone can be hard to see (dark colours on a dark panel), so the hex goes next to it
+			const wrap = document.createElement("span");
+			wrap.className = "prop_color";
 			const element = input("color");
 			element.value = value;
-			element.addEventListener("input", () => report(element, element.value));
-			return element;
+			const hex = document.createElement("span");
+			hex.className = "prop_color_hex";
+			hex.textContent = value;
+			element.addEventListener("input", () => {
+				if (report(element, element.value).ok)
+					hex.textContent = element.value;
+			});
+			wrap.append(element, hex);
+			return wrap;
 		}
 
 		case "string": {
@@ -169,10 +179,26 @@ export function renderProperties(container, schema, values, commit, env) {
 		row.append(label, control);
 		container.appendChild(row);
 
+		// help stays out of the way: the label's tooltip, and a "?" that shows it under the row
 		if (def.help) {
+			label.title = def.help;
 			const help = document.createElement("p");
-			help.className = "comment";
+			help.className = "comment prop_help";
 			help.textContent = def.help;
+			help.hidden = true;
+			const toggle = document.createElement("button");
+			toggle.type = "button";
+			toggle.className = "prop_help_toggle";
+			toggle.textContent = "?";
+			toggle.title = "Show help";
+			toggle.setAttribute("aria-label", `Help for ${def.label ?? key}`);
+			toggle.setAttribute("aria-expanded", "false");
+			toggle.addEventListener("click", () => {
+				help.hidden = !help.hidden;
+				toggle.setAttribute("aria-expanded", String(!help.hidden));
+				toggle.title = help.hidden ? "Show help" : "Hide help";
+			});
+			row.appendChild(toggle);
 			container.appendChild(help);
 		}
 	}

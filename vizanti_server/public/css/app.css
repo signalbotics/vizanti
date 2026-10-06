@@ -66,9 +66,82 @@
 	flex: 0 0 45%;
 }
 
-.prop_row > :last-child {
+.prop_row > :nth-child(2) {
 	flex: 1;
 	min-width: 0;
+}
+
+/* "?" next to a property with help; the help shows under the row when opened */
+.prop_row > .prop_help_toggle {
+	flex: 0 0 auto;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	font-size: 0.75rem;
+	line-height: 1;
+	color: #8d9aab;
+	background: none;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 50%;
+	cursor: pointer;
+}
+
+.prop_row > .prop_help_toggle:hover,
+.prop_row > .prop_help_toggle[aria-expanded="true"] {
+	color: #dfe6ee;
+	border-color: #6c8ebf;
+}
+
+.comment.prop_help {
+	margin: 0 0 8px;
+	font-size: 0.8rem;
+}
+
+/* colour swatch with its hex value */
+.prop_color {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.prop_color input[type="color"] {
+	flex: 0 0 auto;
+	width: 36px;
+	min-width: 36px;
+	height: 22px;
+	padding: 1px;
+	border: 1px solid rgba(255, 255, 255, 0.45);
+	border-radius: 4px;
+	background-color: transparent;
+	cursor: pointer;
+}
+
+.prop_color_hex {
+	font-family: 'Ubuntu Mono', monospace;
+	font-size: 0.85em;
+	color: #b8c4d2;
+}
+
+/* in a narrow panel the label goes above its control instead of squeezing beside it */
+.tree_body,
+.rviz_panel_views {
+	container-type: inline-size;
+}
+
+@container (max-width: 260px) {
+	.prop_row {
+		flex-wrap: wrap;
+		gap: 2px 8px;
+	}
+
+	.prop_row > label {
+		flex: 1 0 calc(100% - 30px);
+	}
+
+	.prop_row > :nth-child(2) {
+		flex: 1 0 100%;
+		order: 3;
+	}
 }
 
 .prop_row > input[type="checkbox"] {
@@ -684,4 +757,44 @@ button.status_segment:hover:not(:disabled) {
 
 button.status_segment:disabled {
 	cursor: default;
+}
+
+/* UI font: a proportional system font for the new interface; the original widget templates
+   keep their monospace font. Numbers use tabular figures so they don't jitter. */
+.rviz_shell,
+.app_menu,
+.add_dialog,
+.rviz_statusbar {
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
+	font-variant-numeric: tabular-nums;
+}
+
+.rviz_shell button,
+.rviz_shell input,
+.rviz_shell select,
+.add_dialog input,
+.add_dialog button,
+.app_menu button {
+	font-family: inherit;
+}
+
+.rviz_time .time_value,
+.status_rate {
+	font-family: 'Ubuntu Mono', monospace;
+}
+
+.rviz_panel_legacy {
+	font-family: 'Ubuntu Mono', Monospace;
+	font-variant-numeric: normal;
+}
+
+/* property inputs fill their column instead of the old fixed minimum width */
+.prop_row > input[type="number"],
+.prop_row > input[type="text"],
+.prop_row > select,
+.prop_row > span > input[type="text"],
+.prop_row .prop_slider input[type="range"] {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
 }

@@ -53,6 +53,10 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   - Keys: F2 renames (Enter keeps the new name, Escape cancels) and Delete removes.
   - Widgets that still run from their original template (rosbridge, teleop, …) can't be
     duplicated.
+- **Property editor:**
+  - Colour fields show their hex value next to the swatch.
+  - Help text sits behind a "?" next to the property, and also appears as the label's tooltip.
+  - In a narrow panel, labels go above their inputs.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
