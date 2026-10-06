@@ -67,7 +67,8 @@ test('scaleLabel picks a readable unit', () => {
 test('GridDisplay declares every option the current grid widget has', () => {
 	assert.equal(GridDisplay.type, "grid");
 	assert.deepEqual(defaultsOf(GridDisplay.properties), {
-		frame: "", autoscale: "Coarse", size: 1, thickness: 1, colour: "#3e556a",
+		frame: "", plane: "XY", offset_x: 0, offset_y: 0, offset_z: 0,
+		autoscale: "Coarse", size: 1, thickness: 1, colour: "#3e556a",
 		subdivisions: 2, colour_sub: "#294056",
 	});
 });

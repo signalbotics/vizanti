@@ -254,3 +254,24 @@ test("convertRvizConfig maps point cloud colour transformers, styles and decay",
 	assert.deepEqual(items[0].props, { topic: "/points", style: "pixels", pixel_size: 4, colour_mode: "channel", channel: "reflectivity", decay_ms: 2500 });
 	assert.deepEqual(items[1].props, { topic: "/cloud", style: "circles", colour_mode: "axis_z" });
 });
+
+test("convertRvizConfig maps the grid plane, offset and reference frame", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Wall
+      Plane: XZ
+      Reference Frame: base_link
+      Offset:
+        X: 0
+        Y: 1.5
+        Z: 0
+    - Class: rviz_default_plugins/Grid
+      Name: Floor
+      Plane: XY
+      Reference Frame: <Fixed Frame>
+`);
+	const { items } = convertRvizConfig(doc, new Set(["grid"]));
+	assert.deepEqual(items[0].props, { plane: "XZ", offset_y: 1.5, frame: "base_link" });
+	assert.deepEqual(items[1].props, {});
+});

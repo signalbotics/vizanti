@@ -128,6 +128,7 @@ export class MapDisplay extends Display {
 		// given relative to it; this matches the current widget.
 		const tf = this.ctx.tf;
 		if (msg.header.frame_id === "map" && !tf.absoluteTransforms["map"]) {
+			tf.assumedIdentity?.add("map"); // kept by TF until map is connected to the fixed frame
 			tf.absoluteTransforms["map"] = { translation: { x: 0, y: 0, z: 0 }, rotation: new Quaternion() };
 			tf.frame_list.add("map");
 			this.status.warn("Map transform not available yet, using identity transform.");

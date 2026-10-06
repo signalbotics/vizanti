@@ -75,3 +75,29 @@ test('TfDisplay declares every option the current TF widget has', () => {
 		show_names: true, show_axes: true, show_lines: true, scale: 1, frame_visibility: {},
 	});
 });
+
+import { treeRoot, connectedTo } from '../../public/js/geometry/tf.js';
+
+test('connectedTo: only frames in the same TF tree as the fixed frame have a pose in it', () => {
+	// map -> odom -> base_link, and a separate tree link7 -> link8 -> hand
+	const transforms = {
+		odom: { parent: "map" },
+		base_link: { parent: "odom" },
+		link8: { parent: "link7" },
+		hand: { parent: "link8" },
+	};
+	assert.equal(treeRoot(transforms, "base_link"), "map");
+	assert.equal(treeRoot(transforms, "hand"), "link7");
+	assert.equal(treeRoot(transforms, "map"), "map");
+	assert.equal(connectedTo(transforms, "base_link", "map"), true);
+	assert.equal(connectedTo(transforms, "map", "base_link"), true, "the fixed frame may be a child");
+	assert.equal(connectedTo(transforms, "hand", "map"), false);
+	assert.equal(connectedTo(transforms, "link7", "map"), false);
+	assert.equal(connectedTo(transforms, "unknown", "map"), false);
+	assert.equal(connectedTo(transforms, "map", "map"), true);
+});
+
+test('treeRoot stops on a loop instead of recursing forever', () => {
+	const transforms = { a: { parent: "b" }, b: { parent: "a" } };
+	assert.equal(typeof treeRoot(transforms, "a"), "string");
+});

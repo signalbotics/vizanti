@@ -219,7 +219,17 @@ const CLOUD_STYLES = { "Points": "pixels", "Squares": "squares", "Flat Squares":
 
 // class name (without package) -> [vizanti type, props from the RViz display]
 const MAPPINGS = {
-	Grid: ["grid", (d) => ({ size: num(d["Cell Size"]), colour: rvizColor(d.Color) })],
+	Grid: ["grid", (d) => {
+		const plane = ["XY", "XZ", "YZ"].includes(d.Plane) ? d.Plane : undefined;
+		const offset = d.Offset ?? {};
+		const frame = str(d["Reference Frame"]);
+		return {
+			size: num(d["Cell Size"]), colour: rvizColor(d.Color),
+			plane: plane === "XY" ? undefined : plane,
+			offset_x: num(offset.X) || undefined, offset_y: num(offset.Y) || undefined, offset_z: num(offset.Z) || undefined,
+			frame: frame && frame !== "<Fixed Frame>" ? frame : undefined,
+		};
+	}],
 	TF: ["tf", (d) => ({
 		show_names: bool(d["Show Names"]), show_axes: bool(d["Show Axes"]),
 		show_lines: bool(d["Show Arrows"]), scale: num(d["Marker Scale"]),

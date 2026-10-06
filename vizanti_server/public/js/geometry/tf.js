@@ -77,3 +77,25 @@ export function tfGeometry(transforms, absolute, frames, axisLength) {
 		labels,
 	};
 }
+
+// The top of the TF tree `frame` belongs to (the frame itself when it has no parent).
+// transforms: { child: { parent } }. A loop in bad TF data ends the walk.
+export function treeRoot(transforms, frame) {
+	const seen = new Set();
+	let current = frame;
+	while (transforms[current]?.parent && !seen.has(current)) {
+		seen.add(current);
+		current = transforms[current].parent;
+	}
+	return current;
+}
+
+// Whether `frame` can be expressed in `fixed`: both are in the same TF tree.
+export function connectedTo(transforms, frame, fixed) {
+	if (frame === fixed)
+		return true;
+	const known = (f) => f in transforms || Object.values(transforms).some((t) => t.parent === f);
+	if (!known(frame) || !known(fixed))
+		return false;
+	return treeRoot(transforms, frame) === treeRoot(transforms, fixed);
+}

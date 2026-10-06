@@ -55,7 +55,7 @@ test('widgets keep their ids, order and folder, and the settings widget becomes 
 test('native displays get their old options, through fromLegacy where the format changed', () => {
 	const v2 = convertLegacyLayout(old, classes);
 	const props = (id, Cls) => resolveProps(Cls.properties, v2.items.find((i) => i.id === id).props).values;
-	assert.deepEqual(props("grid_default", GridDisplay), { frame: "", autoscale: "Off", size: 2, thickness: 3, colour: "#ff0000", subdivisions: 4, colour_sub: "#00ff00" });
+	assert.deepEqual(props("grid_default", GridDisplay), { frame: "", autoscale: "Off", size: 2, thickness: 3, colour: "#ff0000", subdivisions: 4, colour_sub: "#00ff00" , plane: "XY", offset_x: 0, offset_y: 0, offset_z: 0 });
 	assert.deepEqual(props("map_autoID_3", MapDisplay), {
 		topic: "/map", colour_scheme: "costmap", use_timestamp: true, opacity: 0.5, throttle: 500,
 		use_updates: true, update_topic: "",

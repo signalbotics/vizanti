@@ -1,4 +1,5 @@
 import { rosbridge } from './rosbridge.js';
+import { treeRoot } from '../geometry/tf.js';
 
 export function applyRotation(vector, r, inverse) {
 	if (inverse)
@@ -62,6 +63,8 @@ export class TF {
 		this.absoluteTransformBuffers = {};
 		this.frame_list = new Set();
 		this.frame_timestamps = {};
+		// frames drawn at the fixed frame's origin until TF connects them (a map before its TF)
+		this.assumedIdentity = new Set();
 		this.frame_headerstamps = {};
 
 		this.tf_topic = new ROSLIB.Topic({
@@ -193,7 +196,18 @@ export class TF {
 	}
 
 	recalculateAbsoluteTransforms() {
+		// only frames in the fixed frame's tree have a pose in it; a frame whose chain is broken
+		// (its publisher died, or has not started) has none, rather than the fixed frame's origin
+		const fixedRoot = treeRoot(this.transforms, this.fixed_frame);
 		for (const key of this.frame_list.values()) {
+			if (treeRoot(this.transforms, key) !== fixedRoot) {
+				delete this.absoluteTransformBuffers[key];
+				if (this.assumedIdentity.has(key))
+					this.absoluteTransforms[key] = this.getZeroFrame();
+				else
+					delete this.absoluteTransforms[key];
+				continue;
+			}
 			const transform = this.transformPose(key, this.fixed_frame, { x: 0, y: 0, z: 0 }, new Quaternion());
 			this.absoluteTransforms[key] = transform;
 

@@ -1,3 +1,4 @@
+import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
 import { fitGrid, gridLines, scaleLabel } from '../geometry/grid.js';
 
@@ -11,7 +12,18 @@ export class GridDisplay extends Display {
 	static properties = {
 		frame: {
 			type: "frame", label: "Frame",
-			help: "The grid is rendered in the XY plane of the selected frame.",
+			help: "The grid is drawn in a plane of the selected frame (XY unless set below).",
+		},
+		plane: {
+			type: "enum", label: "Plane", default: "XY",
+			options: ["XY", "XZ", "YZ"],
+		},
+		offset: {
+			type: "group", label: "Offset (m, in the frame)", properties: {
+				offset_x: { type: "float", label: "X", default: 0, step: 0.1 },
+				offset_y: { type: "float", label: "Y", default: 0, step: 0.1 },
+				offset_z: { type: "float", label: "Z", default: 0, step: 0.1 },
+			},
 		},
 		autoscale: {
 			type: "enum", label: "Autoscale", default: "Coarse",
@@ -35,11 +47,31 @@ export class GridDisplay extends Display {
 
 	onCreate() {
 		const scene = this.ctx.scene;
-		this.subLines = this.add(scene.makeLines({ color: this.props.colour_sub, linewidth: 1, opacity: 0.65 }));
-		this.mainLines = this.add(scene.makeLines({ color: this.props.colour, linewidth: this.props.thickness }));
+		// the lines live in the grid's own plane, placed in the frame by plane and offset
+		this.plane = this.add(new THREE.Group());
+		this.subLines = scene.makeLines({ color: this.props.colour_sub, linewidth: 1, opacity: 0.65 });
+		this.mainLines = scene.makeLines({ color: this.props.colour, linewidth: this.props.thickness });
+		for (const lines of [this.subLines, this.mainLines]) {
+			lines.renderOrder = this.order;
+			this.plane.add(lines);
+		}
+		this.placePlane();
 		this.step = this.props.size;
 		this.key = null;
 		this.rebuild();
+	}
+
+	// Grid lines are built in the plane group's own XY; its basis maps them onto the chosen plane.
+	placePlane() {
+		const axes = {
+			XY: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+			XZ: [[1, 0, 0], [0, 0, 1], [0, -1, 0]],
+			YZ: [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
+		}[this.props.plane] ?? [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+		const [x, y, z] = axes.map((a) => new THREE.Vector3(...a));
+		this.plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+		this.plane.position.set(this.props.offset_x, this.props.offset_y, this.props.offset_z);
+		this.key = null;
 	}
 
 	hide() {
@@ -79,9 +111,9 @@ export class GridDisplay extends Display {
 			return;
 		}
 
-		// the view centre expressed in the grid's own frame
-		node.updateWorldMatrix(true, false);
-		const centre = node.worldToLocal(scene.viewTarget());
+		// the view centre expressed in the grid's own plane
+		this.plane.updateWorldMatrix(true, false);
+		const centre = this.plane.worldToLocal(scene.viewTarget());
 		const ci = Math.round(centre.x / fit.step);
 		const cj = Math.round(centre.y / fit.step);
 		const n = Math.ceil(radius / fit.step) + 1;
@@ -104,6 +136,8 @@ export class GridDisplay extends Display {
 			this.subLines.material.color.set(value);
 		if (key === "thickness")
 			this.mainLines.material.linewidth = value;
+		if (["plane", "offset_x", "offset_y", "offset_z"].includes(key))
+			this.placePlane();
 		this.key = null;
 		this.rebuild();
 	}

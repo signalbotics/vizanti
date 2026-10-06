@@ -94,6 +94,14 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   the Intensity transformer and Decay Time. Point clouds and scans share this trail code
   (`core/trail.js`). Checked on 2026-10-06 with a 5 Hz scan moving at 0.5 m/s: 10 scans kept
   for 2 s decay; intensity and range coloured blue to red; disable and enable work.
+- **Grid:** the plane (XY, XZ or YZ of its frame) and an offset in that frame. `.rviz` import
+  maps Plane, Offset and Reference Frame. The grid stays infinite with autoscale, so RViz's
+  Plane Cell Count has no equivalent.
+- **TF frames outside the fixed frame's tree:** a frame whose chain to the fixed frame is broken
+  (its publisher stopped, or has not started) has no pose. It isn't drawn, and displays in it
+  report that the transform is missing. Before 2026-10-06 such frames were drawn at the fixed
+  frame's origin. A map that arrives before its TF is still drawn at the origin, with a
+  warning, until TF connects it.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
