@@ -176,3 +176,19 @@ test('select keeps what was clicked, stays armed, and clears on empty space or a
 	manager.select("move");
 	assert.equal(manager.selection, null);
 });
+
+test("a one-off topic (a widget's own Nav Goal button) is used once, then the configured one again", () => {
+	const { manager, published } = make({ goal_topic: "/configured" });
+	manager.select("goal", { goal_topic: "/robot2/goal_pose" });
+	click(manager);
+	assert.equal(published.at(-1).topic, "/robot2/goal_pose");
+	assert.equal(manager.active, "move");
+	manager.select("goal");
+	click(manager);
+	assert.equal(published.at(-1).topic, "/configured");
+	// re-arming the active tool from the toolbar drops a pending override
+	manager.select("estimate", { estimate_topic: "/robot2/initialpose" });
+	manager.select("estimate");
+	click(manager);
+	assert.equal(published.at(-1).topic, "/initialpose");
+});

@@ -202,6 +202,8 @@ async function start() {
 		publish: (topic, type, msg, options = {}) => publish(topic, type, msg, false, options),
 		// a display that edits by pointer (the Waypoints editor) while its edit mode is on
 		setPointerEditor: (display) => setPointerEditor(display),
+		// arms a view tool ("goal", "estimate", ...), optionally with one-off topics
+		selectTool: (id, topics) => app.tools?.select(id, topics),
 		// resolves with the response, rejects on failure or after 5 s
 		callService: (name, type, request) => new Promise((resolve, reject) => {
 			const timer = setTimeout(() => reject(new Error("no answer within 5 s")), 5000);

@@ -34,6 +34,22 @@ export function stampNow(milliseconds) {
 	return { sec: Math.floor(milliseconds / 1000), nanosec: (milliseconds % 1000) * 1e6 };
 }
 
+function sanitizeTopics(topics) {
+	if (topics === null || typeof topics !== "object")
+		return null;
+	const out = {};
+	for (const key of Object.keys(DEFAULT_TOOL_OPTIONS)) {
+		if (typeof topics[key] === "string" && topics[key].trim() !== "")
+			out[key] = topics[key].trim();
+	}
+	return out;
+}
+
+// the topic a tool publishes to now: a one-off override, else the configured one
+export function toolTopic(manager, key) {
+	return manager.topics?.[key] ?? manager.options[key];
+}
+
 export function sanitizeToolOptions(options) {
 	const out = { ...DEFAULT_TOOL_OPTIONS };
 	if (options !== null && typeof options === "object") {
@@ -64,8 +80,13 @@ export class ToolManager {
 		this._dragStart = null;
 	}
 
-	select(id) {
-		if (!TOOLS.some((tool) => tool.id === id) || id === this.active)
+	// topics: one-off topic overrides for this use of the tool ({ goal_topic: "/robot2/goal" }),
+	// as a widget's own Nav Goal or Pose Estimate button sets them
+	select(id, topics = null) {
+		if (!TOOLS.some((tool) => tool.id === id))
+			return;
+		this.topics = id === "move" ? null : sanitizeTopics(topics);
+		if (id === this.active)
 			return;
 		this.active = id;
 		this.preview = null;
@@ -132,7 +153,7 @@ export class ToolManager {
 		if (!point)
 			return; // nothing there; stay armed
 		if (this.active === "point") {
-			this.deps.publish(this.options.point_topic, "geometry_msgs/msg/PointStamped", {
+			this.deps.publish(toolTopic(this, "point_topic"), "geometry_msgs/msg/PointStamped", {
 				header: this.header(),
 				point: { x: point.x, y: point.y, z: point.z },
 			});
@@ -164,9 +185,9 @@ export class ToolManager {
 
 		const pose = { position: { x: start.x, y: start.y, z: 0 }, orientation: yawQuaternion(yaw) };
 		if (this.active === "goal") {
-			this.deps.publish(this.options.goal_topic, "geometry_msgs/msg/PoseStamped", { header: this.header(), pose });
+			this.deps.publish(toolTopic(this, "goal_topic"), "geometry_msgs/msg/PoseStamped", { header: this.header(), pose });
 		} else {
-			this.deps.publish(this.options.estimate_topic, "geometry_msgs/msg/PoseWithCovarianceStamped", {
+			this.deps.publish(toolTopic(this, "estimate_topic"), "geometry_msgs/msg/PoseWithCovarianceStamped", {
 				header: this.header(),
 				pose: { pose, covariance: [...ESTIMATE_COVARIANCE] },
 			});

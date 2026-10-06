@@ -296,7 +296,9 @@ TF prefix, and per-link visibility. Meshes referenced as `package://<pkg>/<path>
 the package. `file://` mesh paths are not supported.
 
 **Widgets** (`js/core/widget.js`): Rosbridge, Battery, Temperature, Speedometer, Altimeter,
-Attitude Indicator and Button are native widgets: a live icon and a panel. The Button acts on a
+Attitude Indicator, Button, 2D Nav Goal and 2D Pose Estimate are native widgets: a live icon and
+a panel. The 2D Nav Goal and 2D Pose Estimate widgets arm the view's pose tool with their own
+topic for one pose, so several of them can drive several robots. The Button acts on a
 click (publish Empty / Bool, call an Empty / Trigger / SetBool service); right-click it in the
 RViz UI, or long-press it in the touch UI, for its panel and settings. In the RViz UI the icon sits in the toolbar's widget strip
 and opens the panel as a dock tab; in the touch UI the icon is in the bar and the panel is at the
@@ -305,7 +307,7 @@ The Altimeter (a height / depth tape along a side of the view) and the Attitude 
 navball) draw on the view's 2D overlay in both UIs. Drag the navball to move it; with a target
 topic set, click the altimeter tape near its ticks to publish that target (std_msgs/Float32).
 
-**Template widgets** (`templates/`): 2D Pose Estimate, 2D Nav Goal, Teleop, and the
+**Template widgets** (`templates/`): Teleop and the
 panels (Node Manager, Bag Recorder, Parameter Reconfigure, Diagnostics, Topic Inspector,
 Compressed Image, Folder). These still run their original
 scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`, `js/modules/persistent.js`)

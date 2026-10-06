@@ -67,22 +67,6 @@ export const CATALOG = {
 			"geometry_msgs/msg/TwistStamped"
 		]
 	},
-	"initialpose": {
-		"label": "2D Pose Estimate",
-		"icon": "assets/initialpose.svg",
-		"description": "Send an initialpose [geometry_msgs/PoseWithCovarianceStamped]",
-		"msgTypes": [
-			"geometry_msgs/msg/PoseWithCovarianceStamped"
-		]
-	},
-	"simplegoal": {
-		"label": "2D Nav Goal",
-		"icon": "assets/simplegoal.svg",
-		"description": "Send a goal pose [geometry_msgs/PoseStamped]",
-		"msgTypes": [
-			"geometry_msgs/msg/PoseStamped"
-		]
-	},
 	"odom": {
 		"label": "Pose Tracker",
 		"icon": "assets/odom.svg",
