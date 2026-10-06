@@ -208,8 +208,8 @@ test("convertRvizConfig rounds float32 noise and keeps cloud colours only when f
       Topic: /flat
 `);
 	const { items } = convertRvizConfig(doc, new Set(["pointcloud"]));
-	assert.deepEqual(items[0].props, { topic: "/points", thickness: 0.01 });
-	assert.deepEqual(items[1].props, { topic: "/flat", color: "#0000ff", colour_override: true });
+	assert.deepEqual(items[0].props, { topic: "/points", thickness: 0.01, colour_mode: "rgb" });
+	assert.deepEqual(items[1].props, { topic: "/flat", color: "#0000ff", colour_mode: "flat" });
 });
 
 test("convertRvizConfig turns an FPS view into Vizanti's first-person camera", () => {
@@ -230,4 +230,27 @@ test("convertRvizConfig turns an FPS view into Vizanti's first-person camera", (
 	const [x, y, z] = camera.orbit.target;
 	assert.ok(z < 3, "positive RViz pitch looks down");
 	assert.ok(Math.abs(Math.atan2(y - 2, x - 1) - 1.2) < 1e-9);
+});
+
+test("convertRvizConfig maps point cloud colour transformers, styles and decay", () => {
+	const doc = parseYaml(`Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Lidar
+      Color Transformer: Intensity
+      Channel Name: reflectivity
+      Style: Points
+      Size (Pixels): 4
+      Decay Time: 2.5
+      Topic: /points
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Height
+      Color Transformer: AxisColor
+      Axis: Z
+      Style: Spheres
+      Topic: /cloud
+`);
+	const { items } = convertRvizConfig(doc, new Set(["pointcloud"]));
+	assert.deepEqual(items[0].props, { topic: "/points", style: "pixels", pixel_size: 4, colour_mode: "channel", channel: "reflectivity", decay_ms: 2500 });
+	assert.deepEqual(items[1].props, { topic: "/cloud", style: "circles", colour_mode: "axis_z" });
 });

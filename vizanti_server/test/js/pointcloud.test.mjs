@@ -81,6 +81,65 @@ test('PointCloudDisplay keeps the options of the widget it replaces', () => {
 	assert.equal(PointCloudDisplay.type, "pointcloud");
 	assert.deepEqual(PointCloudDisplay.msgTypes, ["sensor_msgs/msg/PointCloud2"]);
 	assert.deepEqual(defaultsOf(PointCloudDisplay.properties), {
-		topic: "", thickness: 0.02, max_points: 15000, opacity: 1, color: "#1f8eec", colour_override: false, throttle: 1000,
+		topic: "", style: "squares", thickness: 0.02, pixel_size: 3, max_points: 15000, opacity: 1, decay_ms: 0,
+		colour_mode: "rgb", channel: "intensity", color: "#1f8eec", colour_override: false, throttle: 1000,
 	});
+});
+
+import { rainbow, colorizeValues, axisValues } from '../../public/js/geometry/pointcloud.js';
+
+// x,y,z float32 plus an intensity float32 at offset 12
+function intensityCloud(points) {
+	const step = 16;
+	const buffer = new ArrayBuffer(points.length * step);
+	const view = new DataView(buffer);
+	points.forEach((p, i) => p.forEach((v, k) => view.setFloat32(i * step + k * 4, v, true)));
+	return {
+		width: points.length, height: 1, point_step: step, is_bigendian: false, data: new Uint8Array(buffer),
+		fields: [
+			{ name: "x", offset: 0, datatype: 7, count: 1 },
+			{ name: "y", offset: 4, datatype: 7, count: 1 },
+			{ name: "z", offset: 8, datatype: 7, count: 1 },
+			{ name: "intensity", offset: 12, datatype: 7, count: 1 },
+		],
+	};
+}
+
+test('decodeCloud reads a named scalar channel per kept point, with its range', () => {
+	const r = decodeCloud(intensityCloud([[0, 0, 0, 5], [1, 0, 0, NaN], [NaN, 0, 0, 99], [2, 0, 0, 25]]), 100, { channel: "intensity" });
+	// the point with NaN coordinates is dropped; a NaN channel value is kept but left out of the range
+	assert.equal(r.count, 3);
+	assert.deepEqual(Array.from(r.values), [5, NaN, 25]);
+	assert.deepEqual(r.range, { min: 5, max: 25 });
+	const missing = decodeCloud(intensityCloud([[0, 0, 0, 1]]), 100, { channel: "reflectivity" });
+	assert.equal(missing.values, null);
+});
+
+test('rainbow runs from blue at the low end to red at the high end', () => {
+	assert.deepEqual(rainbow(0).map((v) => Math.round(v * 100) / 100), [0, 0, 1]);
+	assert.deepEqual(rainbow(1).map((v) => Math.round(v * 100) / 100), [1, 0, 0]);
+	const mid = rainbow(0.5);
+	assert.ok(mid[1] > 0.9, "the middle is green");
+	assert.deepEqual(rainbow(-3), rainbow(0));
+	assert.deepEqual(rainbow(7), rainbow(1));
+});
+
+test('colorizeValues maps values over a range to rainbow RGB, and a flat range to the middle', () => {
+	const c = colorizeValues(new Float32Array([0, 10]), 0, 10);
+	assert.equal(c.length, 6);
+	assert.deepEqual(Array.from(c.slice(0, 3)).map(Math.round), [0, 0, 1]);
+	assert.deepEqual(Array.from(c.slice(3, 6)).map(Math.round), [1, 0, 0]);
+	const flat = colorizeValues(new Float32Array([4, 4]), 4, 4);
+	assert.deepEqual(Array.from(flat.slice(0, 3)), rainbow(0.5));
+});
+
+test('axisValues gives each point\'s coordinate along an axis after a transform', () => {
+	// translation by (0, 0, 2) as a column-major 4x4
+	const m = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 1];
+	const positions = new Float32Array([1, 2, 3, -1, 0, -2]);
+	assert.deepEqual(Array.from(axisValues(positions, m, "z")), [5, 0]);
+	assert.deepEqual(Array.from(axisValues(positions, m, "x")), [1, -1]);
+	// a 90 degree turn about z maps x onto y
+	const rz = [0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+	assert.deepEqual(Array.from(axisValues(new Float32Array([1, 0, 0]), rz, "y")).map(Math.round), [1]);
 });

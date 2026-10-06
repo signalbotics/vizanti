@@ -201,6 +201,22 @@ const bool = (value) => (typeof value === "boolean" ? value : undefined);
 const str = (value) => (typeof value === "string" && value !== "" ? value : undefined);
 const flatColor = (d) => d["Color Transformer"] === "FlatColor";
 
+// RViz point cloud "Color Transformer" -> Vizanti colour mode
+function cloudColourMode(d) {
+	switch (d["Color Transformer"]) {
+		case "FlatColor": return "flat";
+		case "RGB8": return "rgb";
+		case "Intensity": return "channel";
+		case "AxisColor": {
+			const axis = String(d.Axis ?? "Z").toLowerCase();
+			return ["x", "y", "z"].includes(axis) ? `axis_${axis}` : "axis_z";
+		}
+		default: return undefined;
+	}
+}
+
+const CLOUD_STYLES = { "Points": "pixels", "Squares": "squares", "Flat Squares": "squares", "Spheres": "circles", "Boxes": "squares" };
+
 // class name (without package) -> [vizanti type, props from the RViz display]
 const MAPPINGS = {
 	Grid: ["grid", (d) => ({ size: num(d["Cell Size"]), colour: rvizColor(d.Color) })],
@@ -212,10 +228,17 @@ const MAPPINGS = {
 		topic: topicOf(d.Topic), color: flatColor(d) ? rvizColor(d.Color) : undefined,
 		thickness: num(d["Size (m)"]), opacity: num(d.Alpha),
 	})],
-	PointCloud2: ["pointcloud", (d) => ({
-		topic: topicOf(d.Topic), thickness: num(d["Size (m)"]), opacity: num(d.Alpha),
-		color: flatColor(d) ? rvizColor(d.Color) : undefined, colour_override: flatColor(d) || undefined,
-	})],
+	PointCloud2: ["pointcloud", (d) => {
+		const mode = cloudColourMode(d);
+		const decay = num(d["Decay Time"]);
+		return {
+			topic: topicOf(d.Topic), thickness: num(d["Size (m)"]), opacity: num(d.Alpha),
+			style: CLOUD_STYLES[d.Style], pixel_size: num(d["Size (Pixels)"]),
+			colour_mode: mode, color: mode === "flat" ? rvizColor(d.Color) : undefined,
+			channel: mode === "channel" ? str(d["Channel Name"]) : undefined,
+			decay_ms: decay !== undefined && decay > 0 ? Math.round(decay * 1000) : undefined,
+		};
+	}],
 	Map: ["map", (d) => ({ topic: topicOf(d.Topic), opacity: num(d.Alpha) })],
 	MarkerArray: ["markerarray", (d) => ({ topic: topicOf(d.Topic) })],
 	Marker: ["marker", (d) => ({ topic: topicOf(d.Topic) })],

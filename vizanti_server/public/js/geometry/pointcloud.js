@@ -32,8 +32,9 @@ export function toBytes(data) {
 
 // Decodes a sensor_msgs/PointCloud2 into xyz positions and, when the cloud has an rgb field,
 // 0..1 colours. Clouds with more than maxPoints points are thinned evenly.
-// Returns { positions, colors, count, stride } or { error }.
-export function decodeCloud(msg, maxPoints) {
+// options.channel names a scalar field (e.g. "intensity") to read per point as `values`.
+// Returns { positions, colors, values, range, count, stride } or { error }.
+export function decodeCloud(msg, maxPoints, { channel = "" } = {}) {
 	const field = (name) => msg.fields.find((f) => f.name === name);
 	const fx = field("x"), fy = field("y"), fz = field("z");
 	if (!fx || !fy || !fz)
@@ -41,6 +42,8 @@ export function decodeCloud(msg, maxPoints) {
 	if (!READERS[fx.datatype] || !READERS[fy.datatype] || !READERS[fz.datatype])
 		return { error: "XYZ fields use an unknown datatype." };
 	const frgb = field("rgb") ?? field("rgba");
+	const fchannel = channel ? field(channel) : null;
+	const rchannel = fchannel ? READERS[fchannel.datatype] : null;
 
 	const bytes = toBytes(msg.data);
 	if (!bytes)
@@ -55,6 +58,8 @@ export function decodeCloud(msg, maxPoints) {
 	const capacity = Math.ceil(total / stride);
 	const positions = new Float32Array(capacity * 3);
 	const colors = frgb ? new Float32Array(capacity * 3) : null;
+	const values = rchannel ? new Float32Array(capacity) : null;
+	let min = Infinity, max = -Infinity;
 
 	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	const le = !msg.is_bigendian;
@@ -78,13 +83,63 @@ export function decodeCloud(msg, maxPoints) {
 			colors[count * 3 + 1] = ((bits >> 8) & 0xff) / 255;
 			colors[count * 3 + 2] = (bits & 0xff) / 255;
 		}
+		if (values) {
+			const v = rchannel(view, base + fchannel.offset, le);
+			values[count] = v;
+			if (Number.isFinite(v)) {
+				if (v < min) min = v;
+				if (v > max) max = v;
+			}
+		}
 		count++;
 	}
 
 	return {
 		positions: positions.slice(0, count * 3),
 		colors: colors ? colors.slice(0, count * 3) : null,
+		values: values ? values.slice(0, count) : null,
+		range: values && min <= max ? { min, max } : null,
 		count,
 		stride,
 	};
+}
+
+// Blue (0) through cyan, green and yellow to red (1), as RGB in 0..1.
+export function rainbow(t) {
+	const v = Math.min(1, Math.max(0, Number.isFinite(t) ? t : 0));
+	// hue 240 degrees (blue) down to 0 (red), full saturation and value
+	const h = (1 - v) * 4; // 0..4 across the four sextants red..blue
+	const i = Math.floor(h);
+	const f = h - i;
+	switch (i) {
+		case 0: return [1, f, 0];          // red -> yellow
+		case 1: return [1 - f, 1, 0];      // yellow -> green
+		case 2: return [0, 1, f];          // green -> cyan
+		case 3: return [0, 1 - f, 1];      // cyan -> blue
+		default: return [0, 0, 1];
+	}
+}
+
+// One rainbow colour per value, spread over [min, max]; a flat range gets the middle colour.
+export function colorizeValues(values, min, max) {
+	const out = new Float32Array(values.length * 3);
+	const span = max - min;
+	for (let i = 0; i < values.length; i++) {
+		const [r, g, b] = rainbow(span > 0 ? (values[i] - min) / span : 0.5);
+		out[i * 3] = r;
+		out[i * 3 + 1] = g;
+		out[i * 3 + 2] = b;
+	}
+	return out;
+}
+
+// Each point's coordinate along "x", "y" or "z" after a column-major 4x4 transform (e.g. the
+// cloud frame to the fixed frame), for colouring by height.
+export function axisValues(positions, matrix, axis) {
+	const row = { x: 0, y: 1, z: 2 }[axis] ?? 2;
+	const a = matrix[row], b = matrix[4 + row], c = matrix[8 + row], d = matrix[12 + row];
+	const out = new Float32Array(positions.length / 3);
+	for (let i = 0; i < out.length; i++)
+		out[i] = a * positions[i * 3] + b * positions[i * 3 + 1] + c * positions[i * 3 + 2] + d;
+	return out;
 }

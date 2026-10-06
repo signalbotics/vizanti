@@ -75,6 +75,20 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   map and redrawn; a patch that does not fit the map is ignored with a warning. Checked on
   2026-10-06 with a test publisher (full 50×50 map every 5 s, 5×5 patches every 0.5 s): the
   patches accumulated between full maps and were drawn.
+- **Point cloud:**
+  - **Colour by:** RGB (from the cloud, else the flat colour), Flat, Channel (any field,
+    `intensity` by default), or X/Y/Z in the fixed frame (height colouring). Channel and axis
+    colours use a blue (low) to red (high) rainbow over each cloud's range.
+  - **Style:** squares or circles sized in metres, or fixed-size points in pixels.
+  - **Decay time:** keeps each cloud where it was measured, so a moving sensor leaves a trail.
+    Changing a colour setting redraws only the latest cloud.
+  - **`.rviz` import** maps Color Transformer (RGB8, FlatColor, Intensity with Channel Name,
+    AxisColor with Axis), Style, Size (Pixels) and Decay Time.
+
+  Checked on 2026-10-06 with a 5 Hz test lidar moving at 0.5 m/s:
+  - intensity 0–359 went from blue to red;
+  - with 2 s decay, 11 clouds were kept, and the oldest was 1.0 m behind the newest;
+  - in height mode, the highest point was red and the lowest blue.
 - **Add dialog:** a search box (focused when the dialog opens) filters by name, description,
   message type or topic, and Enter adds the first match. Displays are grouped by category; a
   plugin display can set `static category`. The flat 2D robot picture is now called "Robot
