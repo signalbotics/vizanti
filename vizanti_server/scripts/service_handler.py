@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import subprocess
+import tempfile
+import signal
 import os
 import fcntl
 import sys
@@ -235,8 +237,22 @@ class ServiceHandler(Node):
             res.status = "Error, could not set param."
         return res
 
+    def bag_takes_topics_flag(self):
+        # asked once: whether this distro's `ros2 bag record` has --topics
+        if getattr(self, "_bag_topics_flag", None) is None:
+            try:
+                usage = subprocess.run(['ros2', 'bag', 'record', '-h'], capture_output=True, text=True, timeout=30).stdout
+                self._bag_topics_flag = '--topics' in usage
+            except Exception:
+                self._bag_topics_flag = False
+        return self._bag_topics_flag
+
     def recording_status(self, req, res):
         response = Trigger.Response()
+        # a recorder that died (disk full, killed) is not recording any more
+        if self.proc is not None and self.proc.poll() is not None:
+            self.get_logger().warn(f"The bag recorder exited with code {self.proc.returncode}.")
+            self.proc = None
         response.success = self.proc is not None
 
         if response.success:
@@ -254,27 +270,51 @@ class ServiceHandler(Node):
                 response.success = False
                 response.message = "Already recording, please stop the current recording first."
             else:
-                command = ['ros2', 'bag', 'record', '-o']
-
-                # Expand and add the path to the command
                 expanded_path = os.path.expanduser(req.path)
-                command.append(expanded_path)
+                parent = os.path.dirname(expanded_path)
+                try:
+                    if parent:
+                        os.makedirs(parent, exist_ok=True)
+                except OSError as e:
+                    response.success = False
+                    response.message = f"Cannot create {parent}: {e}"
+                    return response
 
-                # Add the topics to the command
-                for topic in req.topics:
-                    command.append(topic)
+                # Iron and later take the topics after --topics (Lyrical no longer accepts
+                # them bare); Humble only knows them bare.
+                command = ['ros2', 'bag', 'record', '-o', expanded_path]
+                if self.bag_takes_topics_flag():
+                    command.append('--topics')
+                command.extend(req.topics)
 
-                # Use subprocess to start rosbag record in a new process
-                self.proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                # stderr goes to a file: a pipe nobody reads would stall a long recording
+                self.proc_log = tempfile.TemporaryFile()
+                self.proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=self.proc_log)
+
+                # a bad path or topic makes the recorder quit at once; say so instead of "started"
+                time.sleep(1.0)
+                if self.proc.poll() is not None:
+                    self.proc_log.seek(0)
+                    error = self.proc_log.read().decode(errors="replace").strip().splitlines()
+                    self.proc = None
+                    response.success = False
+                    response.message = "The recorder stopped: " + (error[-1] if error else "no output")
+                    self.get_logger().error(response.message)
+                    return response
+
                 response.success = True
                 response.message = "Recording started."
 
                 self.get_logger().info("Recording ros2 bag to "+str(expanded_path))
         else:
             if self.proc is not None:
-                # Terminate the rosbag record process
-                self.proc.terminate()
-                self.proc.wait()
+                # Ctrl+C lets ros2 bag finish writing the bag; terminate only if it hangs
+                self.proc.send_signal(signal.SIGINT)
+                try:
+                    self.proc.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    self.proc.terminate()
+                    self.proc.wait()
                 self.proc = None
                 response.success = True
                 response.message = "Recording stopped."

@@ -19,12 +19,6 @@ export const CATALOG = {
 		"description": "Custom robot sprite",
 		"msgTypes": []
 	},
-	"rosbag": {
-		"label": "Bag Recorder",
-		"icon": "assets/rosbag.svg",
-		"description": "Record rosbags",
-		"msgTypes": []
-	},
 	"nodemgr": {
 		"label": "Node Manager",
 		"icon": "assets/nodemgr.svg",

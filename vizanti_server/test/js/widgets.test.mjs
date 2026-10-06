@@ -142,3 +142,15 @@ test('parameters group by their dots and convert typed text', () => {
 	assert.equal(parameterText(3, ""), null);
 	assert.equal(parameterText(4, "hello"), "hello");
 });
+
+import { timestampedPath, topicsByType, RosbagWidget } from '../../public/js/displays/rosbag_widget.js';
+
+test('bag recorder helpers', () => {
+	assert.equal(timestampedPath("~/bags/run.bag", new Date(2026, 9, 6, 14, 5)), "~/bags/2026-10-06-14-05-run.bag");
+	assert.equal(timestampedPath("run", new Date(2026, 0, 2, 3, 4)), "2026-01-02-03-04-run");
+	const groups = topicsByType({ topics: ["/scan", "/tf", "/vizanti/tf_consolidated", "/odom"], types: ["sensor_msgs/msg/LaserScan", "tf2_msgs/msg/TFMessage", "tf2_msgs/msg/TFMessage", "nav_msgs/msg/Odometry"] });
+	assert.deepEqual([...groups.keys()], ["nav_msgs/msg/Odometry", "sensor_msgs/msg/LaserScan", "tf2_msgs/msg/TFMessage"]);
+	assert.deepEqual(groups.get("tf2_msgs/msg/TFMessage"), ["/tf"]);
+	const { values } = resolveProps(RosbagWidget.properties, RosbagWidget.migrateProps({ state: { path: "~/x.bag", topic_list: ["/a", "/b"] } }));
+	assert.deepEqual([values.path, values.topics], ["~/x.bag", ["/a", "/b"]]);
+});

@@ -1001,3 +1001,21 @@ button.status_segment:disabled {
 	margin-left: 4px;
 	color: #8d9aab;
 }
+
+.widget_panel .rosbag_toggle {
+	width: 100%;
+	padding: 8px;
+	color: white;
+	background-color: rgb(38, 104, 31);
+}
+
+.widget_panel .rosbag_toggle.recording {
+	color: black;
+	background-color: #e14044;
+}
+
+.widget_panel .rosbag_topic {
+	display: block;
+	margin: 2px 0 2px 14px;
+	white-space: nowrap;
+}
