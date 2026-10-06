@@ -303,7 +303,12 @@ end); Satellite Tiles offline; waypoint and survey editing in the orbit view.
   They are not yet native 3D tools (no picking of 3D objects, no editing above z = 0).
 - The URDF robot model needs the package that holds the meshes to be installed on the machine
   running the Vizanti server. It was checked with the Panda arm (Collada visuals, STL
-  collisions) at rest; it was not checked with moving joints, `.obj` meshes or textured meshes.
+  collisions), at rest and, on 2026-10-06, with two joints sweeping at 20 Hz through
+  robot_state_publisher: the drawn links followed TF exactly. `.obj` and textured meshes were
+  not checked.
+- A browser tab in the background slows its timers (Chrome throttles them to about once a
+  minute after a few minutes hidden), so the status bar and the QoS retry run late there; they
+  catch up when the tab is shown.
 - Handing a very large map to the colour-conversion worker blocks the page briefly (about
   150 ms for 2000 x 2000 cells).
 - The Point Cloud "RGB Colour Count" option is gone: per-point colours are drawn directly.
