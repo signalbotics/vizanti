@@ -19,12 +19,6 @@ export const CATALOG = {
 		"description": "Custom robot sprite",
 		"msgTypes": []
 	},
-	"nodemgr": {
-		"label": "Node Manager",
-		"icon": "assets/nodemgr.svg",
-		"description": "Start and stop nodes",
-		"msgTypes": []
-	},
 	"folder": {
 		"label": "Folder",
 		"icon": "assets/folder.svg",

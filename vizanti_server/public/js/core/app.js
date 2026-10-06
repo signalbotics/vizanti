@@ -204,9 +204,9 @@ async function start() {
 		setPointerEditor: (display) => setPointerEditor(display),
 		// arms a view tool ("goal", "estimate", ...), optionally with one-off topics
 		selectTool: (id, topics) => app.tools?.select(id, topics),
-		// resolves with the response, rejects on failure or after 5 s
-		callService: (name, type, request) => new Promise((resolve, reject) => {
-			const timer = setTimeout(() => reject(new Error("no answer within 5 s")), 5000);
+		// resolves with the response, rejects on failure or after timeoutMs (5 s by default)
+		callService: (name, type, request, timeoutMs = 5000) => new Promise((resolve, reject) => {
+			const timer = setTimeout(() => reject(new Error(`no answer within ${Math.round(timeoutMs / 1000)} s`)), timeoutMs);
 			new ROSLIB.Service({ ros: rosbridge.ros, name, serviceType: type }).callService(
 				new ROSLIB.ServiceRequest(request),
 				(response) => { clearTimeout(timer); resolve(response); },

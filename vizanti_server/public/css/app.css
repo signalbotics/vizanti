@@ -1019,3 +1019,19 @@ button.status_segment:disabled {
 	margin: 2px 0 2px 14px;
 	white-space: nowrap;
 }
+
+.widget_panel .nodemgr_node {
+	margin: 3px 0;
+	padding: 2px 6px;
+	border-left: 4px solid transparent;
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.widget_panel .nodemgr_node summary {
+	cursor: pointer;
+}
+
+.widget_panel .nodemgr_state {
+	margin-left: 8px;
+	font-size: 0.85em;
+}

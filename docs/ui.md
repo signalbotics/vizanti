@@ -311,6 +311,8 @@ widgets (`{state: {...}}`) are converted on load.
   topic for one pose, so several of them can drive several robots.
 - **Topic Inspector**: echoes any topic, with its publishers and subscribers.
 - **Parameter Reconfigure**: reads and sets a node's bool / int / float / string parameters.
+- **Node Manager**: starts nodes and launch files (`ros2 run` / `ros2 launch`), shows running
+  nodes with their lifecycle state and `ros2 node info`, kills nodes, and runs `ros2 doctor`.
 - **Bag Recorder**: runs `ros2 bag record` on the robot through the Vizanti server. The server
   passes the topics after `--topics` where that flag exists (Iron and later; Lyrical requires
   it) and bare on Humble, creates the folder if needed, reports an error rather than "started"
@@ -318,7 +320,7 @@ widgets (`{state: {...}}`) are converted on load.
 
 **Compressed Image** is a native display like Image, plus rotation, rate and bandwidth.
 
-**Template widgets** (`templates/`): Teleop, Node Manager, Diagnostics and Folder still run
+**Template widgets** (`templates/`): Teleop, Diagnostics and Folder still run
 their original scripts. A compatibility layer (`js/legacy/`, `js/modules/view.js`,
 `js/modules/persistent.js`) gives them the page functions and the settings object they expect,
 and projects their drawing through the 3D camera onto the ground plane (z = 0).

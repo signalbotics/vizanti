@@ -154,3 +154,12 @@ test('bag recorder helpers', () => {
 	const { values } = resolveProps(RosbagWidget.properties, RosbagWidget.migrateProps({ state: { path: "~/x.bag", topic_list: ["/a", "/b"] } }));
 	assert.deepEqual([values.path, values.topics], ["~/x.bag", ["/a", "/b"]]);
 });
+
+import { nodeCommand, stripEscapes } from '../../public/js/displays/nodemgr_widget.js';
+
+test('node manager commands and doctor output', () => {
+	assert.equal(nodeCommand("demo_nodes_cpp", "talker"), "ros2 run demo_nodes_cpp talker");
+	assert.equal(nodeCommand("nav2_bringup", "navigation_launch.py"), "ros2 launch nav2_bringup navigation_launch.py");
+	assert.equal(nodeCommand("pkg", "x", "launch"), "ros2 launch pkg x");
+	assert.equal(stripEscapes("\x1B[1mUNIQUE\x1B[0m ok \x1B[31mred\x1B[0m"), "UNIQUE ok red");
+});
