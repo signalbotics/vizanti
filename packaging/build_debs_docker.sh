@@ -45,7 +45,16 @@ fi
 IMAGE="vizanti-deb-builder:$DISTRO"
 [ "$ARCH" = "$HOST_ARCH" ] || IMAGE="$IMAGE-$ARCH"
 echo "==> builder image $IMAGE ($PLATFORM)"
-docker build -q --platform "$PLATFORM" -t "$IMAGE" --build-arg ROS_DISTRO="$DISTRO" -f "$REPO/packaging/Dockerfile.build" "$REPO" >/dev/null
+# quiet when it works; the end of the build output when it does not
+BUILD_LOG=$(mktemp)
+if ! docker build --progress=plain --platform "$PLATFORM" -t "$IMAGE" --build-arg ROS_DISTRO="$DISTRO" \
+		-f "$REPO/packaging/Dockerfile.build" "$REPO" >"$BUILD_LOG" 2>&1; then
+	tail -n 80 "$BUILD_LOG" >&2
+	rm -f "$BUILD_LOG"
+	echo "The builder image could not be built (output above)." >&2
+	exit 1
+fi
+rm -f "$BUILD_LOG"
 
 echo "==> building in the container"
 # the source is mounted read-only; files written to /out are handed back to the caller's user
