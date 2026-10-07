@@ -475,6 +475,11 @@ async function start() {
 		}
 	}, 400);
 	registry.addEventListener("changed", save);
+	// a change made just before the tab closes or reloads would otherwise be lost
+	window.addEventListener("pagehide", () => {
+		save.flush();
+		saveCamera.flush();
+	});
 	// a template tool removed while it was armed must not leave the camera switched off
 	registry.addEventListener("removed", (event) => {
 		if (event.detail.item.constructor.kind === "template" && app.tools && app.tools.active === "move")

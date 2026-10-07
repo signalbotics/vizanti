@@ -1,5 +1,5 @@
-// Runs fn at most once per `ms`, after the burst. cancel() drops a pending run and
-// turns later calls into no-ops, for when the page is about to be replaced.
+// Runs fn at most once per `ms`, after the burst. flush() runs a pending call at once;
+// cancel() drops it and turns later calls into no-ops, for when the page is about to be replaced.
 export function throttled(fn, ms) {
 	let timer = null;
 	let cancelled = false;
@@ -11,6 +11,15 @@ export function throttled(fn, ms) {
 			timer = null;
 			fn();
 		}, ms);
+	};
+
+	// runs a pending call now (the page is closing: a timer would never fire)
+	run.flush = () => {
+		if (cancelled || timer === null)
+			return;
+		clearTimeout(timer);
+		timer = null;
+		fn();
 	};
 
 	run.cancel = () => {

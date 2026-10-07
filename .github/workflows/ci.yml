@@ -1,4 +1,4 @@
-# Unit tests on every push and pull request; on a version tag (v*), Debian packages for every
+# Unit and browser tests on every push and pull request; on a version tag (v*), Debian packages for every
 # distro and architecture, attached to that tag's GitHub release. See docs/packaging.md.
 name: CI
 
@@ -35,9 +35,39 @@ jobs:
         working-directory: vizanti_server
         run: node --test "test/js/*.test.mjs"
 
+  browser:
+    # the web UI driven by Playwright against a Vizanti built and run in a ROS container
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Start Vizanti (Jazzy, in Docker)
+        run: vizanti_server/test/e2e/run_server_docker.sh jazzy 5080 5081
+      - name: Install Playwright
+        working-directory: vizanti_server/test/e2e
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Browser tests
+        working-directory: vizanti_server/test/e2e
+        env:
+          VIZANTI_URL: http://localhost:5080
+        run: npx playwright test
+      - name: Server log
+        if: failure()
+        run: docker logs --tail 200 vizanti-e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            vizanti_server/test/e2e/playwright-report
+            vizanti_server/test/e2e/test-results
+
   debs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: tests
+    needs: [tests, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 300 # arm64 builds run under QEMU emulation
     strategy:

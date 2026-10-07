@@ -6,3 +6,8 @@ __pycache__/
 # .deb packages built by packaging/build_debs.sh
 packaging/debs/
 packaging/apt-repo/
+
+# browser tests
+vizanti_server/test/e2e/node_modules/
+vizanti_server/test/e2e/test-results/
+vizanti_server/test/e2e/playwright-report/

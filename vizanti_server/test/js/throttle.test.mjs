@@ -26,3 +26,19 @@ test('cancel drops a pending run and ignores later calls, so a save cannot land 
 	t.mock.timers.tick(1000);
 	assert.equal(n, 0);
 });
+
+test('flush runs a pending call at once, and nothing after cancel', async () => {
+	let calls = 0;
+	const run = throttled(() => calls++, 1000);
+	run.flush(); // nothing pending
+	assert.equal(calls, 0);
+	run();
+	run.flush();
+	assert.equal(calls, 1);
+	await new Promise((r) => setTimeout(r, 20));
+	assert.equal(calls, 1); // the timer was cleared
+	run();
+	run.cancel();
+	run.flush();
+	assert.equal(calls, 1);
+});

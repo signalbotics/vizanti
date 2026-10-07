@@ -346,6 +346,9 @@ template folders a third-party package may still ship in `public/templates/`.
 cd vizanti_server && node --test "test/js/*.test.mjs"
 ```
 
+Browser tests (Playwright, against a running server) are in `vizanti_server/test/e2e/`; see its
+README. CI runs both on every push.
+
 These cover the browser-free code: property validation, storage, the registry, TF frame nodes,
 the `Display` base class, old-layout conversion and every display's message-to-geometry
 function. Rendering and the two interfaces are checked in a browser.
