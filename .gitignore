@@ -5,3 +5,4 @@ __pycache__/
 
 # .deb packages built by packaging/build_debs.sh
 packaging/debs/
+packaging/apt-repo/

@@ -103,6 +103,53 @@ Two things make it self-contained:
   - `/etc/ros/rosdep` and `~/.ros` are not touched.
 - **No sudo:** the script needs no root and installs nothing.
 
+## Apt repository
+
+`packaging/build_apt_repo.py` turns built .debs into a standard apt repository that any static
+web host can serve (nginx, S3, GitHub Pages, an internal file server):
+
+```bash
+packaging/build_apt_repo.py packaging/debs/*/ --out packaging/apt-repo --sign-key KEYID
+```
+
+- One `dists/<codename>` per Ubuntu release, taken from the .deb version (`-0noble`,
+  `-0jammy`, ...), with a `binary-<arch>` index per architecture found; the .debs go to
+  `pool/main/<codename>/`.
+- An existing `--out` is added to, so older versions stay installable: keep the folder (or
+  sync it down from the host first) between releases.
+- `--sign-key` signs `Release` (`InRelease` and `Release.gpg`) with that gpg key and writes
+  its public part as `vizanti-archive-keyring.gpg` at the top. Without it the repository is
+  unsigned and clients must add `[trusted=yes]`, which is only acceptable on a closed network.
+- Needs `apt-utils` (apt-ftparchive) and `gnupg`.
+
+Make a signing key once (keep the private key safe; CI needs it as a secret to sign there):
+
+```bash
+gpg --quick-gen-key "Signalbotics Vizanti packages <bruk@signalbotics.com>" ed25519 sign 3y
+```
+
+Publish: copy the whole `--out` folder to the host, e.g.
+`rsync -a --delete packaging/apt-repo/ host:/var/www/apt/`.
+
+On a robot (use your host's URL; the ROS apt repository must be set up too, since the
+packages depend on ros-<distro>-* packages):
+
+```bash
+sudo curl -fsSL https://HOST/apt/vizanti-archive-keyring.gpg -o /usr/share/keyrings/vizanti-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/vizanti-archive-keyring.gpg] https://HOST/apt $(. /etc/os-release; echo $VERSION_CODENAME) main" \
+    | sudo tee /etc/apt/sources.list.d/vizanti.list
+sudo apt update && sudo apt install ros-jazzy-vizanti
+```
+
+Checked on 2026-10-07: the Humble, Jazzy (amd64 + arm64) and Lyrical packages made into a
+signed repository, served over HTTP, and `apt install ros-jazzy-vizanti` in a clean
+`ros:jazzy-ros-base` container installed it with the signature verified; with a different key
+apt refused the repository (NO_PUBKEY).
+
+**Hosting is not decided yet.** The GitHub repository is private, so GitHub Pages or release
+URLs would need authentication or a public mirror. Options: a public `gh-pages` branch on a
+separate public repository, an S3 / Cloudflare R2 bucket, or a server on the robots' network.
+
 ## Authors and maintainers in the packages
 
 `package.xml` of every package lists:
