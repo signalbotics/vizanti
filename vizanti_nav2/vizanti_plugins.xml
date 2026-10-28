@@ -9,4 +9,8 @@
          rviz_class="nav2_rviz_plugins/GoalTool">
     <description>Set a Nav2 goal; in the Navigation 2 panel's waypoint mode, add a waypoint.</description>
   </class>
+  <class name="vizanti_nav2/Selector" type="panels/selector.js#SelectorPanel" base_class_type="vizanti::Panel"
+         rviz_class="nav2_rviz_plugins/Selector">
+    <description>Choose the controller, planner, goal checker, smoother, progress checker and path handler Nav2 uses.</description>
+  </class>
 </library>

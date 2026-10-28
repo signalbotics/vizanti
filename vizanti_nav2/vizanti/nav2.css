@@ -24,3 +24,6 @@
 .nav2_panel .nav2_grid > input { width: 100%; box-sizing: border-box; }
 .nav2_panel .nav2_tabbar { flex-wrap: nowrap; overflow-x: auto; }
 .nav2_panel .nav2_tab { white-space: nowrap; flex: 0 0 auto; }
+.nav2_selector .nav2_selector_row { display: flex; gap: 8px; }
+.nav2_selector .nav2_selector_cell { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.nav2_selector select { width: 100%; }
