@@ -17,6 +17,7 @@ COPY vizanti_msgs/package.xml /deps/vizanti_msgs/package.xml
 COPY vizanti_server/package.xml /deps/vizanti_server/package.xml
 COPY vizanti_cpp/package.xml /deps/vizanti_cpp/package.xml
 COPY vizanti_demos/package.xml /deps/vizanti_demos/package.xml
+COPY vizanti_nav2/package.xml /deps/vizanti_nav2/package.xml
 RUN apt-get update \
 	&& (rosdep update --rosdistro "$ROS_DISTRO" || rosdep update) \
 	&& rosdep install --from-paths /deps --ignore-src --rosdistro "$ROS_DISTRO" -y \

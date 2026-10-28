@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>vizanti_demos</name>
-  <version>0.0.2</version>
+  <version>0.0.3</version>
   <description>Demonstration package for Vizanti</description>
   <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
   <maintainer email="vid.rijavec@gmail.com">MoffKalast</maintainer>

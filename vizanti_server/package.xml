@@ -1,6 +1,6 @@
 <package format="3">
     <name>vizanti_server</name>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <description>A mission planner and visualizer for controlling outdoor ROS robots.</description>
     <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
     <maintainer email="vid.rijavec@gmail.com">MoffKalast</maintainer>

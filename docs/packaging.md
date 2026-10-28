@@ -10,6 +10,7 @@ ROS build farm names them:
 | vizanti | `ros-<distro>-vizanti` (metapackage: msgs + server) |
 | vizanti_cpp | `ros-<distro>-vizanti-cpp` |
 | vizanti_demos | `ros-<distro>-vizanti-demos` |
+| vizanti_nav2 | `ros-<distro>-vizanti-nav2` (Navigation 2 panel and Nav2 goal tool) |
 
 ## Build
 
@@ -94,7 +95,7 @@ For each package, in dependency order, the script:
 
 Two things make it self-contained:
 - **rosdep:** the public rosdep database has no rules for the vizanti packages. On Lyrical it
-  also has none for `nav2_msgs`, which vizanti_demos needs. So the script runs rosdep against a
+  also has none for `nav2_msgs`, which vizanti_demos and vizanti_nav2 need. So the script runs rosdep against a
   private copy of its sources (`ROSDEP_SOURCE_PATH` and `ROS_HOME` point into the temporary
   directory), with an extra rules file.
   - That file (`debian_meta.py rosdep-yaml`) maps the vizanti packages to their .deb names.

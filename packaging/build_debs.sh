@@ -16,7 +16,7 @@ OUT=""  # default: packaging/debs/<distro>
 KEEP_WORK=0
 PACKAGES=()
 # dependency order: each package only needs the ones before it
-ALL_PACKAGES=(vizanti_msgs vizanti_server vizanti vizanti_cpp vizanti_demos)
+ALL_PACKAGES=(vizanti_msgs vizanti_server vizanti vizanti_cpp vizanti_demos vizanti_nav2)
 
 while [ $# -gt 0 ]; do
 	case "$1" in
