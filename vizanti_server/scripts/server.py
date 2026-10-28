@@ -16,6 +16,8 @@ from ament_index_python.resources import get_resources
 
 from pathlib import Path
 
+import plugin_index
+
 GZIP_CACHE_MAX_ENTRIES = 256
 COMPRESSIBLE_MIMETYPES = {'application/javascript', 'text/javascript', 'text/css', 'text/html', 'application/json', 'image/svg+xml', 'text/plain'}
 gzip_cache = {}
@@ -184,33 +186,36 @@ def config_file(name):
 		return json_response({'error': f'The config could not be written: {e.strerror}.'}, 507)
 	return json_response({'saved': name})
 
-# Display plugins: any package that registers the ament resource "vizanti_displays" and
-# installs share/<package>/vizanti/displays/*.js contributes displays.
+# Plugins from other packages (see plugin_index.py): pluginlib-style descriptions, and the older
+# "vizanti_displays" folders.
 PLUGIN_EXTENSIONS = {'.js', '.css', '.svg', '.png', '.json'}
+ICON_FILE_EXTENSIONS = {'.svg', '.png'}
 
-def plugin_dir(package):
-	resources = get_resources('vizanti_displays')
-	if package not in resources:
-		return None
-	return os.path.join(resources[package], 'share', package, 'vizanti')
-
-def list_plugin_displays():
-	paths = []
-	for package, prefix in sorted(get_resources('vizanti_displays').items()):
-		folder = os.path.join(prefix, 'share', package, 'vizanti', 'displays')
-		if os.path.isdir(folder):
-			for file in sorted(os.listdir(folder)):
-				if file.endswith('.js'):
-					paths.append(f'{package}/displays/{file}')
-	response = make_response(f"const paths = {json.dumps(paths)};\nexport default paths;")
+def js_module(value, name):
+	response = make_response(f"const {name} = {json.dumps(value)};\nexport default {name};")
 	response.headers['Content-Type'] = 'application/javascript'
 	return response
 
+def list_plugin_displays():
+	return js_module(plugin_index.find_plugins()['legacy'], 'paths')
+
+def plugin_manifest():
+	found = plugin_index.find_plugins()
+	for problem in found['problems']:
+		node.get_logger().warn(f"Plugin: {problem}")
+	return js_module(found, 'manifest')
+
 def serve_plugin_file(package, path):
-	folder = plugin_dir(package)
-	if folder is None or os.path.splitext(path)[1].lower() not in PLUGIN_EXTENSIONS:
+	share_dir = plugin_index.plugin_share_dir(package)
+	if share_dir is None or os.path.splitext(path)[1].lower() not in PLUGIN_EXTENSIONS:
 		abort(404)
-	return send_from_directory(folder, path)
+	return send_from_directory(os.path.join(share_dir, 'vizanti'), path)
+
+def serve_plugin_icon(package, path):
+	share_dir = plugin_index.plugin_share_dir(package)
+	if share_dir is None or os.path.splitext(path)[1].lower() not in ICON_FILE_EXTENSIONS:
+		abort(404)
+	return send_from_directory(os.path.join(share_dir, 'icons'), path)
 
 # files a robot description may refer to with package:// URIs
 MESH_EXTENSIONS = {'.stl', '.dae', '.obj', '.mtl', '.png', '.jpg', '.jpeg', '.tga', '.bmp'}
@@ -353,6 +358,8 @@ def main(args=None):
 	app.add_url_rule(param_base_url + '/default_widget_config', 'get_default_widget_config', get_default_widget_config)
 	app.add_url_rule(param_base_url + '/displays/paths', 'list_display_files', list_display_files)
 	app.add_url_rule(param_base_url + '/plugins/paths', 'list_plugin_displays', list_plugin_displays)
+	app.add_url_rule(param_base_url + '/plugins/manifest', 'plugin_manifest', plugin_manifest)
+	app.add_url_rule(param_base_url + '/plugin_icons/<package>/<path:path>', 'serve_plugin_icon', serve_plugin_icon)
 	app.add_url_rule(param_base_url + '/plugins/<package>/<path:path>', 'serve_plugin_file', serve_plugin_file)
 	app.add_url_rule(param_base_url + '/configs', 'list_configs', list_configs)
 	app.add_url_rule(param_base_url + '/configs/<name>', 'config_file', config_file, methods=['GET', 'PUT', 'DELETE'])

@@ -53,8 +53,10 @@ export class Registry extends EventTarget {
 
 		let id = opts.id;
 		if (id === undefined) {
+			// plugin types are named like RViz classes ("my_pkg/Battery Graph"); ids stay plain
+			const stem = type.replace(/[^\w-]/g, "_");
 			do {
-				id = `${type}_${this.uid++}`;
+				id = `${stem}_${this.uid++}`;
 			} while (this.get(id));
 		} else if (typeof id !== "string" || !/^[\w-]+$/.test(id)) {
 			throw new Error(`Invalid display id "${id}"`);

@@ -1,3 +1,4 @@
+import { openAddDialog } from './add_dialog.js';
 import { exportLayoutFile, importLayoutFile, resetLayoutAsk, loadRobotConfig, saveRobotConfigAs, deleteRobotConfigAsk } from './layout_actions.js';
 
 // The RViz UI's main menu: layout files, configs saved on the robot, screenshot, reset and the
@@ -61,6 +62,9 @@ export class AppMenu {
 		robotList.textContent = "Loading…";
 
 		menu.append(
+			heading("Panels"),
+			item("Add panel…", () => openAddDialog(this.app, { kinds: ["panel"] }), { hint: "Add a panel from an installed plugin (Nav2, MoveIt, …)" }),
+			separator(),
 			heading("Layout"),
 			item("Import layout or .rviz…", () => importLayoutFile(this.app), { hint: "Load a Vizanti layout (.json) or an RViz config (.rviz) from a file" }),
 			item("Export layout…", () => exportLayoutFile(this.app), { hint: "Download the current layout as a .json file" }),

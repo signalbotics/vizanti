@@ -13,6 +13,10 @@ export const TOOLS = [
 	{ id: "estimate", label: "2D Pose Estimate", key: "p", hint: "Press where the robot is and drag to set its heading." },
 ];
 
+function describePlugin(Cls) {
+	return { id: Cls.type, label: Cls.label, key: Cls.key ?? "", hint: Cls.hint ?? Cls.description ?? "", icon: Cls.icon, plugin: true };
+}
+
 export const DEFAULT_TOOL_OPTIONS = {
 	point_topic: "/clicked_point",
 	goal_topic: "/goal_pose",
@@ -81,18 +85,24 @@ export class ToolManager {
 		this.onSelection = null;
 		this.onChange = null;
 		this.onOptions = null;
+		// tool plugins: every installed one is registered; those in `shown` are in the toolbar
+		this.plugins = new Map(); // type -> { Cls, instance }
+		this.shown = [];
+		this.onToolsChange = null;
 		this._dragStart = null;
 	}
 
 	// topics: one-off topic overrides for this use of the tool ({ goal_topic: "/robot2/goal" }),
 	// as a widget's own Nav Goal or Pose Estimate button sets them
 	select(id, topics = null) {
-		if (!TOOLS.some((tool) => tool.id === id))
+		if (!this.describe(id))
 			return;
 		this.topics = id === "move" ? null : sanitizeTopics(topics);
 		if (id === this.active)
 			return;
+		this.plugins.get(this.active)?.instance.onDeactivate?.();
 		this.active = id;
+		this.plugins.get(id)?.instance.onActivate?.();
 		this.preview = null;
 		this.measurement = null;
 		if (this.selection && this.onSelection)
@@ -118,9 +128,45 @@ export class ToolManager {
 			this.select("move");
 			return;
 		}
-		const tool = TOOLS.find((t) => t.key === key);
+		const tool = this.list().find((t) => t.key && t.key === key);
 		if (tool)
 			this.select(tool.id);
+	}
+
+	// ---- tool plugins ----
+
+	// api: what the tool may use (publish, callService, pick, ground, scene, tf, ...); done() is
+	// added: it hands the view back to Move Camera, as the built-in pose tools do after a click
+	registerPlugin(Cls, api) {
+		const instance = new Cls({ ...api, done: () => this.select("move") });
+		this.plugins.set(Cls.type, { Cls, instance });
+	}
+
+	// the tools in the toolbar: the built-in ones, then the plugin tools that were added
+	list() {
+		return [...TOOLS, ...this.shown.filter((type) => this.plugins.has(type)).map((type) => describePlugin(this.plugins.get(type).Cls))];
+	}
+
+	// every installed tool plugin, for the "add tool" list
+	available() {
+		return [...this.plugins.values()].map(({ Cls }) => describePlugin(Cls));
+	}
+
+	describe(id) {
+		const builtin = TOOLS.find((tool) => tool.id === id);
+		if (builtin)
+			return builtin;
+		const plugin = this.plugins.get(id);
+		return plugin ? describePlugin(plugin.Cls) : null;
+	}
+
+	setShown(types) {
+		this.shown = [...new Set(types.filter((type) => typeof type === "string"))];
+		// a plugin tool taken out of the toolbar while active hands the view back
+		if (!this.describe(this.active) || (this.plugins.has(this.active) && !this.shown.includes(this.active)))
+			this.select("move");
+		if (this.onToolsChange)
+			this.onToolsChange(this.shown);
 	}
 
 	header() {
@@ -133,6 +179,13 @@ export class ToolManager {
 			return;
 		if (kind !== "move" && event.button !== 0)
 			return;
+
+		const plugin = this.plugins.get(this.active);
+		if (plugin) {
+			plugin.instance.onPointer?.(kind, event);
+			this.deps.requestRender();
+			return;
+		}
 
 		switch (this.active) {
 			case "point":

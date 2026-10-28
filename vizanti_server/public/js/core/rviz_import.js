@@ -346,10 +346,23 @@ function convertView(view) {
 	return undefined; // other views have no Vizanti equivalent
 }
 
-// types: anything with has(type), e.g. the registry's type Map.
-export function convertRvizConfig(doc, types) {
+// A plugin class that claims this RViz class (static rvizClass = "pkg/Name"), as
+// [type, props]; it reads the RViz entry with its own static fromRviz(entry), if it has one.
+function claimFor(types, rvizClass) {
+	if (typeof types.values !== "function")
+		return null;
+	for (const Cls of types.values()) {
+		if (typeof Cls === "function" && Cls.rvizClass === rvizClass)
+			return [Cls.type, (entry) => (typeof Cls.fromRviz === "function" ? Cls.fromRviz(entry) ?? {} : {})];
+	}
+	return null;
+}
+
+// types: anything with has(type), e.g. the registry's type Map (whose classes may claim RViz
+// plugin classes). Tool plugins are looked up in `tools` (a Map of type -> class), if given.
+export function convertRvizConfig(doc, types, tools = new Map()) {
 	const vm = doc?.["Visualization Manager"] ?? {};
-	const out = { items: [], global: {}, camera: undefined, skipped: [] };
+	const out = { items: [], global: {}, camera: undefined, skipped: [], tools: [] };
 
 	const options = vm["Global Options"];
 	if (options !== null && typeof options === "object") {
@@ -362,7 +375,10 @@ export function convertRvizConfig(doc, types) {
 	}
 
 	let n = 0;
-	const walk = (displays, parentEnabled) => {
+	const groups = types.has("folder");
+	// container: the group the displays go in ("" for none). Vizanti groups do not nest, so the
+	// displays of a group inside a group join the outer one.
+	const walk = (displays, parentEnabled, container) => {
 		for (const d of Array.isArray(displays) ? displays : []) {
 			if (d === null || typeof d !== "object" || typeof d.Class !== "string")
 				continue;
@@ -370,19 +386,48 @@ export function convertRvizConfig(doc, types) {
 			const enabled = parentEnabled && d.Enabled !== false;
 			const name = str(d.Name) ?? kind;
 			if (kind === "Group") {
-				walk(d.Displays, enabled);
+				if (groups && container === "") {
+					const id = `folder_rviz_${n++}`;
+					out.items.push({ id, type: "folder", name, enabled: d.Enabled !== false, container: "", props: {} });
+					walk(d.Displays, true, `${id}_widget_container`);
+				} else {
+					walk(d.Displays, enabled, container);
+				}
 				continue;
 			}
-			const mapping = MAPPINGS[kind];
+			// a plugin's claim wins over the built-in mapping by class name
+			const mapping = claimFor(types, d.Class) ?? MAPPINGS[kind];
 			if (!mapping || !types.has(mapping[0])) {
 				out.skipped.push(`${name} (${d.Class})`);
 				continue;
 			}
 			const [type, read] = mapping;
-			out.items.push({ id: `${type}_rviz_${n++}`, type, name, enabled, container: "", props: defined(read(d)) });
+			out.items.push({ id: `${type.replace(/[^\w-]/g, "_")}_rviz_${n++}`, type, name, enabled, container, props: defined(read(d)) });
 		}
 	};
-	walk(vm.Displays, true);
+	walk(vm.Displays, true, "");
+
+	// panels and tools of plugins that claim them (RViz's own panels and tools have built-in
+	// equivalents in Vizanti's interface)
+	for (const p of Array.isArray(doc?.Panels) ? doc.Panels : []) {
+		if (p === null || typeof p !== "object" || typeof p.Class !== "string" || p.Class.startsWith("rviz_common/"))
+			continue;
+		const claim = claimFor(types, p.Class);
+		if (!claim) {
+			out.skipped.push(`${str(p.Name) ?? p.Class} panel (${p.Class})`);
+			continue;
+		}
+		out.items.push({ id: `${claim[0].replace(/[^\w-]/g, "_")}_rviz_${n++}`, type: claim[0], name: str(p.Name) ?? claim[0].split("/").pop(), enabled: true, container: "", props: defined(claim[1](p)) });
+	}
+	for (const t of Array.isArray(vm.Tools) ? vm.Tools : []) {
+		if (t === null || typeof t !== "object" || typeof t.Class !== "string" || t.Class.startsWith("rviz_default_plugins/"))
+			continue;
+		const claim = claimFor(tools, t.Class);
+		if (claim)
+			out.tools.push(claim[0]);
+		else
+			out.skipped.push(`tool ${t.Class}`);
+	}
 
 	out.camera = convertView(vm.Views?.Current);
 	return out;

@@ -24,6 +24,8 @@
   <depend>nav2_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>python3-numpy</depend>
+  <build_depend>pluginlib</build_depend>
+  <exec_depend>vizanti_server</exec_depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>

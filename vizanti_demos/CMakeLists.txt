@@ -27,11 +27,13 @@ install(DIRECTORY
   launch
   assets
   vizanti
+  icons
   DESTINATION share/${PROJECT_NAME}/
 )
 
-# an example Vizanti display plugin (vizanti/displays/frame_label.js)
-ament_index_register_resource(vizanti_displays)
+# example Vizanti plugins (a display, a panel and a tool), declared like RViz plugins
+find_package(pluginlib REQUIRED)
+pluginlib_export_plugin_description_file(vizanti_server vizanti_plugins.xml)
 
 install(PROGRAMS
   scripts/_test_button.py

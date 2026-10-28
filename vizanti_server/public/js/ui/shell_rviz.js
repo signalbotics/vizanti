@@ -1,6 +1,5 @@
 import { buildItemEditor, buildGroupPicker } from './item_editor.js';
 import { buildGlobalOptions, buildCameraControls, buildToolControls } from './global_controls.js';
-import { TOOLS } from '../core/tools.js';
 import { openAddDialog } from './add_dialog.js';
 import { AppMenu, openContextMenu } from './app_menu.js';
 import { dropIndex } from './reorder.js';
@@ -35,7 +34,8 @@ function iconButton(icon, label, tooltip, onClick) {
 	element.setAttribute("aria-label", label);
 	const glyph = document.createElement("span");
 	glyph.className = "toolbar_icon";
-	const url = `url("assets/toolbar/${icon}.svg")`;
+	// a built-in icon name, or a plugin's icon URL
+	const url = icon.includes("/") ? `url("${icon}")` : `url("assets/toolbar/${icon}.svg")`;
 	glyph.style.setProperty("-webkit-mask-image", url);
 	glyph.style.setProperty("mask-image", url);
 	element.appendChild(glyph);
@@ -54,6 +54,7 @@ export class RvizShell {
 		this.tree = null;
 		this.api = null;
 		this.displayHosts = new Map(); // display panel id -> its content element
+		this.panelEditors = new Map(); // panel plugin id -> the settings editor at its top
 	}
 
 	listen(name, fn) {
@@ -80,17 +81,50 @@ export class RvizShell {
 		menuButton.setAttribute("aria-expanded", "false");
 		this.menu = new AppMenu(this.app, menuButton);
 		toolbar.appendChild(menuButton);
-		toolbar.appendChild(iconButton("add", "Add display", "Add display", () => openAddDialog(this.app)));
+		toolbar.appendChild(iconButton("add", "Add display", "Add display", () => openAddDialog(this.app, { kinds: ["display"] })));
 		toolbar.appendChild(Object.assign(document.createElement("span"), { className: "toolbar_separator" }));
-		// the pointer tools; the lit one is active
+		// the pointer tools; the lit one is active. Plugin tools follow the built-in ones; "+" adds one.
+		this.toolRow = document.createElement("span");
+		this.toolRow.className = "tool_row";
+		toolbar.appendChild(this.toolRow);
 		this.toolButtons = [];
-		for (const tool of TOOLS) {
-			const element = iconButton(tool.id, tool.label, `${tool.label} (${tool.key.toUpperCase()}): ${tool.hint}`,
-				() => this.app.tools.select(tool.id));
-			element.dataset.tool = tool.id;
-			toolbar.appendChild(element);
-			this.toolButtons.push(element);
-		}
+		this.renderTools = () => {
+			this.toolRow.replaceChildren();
+			this.toolButtons = [];
+			for (const tool of this.app.tools.list()) {
+				const tip = `${tool.label}${tool.key ? ` (${tool.key.toUpperCase()})` : ""}: ${tool.hint}`;
+				const element = iconButton(tool.plugin ? tool.icon : tool.id, tool.label, tool.plugin ? `${tip} (right-click to remove)` : tip,
+					() => this.app.tools.select(tool.id));
+				element.dataset.tool = tool.id;
+				if (tool.plugin) {
+					element.addEventListener("contextmenu", (event) => {
+						event.preventDefault();
+						openContextMenu(event.clientX, event.clientY, [
+							{ label: `Remove tool "${tool.label}"`, action: () => this.app.tools.setShown(this.app.tools.shown.filter((t) => t !== tool.id)) },
+						]);
+					});
+				}
+				this.toolRow.appendChild(element);
+				this.toolButtons.push(element);
+			}
+			const addable = this.app.tools.available().filter((tool) => !this.app.tools.shown.includes(tool.id));
+			if (this.app.tools.available().length) {
+				const add = iconButton("add", "Add tool", addable.length ? "Add a tool from an installed plugin" : "Every installed plugin tool is in the toolbar",
+					(event) => {
+						const rect = add.getBoundingClientRect();
+						openContextMenu(rect.left, rect.bottom, addable.map((tool) => ({
+							label: tool.label,
+							action: () => this.app.tools.setShown([...this.app.tools.shown, tool.id]),
+						})));
+					});
+				add.classList.add("tool_add");
+				add.disabled = addable.length === 0;
+				this.toolRow.appendChild(add);
+			}
+			this.paintTools?.();
+		};
+		this.renderTools();
+		window.addEventListener("vizanti_tools_changed", this.renderTools);
 		this.paintTools = () => {
 			for (const element of this.toolButtons)
 			{
@@ -199,6 +233,7 @@ export class RvizShell {
 
 	unmount() {
 		window.removeEventListener("vizanti_tool_changed", this.paintTools);
+		window.removeEventListener("vizanti_tools_changed", this.renderTools);
 		window.removeEventListener("vizanti_selection_changed", this.onSelectionChanged);
 		this.selectionPaint = null;
 		clearInterval(this.timeTimer);
@@ -343,13 +378,17 @@ export class RvizShell {
 		if (!panelId.startsWith("display:"))
 			return;
 		this.displayHosts.delete(panelId);
+		this.panelEditors.get(panelId)?.dispose();
+		this.panelEditors.delete(panelId);
 		const item = this.app.registry.get(panelId.slice("display:".length));
 		if (!item)
 			return;
 		if (typeof item.detachPanel === "function" && item.panelHost)
 			item.detachPanel();
 		if (!this.closingDisplayPanels && item.enabled && item.wantsPanel) {
-			if (item.constructor.widget)
+			if (item.constructor.isPanel)
+				this.app.registry.remove(item.id); // closing a panel removes it, as in RViz
+			else if (item.constructor.widget)
 				item.togglePanel(false); // a widget's panel just closes
 			else
 				this.app.registry.setEnabled(item.id, false); // an image panel belongs to the display
@@ -424,6 +463,17 @@ export class RvizShell {
 					element.classList.add("display_panel_host");
 					this.displayHosts.set(id, element);
 					const item = this.app.registry.get(id.slice("display:".length));
+					// a panel plugin is not in the Displays list, so its settings sit at its top
+					if (item?.constructor.isPanel && Object.keys(item.constructor.properties).some((key) => !item.constructor.properties[key].hidden)) {
+						const settings = document.createElement("details");
+						settings.className = "panel_settings";
+						const summary = document.createElement("summary");
+						summary.textContent = "Settings";
+						const editor = buildItemEditor(item, this.app);
+						this.panelEditors.set(id, editor);
+						settings.append(summary, editor.element);
+						element.appendChild(settings);
+					}
 					if (item && typeof item.attachPanel === "function")
 						item.attachPanel(element);
 				} else if (name === "view") {
@@ -459,8 +509,8 @@ export class RvizShell {
 		for (const item of this.app.registry.items) {
 			if (item.iconElement && item.constructor.type !== "folder" && item.iconElement.parentElement !== this.widgets)
 				this.widgets.appendChild(item.iconElement);
-			if (!item.constructor.widget)
-				continue;
+			if (!item.constructor.widget || item.constructor.isPanel)
+				continue; // panels have no toolbar button; they are dock panels
 			// a native widget: its live icon opens and closes its panel
 			seen.add(item.id);
 			let element = this.widgetButtons.get(item.id);
@@ -603,8 +653,8 @@ export class RvizShell {
 			return details;
 		};
 		for (const item of registry.items) {
-			if (registry.groupOf(item))
-				continue; // shown inside its group
+			if (registry.groupOf(item) || item.constructor.isPanel)
+				continue; // shown inside its group; panels are dock panels, as in RViz
 			this.tree.appendChild(rowFor(item));
 		}
 		for (const item of registry.items)
@@ -736,7 +786,7 @@ export class RvizShell {
 			displays.disabled = summary.displays.firstProblemId === null;
 			this.firstProblemId = summary.displays.firstProblemId;
 
-			const label = this.app.tools ? TOOLS.find((t) => t.id === this.app.tools.active)?.label : "";
+			const label = this.app.tools ? this.app.tools.describe(this.app.tools.active)?.label : "";
 			tool.textContent = label ? `Tool: ${label}` : "";
 
 			const now = performance.now();

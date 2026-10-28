@@ -1,0 +1,14 @@
+<!-- Vizanti plugins of this package, in the pluginlib format RViz plugins use. Exported in
+     CMakeLists.txt with pluginlib_export_plugin_description_file(vizanti_server ...).
+     type: a module under share/vizanti_demos/vizanti/ and, after "#", the exported class. -->
+<library path="vizanti_demos">
+  <class name="vizanti_demos/Frame Label" type="displays/frame_label.js#FrameLabelDisplay" base_class_type="vizanti::Display">
+    <description>Example plugin: a text label that follows a TF frame.</description>
+  </class>
+  <class name="vizanti_demos/Text Log" type="panels/text_log.js#TextLogPanel" base_class_type="vizanti::Panel">
+    <description>Example plugin: the last messages of a std_msgs/String topic.</description>
+  </class>
+  <class name="vizanti_demos/Drop Pin" type="tools/drop_pin.js#DropPinTool" base_class_type="vizanti::Tool">
+    <description>Example plugin: click the ground to drop and publish pins.</description>
+  </class>
+</library>

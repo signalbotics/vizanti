@@ -1,17 +1,11 @@
 // Example Vizanti display plugin: a text label that follows a TF frame.
 //
-// A ROS package ships plugins by installing files into share/<package>/vizanti/displays/ and
-// registering the ament resource "vizanti_displays" (see this package's CMakeLists.txt).
-// The server serves them at /plugins/<package>/displays/<file>, so the framework is three
-// directories up.
-import { Display } from '../../../js/core/display.js';
+// Declared in ../../vizanti_plugins.xml (exported from CMakeLists.txt with
+// pluginlib_export_plugin_description_file), like an RViz plugin. Plugins import the framework
+// through "@vizanti/". See docs/plugins.md in the vizanti repository.
+import { Display } from '@vizanti/plugin_api.js';
 
 export class FrameLabelDisplay extends Display {
-
-	static type = "demo_frame_label";
-	static label = "Frame Label (plugin example)";
-	static icon = "assets/tf.svg";
-	static description = "Example plugin from vizanti_demos: a text label that follows a TF frame";
 
 	static properties = {
 		frame: { type: "frame", label: "Frame" },

@@ -119,7 +119,7 @@ export function buildCameraControls(container, app) {
 	app.registry.addEventListener("loaded", onChange);
 }
 
-// Buttons for the built-in pointer tools and the topics they publish to.
+// Buttons for the pointer tools (built-in and plugin) and the topics the built-in ones publish to.
 // onSelect runs after a tool was chosen (the touch UI closes its modal there).
 export function buildToolControls(container, app, onSelect = () => {}) {
 	const row = document.createElement("div");
@@ -128,14 +128,15 @@ export function buildToolControls(container, app, onSelect = () => {}) {
 		for (const element of row.children)
 			element.classList.toggle("tool_active", element.dataset.tool === app.tools.active);
 	};
-	for (const tool of TOOLS) {
+	// the built-in tools, then every installed plugin tool
+	for (const tool of [...TOOLS, ...app.tools.available()]) {
 		const element = button(tool.label, () => {
 			app.tools.select(tool.id);
 			paint();
 			onSelect(tool.id);
 		});
 		element.dataset.tool = tool.id;
-		element.title = `${tool.hint} Shortcut: ${tool.key}`;
+		element.title = tool.key ? `${tool.hint} Shortcut: ${tool.key}` : tool.hint;
 		row.appendChild(element);
 	}
 	paint();

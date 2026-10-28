@@ -919,6 +919,7 @@ button.status_segment:disabled {
 }
 
 .display_panel_host:has(> .widget_panel) {
+	flex-direction: column;
 	align-items: stretch;
 	justify-content: flex-start;
 	overflow: auto;
@@ -1122,3 +1123,16 @@ button.status_segment:disabled {
 
 .icon-group .group_mini_left { left: 30%; }
 .icon-group .group_mini_right { left: 70%; }
+
+/* a panel plugin's own settings, folded at its top */
+.display_panel_host > .panel_settings {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 4px 10px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.display_panel_host > .panel_settings > summary {
+	cursor: pointer;
+	color: #8d9aab;
+}

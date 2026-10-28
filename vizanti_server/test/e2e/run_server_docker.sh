@@ -22,9 +22,9 @@ mkdir -p /ws/src && cp -r /src/vizanti /ws/src/vizanti && cd /ws
 rm -rf src/vizanti/vizanti_server/test/e2e/node_modules
 apt-get update -qq
 rosdep update -q >/dev/null
-rosdep install -y -q --from-paths src --ignore-src --skip-keys vizanti_demos >/dev/null
+rosdep install -y -q --from-paths src --ignore-src >/dev/null
 source /opt/ros/${DISTRO}/setup.bash
-colcon build --packages-up-to vizanti_server vizanti_cpp --event-handlers console_cohesion- >/dev/null
+colcon build --packages-up-to vizanti_server vizanti_cpp vizanti_demos --event-handlers console_cohesion- >/dev/null
 source install/setup.bash
 exec ros2 launch vizanti_server vizanti_server.launch.py port:=${PORT} port_rosbridge:=${ROSBRIDGE_PORT}
 " >/dev/null

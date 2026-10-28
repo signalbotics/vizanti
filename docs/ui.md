@@ -416,27 +416,11 @@ is a second action on a long press / right-click (Teleop's lock). A `topic` prop
 set `optional: true` (adds "(none)"), its own `msgTypes`, `serviceTypes` to offer services too,
 or `anyType: true` to list every topic.
 
-## Display plugins from other packages
+## Plugins from other packages
 
-Any ROS package can add displays without touching Vizanti:
-
-1. Put display modules in `vizanti/displays/*.js` in the package, written as in "Add a display"
-   but importing the framework three directories up, e.g.
-   `import { Display } from '../../../js/core/display.js';`
-2. In its `CMakeLists.txt`, install that folder and register the resource:
-
-   ```cmake
-   install(DIRECTORY vizanti DESTINATION share/${PROJECT_NAME}/)
-   ament_index_register_resource(vizanti_displays)
-   ```
-
-3. Build and source the workspace, then restart the Vizanti server.
-
-The server lists every package with the `vizanti_displays` resource at `/plugins/paths` and
-serves its `share/<package>/vizanti/` folder at `/plugins/<package>/` (only `.js`, `.css`,
-`.svg`, `.png` and `.json` files). A plugin type with the same name as a built-in display is not
-loaded. `vizanti_demos` ships a working example, "Frame Label (plugin example)", in
-`vizanti_demos/vizanti/displays/frame_label.js`.
+Other ROS packages can add displays, panels and tools, declared in a pluginlib-style
+`vizanti_plugins.xml` like RViz plugins. They are listed by package in Add display, Add panel and
+the toolbar's "+". See [plugins.md](plugins.md). `vizanti_demos` has an example of each.
 
 ## Where things are
 

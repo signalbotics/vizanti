@@ -12,11 +12,15 @@ import { makeTemplateClass } from '../legacy/template_item.js';
 import { installLegacyGlobals } from '../legacy/globals.js';
 import { CATALOG } from '../legacy/catalog.js';
 import { isLegacyLayout, convertLegacyLayout } from './legacy_layout.js';
-import { ToolManager, TOOLS } from './tools.js';
+import { ToolManager } from './tools.js';
 import { createConfigClient, startupConfig } from './configs.js';
 import { formatDistance } from '../geometry/shapes.js';
 import { parseYaml, isRvizConfig, convertRvizConfig } from './rviz_import.js';
 import { createQosInjector, withQosProperty } from './qos.js';
+import { Display } from './display.js';
+import { PanelPlugin } from './panel.js';
+import { ToolPlugin } from './tool_plugin.js';
+import { loadPlugins } from './plugins.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
 const LEGACY_DONE_KEY = "vizanti_legacy_done";
@@ -52,7 +56,7 @@ function notify(text, { sticky = false } = {}) {
 
 // Every .js file under js/displays is a display module; each exported class with a
 // static `type` becomes an available display type.
-async function loadDisplayTypes() {
+async function loadDisplayTypes(toolPlugins) {
 	const types = new Map();
 	const paths = (await import(`${base_url}/displays/paths`)).default;
 	for (const path of paths) {
@@ -68,28 +72,20 @@ async function loadDisplayTypes() {
 		}
 	}
 
-	// display plugins installed by other ROS packages; built-in types win a name clash
+	// plugins installed by other ROS packages; built-in types win a name clash
 	try {
-		const plugins = (await import(`${base_url}/plugins/paths`)).default;
-		for (const path of plugins) {
-			try {
-				const module = await import(`${base_url}/plugins/${path}`);
-				for (const value of Object.values(module)) {
-					if (typeof value !== "function" || typeof value.type !== "string" || value.type === "")
-						continue;
-					if (types.has(value.type)) {
-						notify(`Plugin ${path} defines the display type "${value.type}", which already exists; it was not loaded.`, { sticky: true });
-						continue;
-					}
-					types.set(value.type, value);
-				}
-			} catch (e) {
-				console.error(`Display plugin ${path} failed to load:`, e);
-				notify(`Display plugin ${path} failed to load. See the browser console.`, { sticky: true });
-			}
-		}
+		const manifest = (await import(`${base_url}/plugins/manifest`)).default;
+		await loadPlugins({
+			manifest,
+			importModule: (path) => import(`${base_url}/plugins/${path}`),
+			bases: { display: Display, panel: PanelPlugin, tool: ToolPlugin },
+			types,
+			tools: toolPlugins,
+			iconBase: base_url,
+			notify: (text) => notify(text, { sticky: true }),
+		});
 	} catch (e) {
-		console.warn("The list of display plugins could not be read:", e);
+		console.warn("The list of plugins could not be read:", e);
 	}
 	// every display that subscribes to a topic gets a QoS choice
 	for (const Cls of types.values())
@@ -175,7 +171,8 @@ async function start() {
 		return;
 	}
 
-	const types = await loadDisplayTypes();
+	const toolPlugins = new Map(); // tool plugins from other packages: type -> class
+	const types = await loadDisplayTypes(toolPlugins);
 	await loadTemplateTypes(types);
 
 	const legacy = {
@@ -249,13 +246,21 @@ async function start() {
 		}
 		if (!isRvizConfig(doc))
 			return null;
-		const { items, global, camera, skipped } = convertRvizConfig(doc, types);
+		const { items, global, camera, skipped, tools: importedTools } = convertRvizConfig(doc, types, toolPlugins);
 		const current = registry.toJSON();
+		// widgets and panels are Vizanti's own, so they stay; the displays are replaced
+		const kept = (item) => {
+			const Cls = types.get(item.type);
+			return !Cls || Cls.kind !== "display" || Cls.widget === true;
+		};
+		const ui = camera ? { ...current.ui, camera } : { ...current.ui };
+		if (importedTools.length)
+			ui.plugin_tools = [...new Set([...(current.ui.plugin_tools ?? []), ...importedTools])];
 		const data = {
 			...current,
 			global: { ...current.global, ...global },
-			ui: camera ? { ...current.ui, camera } : current.ui,
-			items: [...current.items.filter((item) => types.get(item.type)?.kind !== "display"), ...items],
+			ui,
+			items: [...current.items.filter(kept), ...items],
 		};
 		let notice = `Imported ${items.length} display${items.length === 1 ? "" : "s"} from the RViz config.`;
 		if (skipped.length)
@@ -601,6 +606,39 @@ async function start() {
 		requestRender: () => scene.requestRender(),
 	}, registry.ui.tools);
 	app.tools = tools;
+	// tool plugins get the same view operations as the built-in tools
+	for (const Cls of toolPlugins.values()) {
+		try {
+			tools.registerPlugin(Cls, {
+				publish: (topic, type, msg) => publish(topic, type, msg, false),
+				callService: context.callService,
+				pick: (x, y) => scene.pick(x, y),
+				ground: (x, y) => scene.groundPoint(x, y),
+				scene,
+				tf,
+				fixedFrame: () => tf.fixed_frame,
+				header: () => tools.header(),
+				requestRender: () => scene.requestRender(),
+				notify: (text) => notify(text),
+			});
+		} catch (e) {
+			console.error(`Tool plugin ${Cls.type} could not be created:`, e);
+			notify(`Tool plugin "${Cls.type}" could not be created. See the browser console.`, { sticky: true });
+		}
+	}
+	// the plugin tools in the toolbar are part of the layout, as RViz keeps them in its config
+	tools.setShown(Array.isArray(registry.ui.plugin_tools) ? registry.ui.plugin_tools : []);
+	tools.onToolsChange = (shown) => {
+		registry.setUi("plugin_tools", shown);
+		window.dispatchEvent(new Event("vizanti_tools_changed"));
+	};
+	registry.addEventListener("loaded", () => {
+		const shown = Array.isArray(registry.ui.plugin_tools) ? registry.ui.plugin_tools : [];
+		if (JSON.stringify(shown) !== JSON.stringify(tools.shown)) {
+			tools.shown = [...shown];
+			window.dispatchEvent(new Event("vizanti_tools_changed"));
+		}
+	});
 	tools.onChange = () => {
 		sceneElement.style.cursor = tools.active === "move" ? "" : "crosshair";
 		window.dispatchEvent(new Event("vizanti_tool_changed"));
@@ -752,7 +790,7 @@ async function start() {
 	scene.addOverlayDrawer((ctx, view) => {
 		const at = (p) => view.project(p.x, p.y, p.z);
 		if (tools.active !== "move") {
-			const hint = TOOLS.find((tool) => tool.id === tools.active).hint + "  (Esc to cancel)";
+			const hint = (tools.describe(tools.active)?.hint ?? "") + "  (Esc to cancel)";
 			ctx.font = "13px Monospace";
 			ctx.textAlign = "center";
 			ctx.lineWidth = 4;
@@ -819,6 +857,18 @@ async function start() {
 			ctx.strokeText(label, p.x + 10, p.y - 8);
 			ctx.fillStyle = "white";
 			ctx.fillText(label, p.x + 10, p.y - 8);
+		}
+
+		// the active plugin tool draws its own feedback
+		const activePlugin = tools.plugins.get(tools.active);
+		if (activePlugin) {
+			ctx.save();
+			try {
+				activePlugin.instance.onOverlay?.(ctx, view);
+			} catch (e) {
+				console.error(`Tool plugin ${tools.active} failed to draw:`, e);
+			}
+			ctx.restore();
 		}
 
 		const selected = tools.selection?.point ? tools.selection : null;

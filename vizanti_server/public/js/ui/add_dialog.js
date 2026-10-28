@@ -26,7 +26,15 @@ export function matchesQuery(text, query) {
 	return query.toLowerCase().split(/\s+/).filter(Boolean).every((word) => haystack.includes(word));
 }
 
-export function openAddDialog(app, { container = "" } = {}) {
+// "panel" for panel plugins, "display" for everything else (displays and widgets)
+export function kindOf(Cls) {
+	return Cls.isPanel ? "panel" : "display";
+}
+
+// kinds: which to list, ["display"], ["panel"] or both (the touch UI's single add button)
+export function openAddDialog(app, { container = "", kinds = ["display", "panel"] } = {}) {
+	const onlyPanels = kinds.length === 1 && kinds[0] === "panel";
+	const what = onlyPanels ? "panel" : "display";
 	const outer = document.createElement("div");
 	outer.className = "modal_outer noselect";
 	outer.style.display = "flex";
@@ -35,7 +43,7 @@ export function openAddDialog(app, { container = "" } = {}) {
 	const inner = document.createElement("div");
 	inner.className = "modal_inner noselect add_dialog";
 	inner.setAttribute("role", "dialog");
-	inner.setAttribute("aria-label", "Add display");
+	inner.setAttribute("aria-label", `Add ${what}`);
 	outer.appendChild(inner);
 
 	const onKey = (event) => {
@@ -55,12 +63,12 @@ export function openAddDialog(app, { container = "" } = {}) {
 	});
 
 	const title = document.createElement("h3");
-	title.textContent = "Add display";
+	title.textContent = `Add ${what}`;
 
 	const search = document.createElement("input");
 	search.type = "search";
 	search.className = "add_search";
-	search.placeholder = "Search displays, message types or topics…";
+	search.placeholder = onlyPanels ? "Search panels…" : "Search displays, message types or topics…";
 	search.setAttribute("aria-label", "Search");
 
 	const tabs = document.createElement("div");
@@ -72,6 +80,8 @@ export function openAddDialog(app, { container = "" } = {}) {
 	byTopic.className = "tablinks";
 	byTopic.textContent = "By Topic";
 	tabs.append(byType, byTopic);
+	if (onlyPanels)
+		tabs.style.display = "none"; // panels are not tied to a topic
 
 	const typeBox = document.createElement("div");
 	const topicBox = document.createElement("div");
@@ -119,6 +129,8 @@ export function openAddDialog(app, { container = "" } = {}) {
 	const groups = new Map();
 	const order = [...CATEGORIES.map(([name]) => name), "Other"];
 	for (const Cls of app.types.values()) {
+		if (!kinds.includes(kindOf(Cls)))
+			continue;
 		const category = categoryOf(Cls);
 		if (!groups.has(category))
 			groups.set(category, []);
@@ -139,6 +151,15 @@ export function openAddDialog(app, { container = "" } = {}) {
 		section.append(heading, ...rows.sort((a, b) => title(a).localeCompare(title(b))));
 		typeBox.appendChild(section);
 		sections.push(section);
+	}
+
+	if (sections.length === 0) {
+		const none = document.createElement("p");
+		none.className = "comment";
+		none.textContent = onlyPanels
+			? "No panel plugins are installed. Packages add them with a vizanti_plugins.xml (see docs/plugins.md)."
+			: "Nothing to add.";
+		typeBox.appendChild(none);
 	}
 
 	const activeBox = () => (typeBox.style.display === "none" ? topicBox : typeBox);
@@ -188,7 +209,7 @@ export function openAddDialog(app, { container = "" } = {}) {
 		topicBox.replaceChildren();
 		for (let i = 0; i < result.topics.length; i++) {
 			for (const Cls of app.types.values()) {
-				if (Cls.msgTypes.includes(result.types[i])) {
+				if (kinds.includes(kindOf(Cls)) && Cls.msgTypes.includes(result.types[i])) {
 					const searchText = [result.topics[i], result.types[i], Cls.label].join(" ");
 					topicBox.appendChild(entry(Cls, result.topics[i], `${Cls.label} (${result.types[i]})`,
 						Cls.propsForTopic(result.topics[i], result.types[i]), searchText));

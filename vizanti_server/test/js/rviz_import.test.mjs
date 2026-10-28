@@ -188,7 +188,7 @@ test("convertRvizConfig skips types this Vizanti does not have and reads top-dow
 
 test("convertRvizConfig tolerates a file with nothing in it", () => {
 	const out = convertRvizConfig({ "Visualization Manager": {} }, new Set());
-	assert.deepEqual(out, { items: [], global: {}, camera: undefined, skipped: [] });
+	assert.deepEqual(out, { items: [], global: {}, camera: undefined, skipped: [], tools: [] });
 });
 
 test("convertRvizConfig rounds float32 noise and keeps cloud colours only when flat", () => {
@@ -292,4 +292,53 @@ test("convertRvizConfig maps both RViz IMU plugins to the IMU display", () => {
 	assert.deepEqual(items.map((i) => [i.type, i.props.topic]), [["imu", "/imu/data"], ["imu", "/imu"]]);
 	assert.equal(items[0].props.show_acceleration, false);
 	assert.deepEqual(skipped, []);
+});
+
+test("convertRvizConfig keeps RViz groups (one level) and lets plugins claim RViz classes", () => {
+	class Particles { static type = "my_nav/Particle Cloud"; static rvizClass = "nav2_rviz_plugins/ParticleCloud"; static fromRviz(d) { return { topic: d.Topic?.Value, size: 2 }; } }
+	class NavPanel { static type = "my_nav/Navigation 2"; static rvizClass = "nav2_rviz_plugins/Navigation 2"; }
+	class GoalTool { static type = "my_nav/Goal"; static rvizClass = "nav2_rviz_plugins/GoalTool"; }
+	const types = new Map([["grid", {}], ["folder", {}], ["my_nav/Particle Cloud", Particles], ["my_nav/Navigation 2", NavPanel]]);
+	const doc = parseYaml(`Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: nav2_rviz_plugins/Navigation 2
+    Name: Navigation 2
+  - Class: other_pkg/Unknown Panel
+    Name: Mystery
+Visualization Manager:
+  Displays:
+    - Class: rviz_common/Group
+      Name: Nav
+      Enabled: false
+      Displays:
+        - Class: rviz_default_plugins/Grid
+          Name: Grid
+          Enabled: true
+        - Class: rviz_common/Group
+          Name: Inner
+          Enabled: false
+          Displays:
+            - Class: nav2_rviz_plugins/ParticleCloud
+              Name: Particles
+              Enabled: true
+              Topic:
+                Value: /particle_cloud
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: nav2_rviz_plugins/GoalTool
+    - Class: other_pkg/Unknown Tool
+`);
+	const out = convertRvizConfig(doc, types, new Map([["my_nav/Goal", GoalTool]]));
+	assert.deepEqual(out.items.map((i) => [i.type, i.name, i.enabled, i.container]), [
+		["folder", "Nav", false, ""],
+		["grid", "Grid", true, "folder_rviz_0_widget_container"],
+		// the inner group is flattened into the outer one; its switch is carried by the display
+		["my_nav/Particle Cloud", "Particles", false, "folder_rviz_0_widget_container"],
+		["my_nav/Navigation 2", "Navigation 2", true, ""],
+	]);
+	assert.deepEqual(out.items[2].props, { topic: "/particle_cloud", size: 2 });
+	assert.match(out.items[2].id, /^my_nav_Particle_Cloud_rviz_\d+$/);
+	assert.deepEqual(out.tools, ["my_nav/Goal"]);
+	assert.deepEqual(out.skipped, ["Mystery panel (other_pkg/Unknown Panel)", "tool other_pkg/Unknown Tool"]);
 });

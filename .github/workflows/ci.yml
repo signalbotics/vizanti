@@ -34,6 +34,12 @@ jobs:
       - name: Unit tests
         working-directory: vizanti_server
         run: node --test "test/js/*.test.mjs"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Server unit tests
+        working-directory: vizanti_server
+        run: pip install pytest && python -m pytest -q test/python
 
   browser:
     # the web UI driven by Playwright against a Vizanti built and run in a ROS container
