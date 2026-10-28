@@ -25,4 +25,8 @@
          rviz_class="nav2_rviz_plugins/ParticleCloud">
     <description>nav2_msgs/ParticleCloud (AMCL's particles) as flat arrows, 3D arrows or axes, each as long as its weight.</description>
   </class>
+  <class name="vizanti_nav2/Route Tool" type="panels/route_tool.js#RouteToolPanel" base_class_type="vizanti::Panel"
+         rviz_class="nav2_rviz_plugins/Route Tool">
+    <description>Build and edit a Nav2 route graph: add, move and remove nodes and edges, load and save nav2_route GeoJSON.</description>
+  </class>
 </library>

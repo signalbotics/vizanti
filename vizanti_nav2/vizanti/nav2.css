@@ -31,3 +31,6 @@
 .nav2_docking .nav2_row > select { flex: 1; min-width: 0; }
 .nav2_docking .nav2_dock_pose > input { flex: 1; min-width: 0; width: 0; }
 .nav2_docking .nav2_dock_result { color: #ff6b6b; }
+.nav2_route .nav2_tabpage[hidden] { display: none; }
+.nav2_route .nav2_route_kind { gap: 16px; }
+.nav2_panel .nav2_note.nav2_error { color: #ff6b6b; }
