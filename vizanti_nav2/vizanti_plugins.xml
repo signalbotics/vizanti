@@ -17,4 +17,8 @@
          rviz_class="nav2_rviz_plugins/Docking">
     <description>Dock and undock the robot with Nav2's docking server, by dock id or by dock pose and type.</description>
   </class>
+  <class name="vizanti_nav2/Costmap Cost" type="tools/costmap_cost.js#CostmapCostTool" base_class_type="vizanti::Tool"
+         rviz_class="nav2_rviz_plugins/CostmapCostTool">
+    <description>Click a point to read its cost in Nav2's local and global costmaps.</description>
+  </class>
 </library>
