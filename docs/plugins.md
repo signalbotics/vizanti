@@ -13,6 +13,8 @@ they appear:
 
 `vizanti_demos` ships one of each: `vizanti/displays/frame_label.js`,
 `vizanti/panels/text_log.js` and `vizanti/tools/drop_pin.js`, with `vizanti_plugins.xml`.
+`vizanti_nav2` is a full real-world example: all seven `nav2_rviz_plugins` classes, with their
+logic split out for unit tests (see `vizanti_nav2/README.md`).
 
 ## 1. Declare the classes
 
