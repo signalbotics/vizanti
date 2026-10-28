@@ -21,4 +21,8 @@
          rviz_class="nav2_rviz_plugins/CostmapCostTool">
     <description>Click a point to read its cost in Nav2's local and global costmaps.</description>
   </class>
+  <class name="vizanti_nav2/ParticleCloud" type="displays/particle_cloud.js#ParticleCloudDisplay" base_class_type="vizanti::Display"
+         rviz_class="nav2_rviz_plugins/ParticleCloud">
+    <description>nav2_msgs/ParticleCloud (AMCL's particles) as flat arrows, 3D arrows or axes, each as long as its weight.</description>
+  </class>
 </library>
