@@ -13,4 +13,8 @@
          rviz_class="nav2_rviz_plugins/Selector">
     <description>Choose the controller, planner, goal checker, smoother, progress checker and path handler Nav2 uses.</description>
   </class>
+  <class name="vizanti_nav2/Docking" type="panels/docking.js#DockingPanel" base_class_type="vizanti::Panel"
+         rviz_class="nav2_rviz_plugins/Docking">
+    <description>Dock and undock the robot with Nav2's docking server, by dock id or by dock pose and type.</description>
+  </class>
 </library>
