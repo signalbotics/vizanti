@@ -37,7 +37,12 @@ case "$ARCH" in
 	*) echo "Unsupported --arch $ARCH (use amd64 or arm64)" >&2; exit 2 ;;
 esac
 PLATFORM="linux/$ARCH"
-if [ "$ARCH" != "$HOST_ARCH" ] && ! docker buildx ls 2>/dev/null | grep -q "$PLATFORM"; then
+# QEMU registered with the kernel (binfmt_misc) is what matters; buildx only lists it sometimes
+can_emulate() {
+	docker buildx ls 2>/dev/null | grep -q "$PLATFORM" && return 0
+	case "$ARCH" in arm64) ls /proc/sys/fs/binfmt_misc/ 2>/dev/null | grep -q aarch64 ;; *) return 1 ;; esac
+}
+if [ "$ARCH" != "$HOST_ARCH" ] && ! can_emulate; then
 	echo "Docker cannot run $PLATFORM containers here. Install QEMU emulation: sudo apt install qemu-user-binfmt" >&2
 	exit 1
 fi
