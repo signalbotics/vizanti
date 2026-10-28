@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>vizanti_nav2</name>
+  <version>0.2.0</version>
+  <description>Nav2 plugins for Vizanti, ported from nav2_rviz_plugins: the Navigation 2 panel and the Nav2 goal tool.</description>
+  <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
+  <maintainer email="vid.rijavec@gmail.com">Vid Rijavec (MoffKalast)</maintainer>
+  <license>BSD-3-Clause</license>
+  <url type="repository">https://github.com/signalbotics/vizanti</url>
+  <author>Bruk</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>pluginlib</build_depend>
+  <exec_depend>vizanti_server</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

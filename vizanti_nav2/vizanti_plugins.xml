@@ -1,0 +1,12 @@
+<!-- Vizanti versions of nav2_rviz_plugins. rviz_class: .rviz configs that used the RViz plugin
+     load these instead. -->
+<library path="vizanti_nav2">
+  <class name="vizanti_nav2/Navigation 2" type="panels/navigation2.js#Navigation2Panel" base_class_type="vizanti::Panel"
+         rviz_class="nav2_rviz_plugins/Navigation 2">
+    <description>The Nav2 panel: startup / pause / reset of the Nav2 lifecycle nodes, NavigateToPose, waypoint following and NavigateThroughPoses, as in RViz.</description>
+  </class>
+  <class name="vizanti_nav2/Nav2 Goal" type="tools/nav2_goal.js#Nav2GoalTool" base_class_type="vizanti::Tool"
+         rviz_class="nav2_rviz_plugins/GoalTool">
+    <description>Set a Nav2 goal; in the Navigation 2 panel's waypoint mode, add a waypoint.</description>
+  </class>
+</library>
