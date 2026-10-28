@@ -25,8 +25,8 @@ def generate_launch_description():
 
     rosbridge_node = launch_ros.actions.Node(
         name='vizanti_rosbridge',
-        package='rosbridge_server',
-        executable='rosbridge_websocket',
+        package='vizanti_server',
+        executable='rosbridge_websocket.py', # rosbridge_server's node, waiting longer for action servers
         output='screen',
         parameters=[
             {'authenticate': False},

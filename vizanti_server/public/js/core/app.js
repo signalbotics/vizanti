@@ -205,14 +205,20 @@ async function start() {
 		setPointerEditor: (display) => setPointerEditor(display),
 		// arms a view tool ("goal", "estimate", ...), optionally with one-off topics
 		selectTool: (id, topics) => app.tools?.select(id, topics),
-		// resolves with the response, rejects on failure or after timeoutMs (5 s by default)
+		// resolves with the response, rejects on failure or after timeoutMs (5 s by default).
+		// rosbridge gives up on its own after 5 s unless the call says otherwise, which roslib's
+		// Service.callService cannot, so the call_service message is sent here with a "timeout".
 		callService: (name, type, request, timeoutMs = 5000) => new Promise((resolve, reject) => {
+			const id = `call_service:${name}:${++rosbridge.ros.idCounter}`;
 			const timer = setTimeout(() => reject(new Error(`no answer within ${Math.round(timeoutMs / 1000)} s`)), timeoutMs);
-			new ROSLIB.Service({ ros: rosbridge.ros, name, serviceType: type }).callService(
-				new ROSLIB.ServiceRequest(request),
-				(response) => { clearTimeout(timer); resolve(response); },
-				(error) => { clearTimeout(timer); reject(new Error(String(error))); }
-			);
+			rosbridge.ros.once(id, (message) => {
+				clearTimeout(timer);
+				if (message.result === false)
+					reject(new Error(String(message.values)));
+				else
+					resolve(message.values);
+			});
+			rosbridge.ros.callOnConnection({ op: "call_service", id, service: name, type, args: request, timeout: timeoutMs / 1000 });
 		}),
 		// a ROS 2 action client: action(name, type).send(goal, { onFeedback }) -> { result, cancel() }
 		action: (name, type) => actionClient(actions, name, type),

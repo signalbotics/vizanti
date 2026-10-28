@@ -34,6 +34,7 @@ install(PROGRAMS
   scripts/service_handler.py
   scripts/plugin_index.py
   scripts/rqt_reconfigure_param_api.py
+  scripts/rosbridge_websocket.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

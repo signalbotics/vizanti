@@ -10,26 +10,33 @@ export const GOAL_STATUS = {
 export class ActionDispatcher {
 
 	// send(message): hands a rosbridge message to the connection
-	constructor(send) {
+	constructor(send, now = () => Date.now()) {
 		this.send = send;
+		this.now = now;
 		this.goals = new Map(); // id -> { onFeedback, resolve }
 		this.seq = 0;
 	}
 
 	// One goal. Resolves `result` with { status: "succeeded" | "aborted" | ..., values, ok } where
 	// ok is false when rosbridge could not reach the action server (values is then its error text).
-	sendGoal(action, actionType, goal, { onFeedback = null } = {}) {
+	// rosbridge makes a new action client for every goal and gives it 1 s to find the server,
+	// which a fresh client often needs longer for. Like the RViz panels (5 s), keep asking.
+	sendGoal(action, actionType, goal, { onFeedback = null, serverWaitMs = 5000 } = {}) {
 		const id = `vizanti_action_${++this.seq}_${Date.now().toString(36)}`;
 		let resolve;
 		const result = new Promise((r) => { resolve = r; });
-		this.goals.set(id, { onFeedback, resolve });
-		this.send({ op: "send_action_goal", id, action, action_type: actionType, args: goal, feedback: !!onFeedback });
+		const message = { op: "send_action_goal", id, action, action_type: actionType, args: goal, feedback: !!onFeedback };
+		this.goals.set(id, { onFeedback, resolve, message, until: this.now() + serverWaitMs });
+		this.send(message);
 		return {
 			id,
 			result,
 			cancel: () => {
-				if (this.goals.has(id))
+				const pending = this.goals.get(id);
+				if (pending) {
+					pending.cancelled = true;
 					this.send({ op: "cancel_action_goal", id, action });
+				}
 			},
 		};
 	}
@@ -47,6 +54,10 @@ export class ActionDispatcher {
 			} catch (e) {
 				console.error(`Action feedback handler for ${message.action} failed:`, e);
 			}
+			return true;
+		}
+		if (message.result === false && /No action server available/.test(String(message.values)) && this.now() < goal.until && !goal.cancelled) {
+			this.send(goal.message); // not found yet: ask again
 			return true;
 		}
 		this.goals.delete(message.id);

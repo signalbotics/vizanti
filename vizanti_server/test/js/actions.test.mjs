@@ -34,3 +34,22 @@ test('cancel asks rosbridge; a failure and a lost connection resolve the goal', 
 	assert.equal(r.ok, false);
 	assert.match(r.values, /lost/);
 });
+
+test('a goal is sent again while rosbridge has not found the action server yet, for up to 5 s', async () => {
+	const sent = [];
+	let clock = 0;
+	const d = new ActionDispatcher((m) => sent.push(m), () => clock);
+	const g = d.sendGoal("/follow_waypoints", "nav2_msgs/action/FollowWaypoints", { poses: [] });
+	d.handle({ op: "action_result", id: g.id, values: "No action server available", status: 0, result: false });
+	assert.equal(sent.length, 2); // asked again
+	assert.deepEqual(sent[1], sent[0]);
+	clock = 6000; // past the wait
+	d.handle({ op: "action_result", id: g.id, values: "No action server available", status: 0, result: false });
+	const r = await g.result;
+	assert.equal(r.ok, false);
+	assert.equal(sent.length, 2);
+	// other failures are not retried
+	const h = d.sendGoal("/x", "t", {});
+	d.handle({ op: "action_result", id: h.id, values: "bad type", status: 0, result: false });
+	assert.equal((await h.result).values, "bad type");
+});
