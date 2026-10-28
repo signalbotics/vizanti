@@ -126,6 +126,32 @@ export class DropPinTool extends ToolPlugin {
 it gets the view's pointer and the camera does not move. Which plugin tools are in the toolbar
 is saved with the layout, like RViz's tool list.
 
+### Talking to ROS
+
+Displays and panels have `this.ctx`, and tools have `this.api` with the same calls:
+
+| Call | What it does |
+|---|---|
+| `publish(topic, type, msg)` | publishes one message (the publisher is kept) |
+| `callService(name, type, request, timeoutMs = 5000)` | resolves with the response; rejects on failure or timeout |
+| `action(name, type)` | a ROS 2 action client (see below) |
+| `listNodes()`, `listServices(type)`, `listAllTopics()`, `topicInfo(topic)` | what is on the ROS graph (displays and panels) |
+
+A display's or panel's `topic` property is subscribed to by the base class (its `onMessage` gets
+the messages).
+
+**Actions.** `send` returns `{ result, cancel() }`:
+
+```js
+const nav = this.ctx.action("/navigate_to_pose", "nav2_msgs/action/NavigateToPose");
+const goal = nav.send({ pose, behavior_tree: "" }, { onFeedback: (f) => this.showEta(f.estimated_time_remaining) });
+const { status, values, ok } = await goal.result; // status: "succeeded", "aborted", "canceled", ...
+goal.cancel();
+```
+
+`ok` is false when rosbridge could not run the goal at all (no action server, or the connection
+dropped); `values` is then the error text.
+
 ## The older form
 
 Packages that register the ament resource `vizanti_displays` and install

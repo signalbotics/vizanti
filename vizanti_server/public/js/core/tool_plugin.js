@@ -6,7 +6,7 @@
 //   static key         a one-letter shortcut, optional
 //   static hint        shown at the top of the view while the tool is active
 //
-// this.api: publish(topic, type, msg), callService(name, type, request), action(name, type),
+// this.api: publish(topic, type, msg), callService(name, type, request), action(name, type) (as ctx.action),
 // pick(x, y) / ground(x, y) (the point under the pointer; client px), scene, tf,
 // fixedFrame(), header() (a std_msgs/Header in the fixed frame, now), requestRender(), notify(text),
 // and done(), which hands the view back to Move Camera.

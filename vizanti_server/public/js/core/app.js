@@ -21,6 +21,7 @@ import { Display } from './display.js';
 import { PanelPlugin } from './panel.js';
 import { ToolPlugin } from './tool_plugin.js';
 import { loadPlugins } from './plugins.js';
+import { connectActions, actionClient } from './actions.js';
 
 // set once the old 2D UI's layout has been reset away, so it is not converted again
 const LEGACY_DONE_KEY = "vizanti_legacy_done";
@@ -188,6 +189,9 @@ async function start() {
 	sceneElement.id = "view_container"; // template widgets attach their pointer listeners to this id
 	const scene = new Scene3D(sceneElement, frames);
 
+	// ROS 2 actions (rosbridge send_action_goal), for displays, panels and tools
+	const actions = connectActions(rosbridge);
+
 	const context = {
 		tf,
 		frames,
@@ -210,6 +214,8 @@ async function start() {
 				(error) => { clearTimeout(timer); reject(new Error(String(error))); }
 			);
 		}),
+		// a ROS 2 action client: action(name, type).send(goal, { onFeedback }) -> { result, cancel() }
+		action: (name, type) => actionClient(actions, name, type),
 		// names of the services of one type
 		listServices: (type) => rosbridge.get_services(type),
 		// { topics, types } of every topic, sorted by name
@@ -612,6 +618,7 @@ async function start() {
 			tools.registerPlugin(Cls, {
 				publish: (topic, type, msg) => publish(topic, type, msg, false),
 				callService: context.callService,
+				action: context.action,
 				pick: (x, y) => scene.pick(x, y),
 				ground: (x, y) => scene.groundPoint(x, y),
 				scene,
