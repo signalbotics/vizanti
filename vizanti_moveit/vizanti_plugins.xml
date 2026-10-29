@@ -5,4 +5,8 @@
          rviz_class="moveit_rviz_plugin/RobotState">
     <description>The robot in the state a moveit_msgs/DisplayRobotState gives, with its highlighted links.</description>
   </class>
+  <class name="vizanti_moveit/Trajectory" type="displays/trajectory.js#TrajectoryDisplay" base_class_type="vizanti::Display"
+         rviz_class="moveit_rviz_plugin/Trajectory">
+    <description>Animates the paths MoveIt plans (moveit_msgs/DisplayTrajectory), with an optional loop and trail.</description>
+  </class>
 </library>
