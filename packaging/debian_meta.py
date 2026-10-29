@@ -23,7 +23,7 @@ UPSTREAM_URL = "https://github.com/MoffKalast/vizanti"
 UPSTREAM_YEAR = "2023"
 PACKAGING_YEAR = "2026"
 
-PACKAGES = ["vizanti_msgs", "vizanti_server", "vizanti", "vizanti_cpp", "vizanti_demos", "vizanti_nav2"]
+PACKAGES = ["vizanti_msgs", "vizanti_server", "vizanti", "vizanti_cpp", "vizanti_demos", "vizanti_nav2", "vizanti_moveit"]
 
 # Third-party code vendored into a package: (package, file globs, its license file, license).
 # Copyright holders and the license text are read from the license file it ships with.

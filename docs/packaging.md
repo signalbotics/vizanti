@@ -11,6 +11,7 @@ ROS build farm names them:
 | vizanti_cpp | `ros-<distro>-vizanti-cpp` |
 | vizanti_demos | `ros-<distro>-vizanti-demos` |
 | vizanti_nav2 | `ros-<distro>-vizanti-nav2` (Navigation 2 panel and Nav2 goal tool) |
+| vizanti_moveit | `ros-<distro>-vizanti-moveit` (MoveIt displays: RobotState, Trajectory, PlanningScene, MotionPlanning) |
 
 ## Build
 
