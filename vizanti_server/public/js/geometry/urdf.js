@@ -138,6 +138,30 @@ export function parseUrdf(text) {
 		}
 		robot.links[link.attrs.name] = entry;
 	}
+
+	// joints: { [name]: { type, parent, child, origin, axis, limit: { lower, upper } | null, mimic } }
+	robot.joints = {};
+	for (const joint of root.children.filter((c) => c.tag === "joint")) {
+		const parent = child(joint, "parent")?.attrs.link, kid = child(joint, "child")?.attrs.link;
+		const at = origin(joint);
+		if (!joint.attrs.name || !parent || !kid || !at) {
+			robot.skipped++;
+			continue;
+		}
+		const axisNode = child(joint, "axis");
+		const axis = axisNode?.attrs.xyz === undefined ? [1, 0, 0] : numbers(axisNode.attrs.xyz, 3) ?? [1, 0, 0];
+		const limitNode = child(joint, "limit");
+		const bound = (name) => (limitNode?.attrs[name] !== undefined && Number.isFinite(Number(limitNode.attrs[name])) ? Number(limitNode.attrs[name]) : null);
+		const mimicNode = child(joint, "mimic");
+		robot.joints[joint.attrs.name] = {
+			type: joint.attrs.type ?? "fixed", parent, child: kid, origin: at, axis,
+			limit: limitNode ? { lower: bound("lower"), upper: bound("upper") } : null,
+			mimic: mimicNode?.attrs.joint ? { joint: mimicNode.attrs.joint, multiplier: Number(mimicNode.attrs.multiplier ?? 1) || 0, offset: Number(mimicNode.attrs.offset ?? 0) || 0 } : null,
+		};
+	}
+	// the root link: the one no joint leads to
+	const children = new Set(Object.values(robot.joints).map((j) => j.child));
+	robot.root = Object.keys(robot.links).find((name) => !children.has(name)) ?? null;
 	return robot;
 }
 
