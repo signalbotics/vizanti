@@ -240,7 +240,9 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 
 	// a drag of the handle: solve IK for each new pose (one request at a time, the latest wins)
 	onHandle(event) {
-		if (event === FEEDBACK.POSE_UPDATE) {
+		if (event === FEEDBACK.MOUSE_DOWN) {
+			this.ik.solved = false; // whether any pose of this drag had a solution
+		} else if (event === FEEDBACK.POSE_UPDATE) {
 			this.ik.pending = this.handles.poseOf(this.handles.markers.get(HANDLE));
 			this.solveIk();
 		} else if (event === FEEDBACK.MOUSE_UP) {
@@ -267,13 +269,17 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 			if (solved) {
 				this.goal = solved;
 				this.goalChoice = "";
+				this.ik.solved = true;
 				this.setMessage("");
 				this.redrawQuery();
 				this.refreshJoints();
 			} else {
-				// a robot whose SRDF misses some disabled collisions is "in collision" everywhere
-				this.setMessage(`No IK solution (${errorName(response?.error_code?.val)})`
-					+ (this.settings.collisionAwareIk ? ". If the robot is in collision everywhere, untick Use Collision-Aware IK." : ""), true);
+				const why = errorName(response?.error_code?.val);
+				if (this.ik.solved)
+					this.setMessage(`No IK solution there (${why}); the goal stays at the last pose that had one.`, true);
+				else // a robot whose SRDF misses some disabled collisions is "in collision" everywhere
+					this.setMessage(`No IK solution (${why})`
+						+ (this.settings.collisionAwareIk ? ". If the robot is in collision everywhere, untick Use Collision-Aware IK." : ""), true);
 			}
 		} catch (e) {
 			this.setMessage(`compute_ik: ${e.message}`, true);
