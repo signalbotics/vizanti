@@ -9,4 +9,8 @@
          rviz_class="moveit_rviz_plugin/Trajectory">
     <description>Animates the paths MoveIt plans (moveit_msgs/DisplayTrajectory), with an optional loop and trail.</description>
   </class>
+  <class name="vizanti_moveit/PlanningScene" type="displays/planning_scene.js#PlanningSceneDisplay" base_class_type="vizanti::Display"
+         rviz_class="moveit_rviz_plugin/PlanningScene">
+    <description>MoveIt's planning scene: the collision objects, their colours, and the scene's robot with its attached objects.</description>
+  </class>
 </library>
