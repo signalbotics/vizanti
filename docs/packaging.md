@@ -214,5 +214,6 @@ gh release create vX.Y.Z --repo signalbotics/vizanti --target ros2 \
     --title "Vizanti X.Y.Z" --notes "..." packaging/debs/*/*.deb
 ```
 
-Keep the credits in the notes: Vizanti by Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com>,
-packaged by Bruk (Signalbotics) <bruk@signalbotics.com>.
+Keep the credits in the notes: Vizanti by Bruk (Signalbotics) <bruk@signalbotics.com> (the
+RViz-style 3D interface, plugins, Nav2 support and packaging), built on the original Vizanti by
+Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com>.

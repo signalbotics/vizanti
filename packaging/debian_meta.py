@@ -165,8 +165,8 @@ def fix_copyright(path, package, repo):
 def fix_changelog(path):
     with open(path, encoding="utf-8") as f:
         text = f.read()
-    credit = (f"  * Vizanti by {UPSTREAM}, {UPSTREAM_URL}\n"
-              f"  * Packaged by {PACKAGER} ({PACKAGER_ORG})\n")
+    credit = (f"  * Vizanti by {PACKAGER} ({PACKAGER_ORG}): the RViz-style 3D interface, plugins and packaging\n"
+              f"  * Built on the original Vizanti by {UPSTREAM}, {UPSTREAM_URL}\n")
     # after the blank line that follows each entry's header
     text = re.sub(r"^(\S.*\) .*; urgency=\w+\n\n)", lambda m: m.group(1) + credit, text, flags=re.M)
     # bloom quotes the name in the sign-off line: ' -- "Name" <email>'
