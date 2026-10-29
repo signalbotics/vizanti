@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 # who builds and maintains these packages
-PACKAGER = "Bruk <bruk@signalbotics.com>"
+PACKAGER = "Bruk Gebregziabher <bruk@signalbotics.com>"
 PACKAGER_ORG = "Signalbotics"
 # who wrote Vizanti
 UPSTREAM = "Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com>"

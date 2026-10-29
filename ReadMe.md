@@ -99,4 +99,4 @@ Please see [Contributing.md](Contributing.md) for more information.
 ## Authors and maintainers
 
 - Vizanti was created by Vid Rijavec ([MoffKalast](https://github.com/MoffKalast)), vid.rijavec@gmail.com, with Alastair Bradford as co-maintainer.
-- The 3D RViz-style interface and the Debian packaging are by Bruk (Signalbotics), bruk@signalbotics.com, who also maintains the packages.
+- The RViz-style 3D interface, the plugin system, Nav2 support and the Debian packaging are by Bruk Gebregziabher (Signalbotics), bruk@signalbotics.com, who also maintains the packages.

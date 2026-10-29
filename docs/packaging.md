@@ -163,7 +163,7 @@ In every .deb:
 
 | Where | What |
 |---|---|
-| `Maintainer` (control) | Bruk <bruk@signalbotics.com> |
+| `Maintainer` (control) | Bruk Gebregziabher <bruk@signalbotics.com> |
 | `Original-Maintainer` (control; written as `XSBC-Original-Maintainer`, the Ubuntu convention for packages built by someone other than upstream) | Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com> |
 | `/usr/share/doc/<package>/copyright` | DEP-5 file. `Upstream-Contact` is Vid Rijavec, and the copyright lists Vid Rijavec, Alastair Bradford and Bruk / Signalbotics. The license is BSD-3-Clause, from the repository's `LICENSE`. For vizanti_server there is also one stanza per vendored JavaScript library (three.js, dockview, roslibjs, nipplejs, numeric.js, quaternion.js), with the holders and text taken from its `*_LICENSE.txt` next to it in `public/js/lib/`. |
 | `changelog` | Each entry credits Vizanti by Vid Rijavec with the upstream URL, and packaging by Bruk; it is signed by Bruk. |
@@ -214,6 +214,6 @@ gh release create vX.Y.Z --repo signalbotics/vizanti --target ros2 \
     --title "Vizanti X.Y.Z" --notes "..." packaging/debs/*/*.deb
 ```
 
-Keep the credits in the notes: Vizanti by Bruk (Signalbotics) <bruk@signalbotics.com> (the
+Keep the credits in the notes: Vizanti by Bruk Gebregziabher (Signalbotics) <bruk@signalbotics.com> (the
 RViz-style 3D interface, plugins, Nav2 support and packaging), built on the original Vizanti by
 Vid Rijavec (MoffKalast) <vid.rijavec@gmail.com>.

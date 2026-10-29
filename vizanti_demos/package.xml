@@ -4,12 +4,12 @@
   <name>vizanti_demos</name>
   <version>0.0.3</version>
   <description>Demonstration package for Vizanti</description>
-  <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
+  <maintainer email="bruk@signalbotics.com">Bruk Gebregziabher</maintainer>
   <maintainer email="vid.rijavec@gmail.com">MoffKalast</maintainer>
   <maintainer email="albradford2468@gmail.com">Alastair Bradford</maintainer>
   <license>BSD</license>
   <author email="vid.rijavec@gmail.com">MoffKalast</author>
-  <author email="bruk@signalbotics.com">Bruk</author>
+  <author email="bruk@signalbotics.com">Bruk Gebregziabher</author>
   <url type="bugtracker">https://github.com/MoffKalast/vizanti/issues</url>
   <url type="repository">https://github.com/MoffKalast/vizanti/tree/ros2</url>
 

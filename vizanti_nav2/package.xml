@@ -4,11 +4,11 @@
   <name>vizanti_nav2</name>
   <version>0.3.1</version>
   <description>Nav2 plugins for Vizanti, ported from nav2_rviz_plugins: the Navigation 2 panel and the Nav2 goal tool.</description>
-  <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
+  <maintainer email="bruk@signalbotics.com">Bruk Gebregziabher</maintainer>
   <maintainer email="vid.rijavec@gmail.com">Vid Rijavec (MoffKalast)</maintainer>
   <license>BSD-3-Clause</license>
   <url type="repository">https://github.com/signalbotics/vizanti</url>
-  <author>Bruk</author>
+  <author email="bruk@signalbotics.com">Bruk Gebregziabher</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <build_depend>pluginlib</build_depend>

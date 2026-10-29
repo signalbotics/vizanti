@@ -4,11 +4,11 @@
   <name>vizanti_cpp</name>
   <version>0.0.1</version>
   <description>An ament built package for any cpp nodes.</description>
-  <maintainer email="bruk@signalbotics.com">Bruk</maintainer>
+  <maintainer email="bruk@signalbotics.com">Bruk Gebregziabher</maintainer>
   <maintainer email="vid.rijavec@gmail.com">MoffKalast</maintainer>
   <license>BSD</license>
   <author email="vid.rijavec@gmail.com">MoffKalast</author>
-  <author email="bruk@signalbotics.com">Bruk</author>
+  <author email="bruk@signalbotics.com">Bruk Gebregziabher</author>
   <url type="bugtracker">https://github.com/MoffKalast/vizanti/issues</url>
   <url type="repository">https://github.com/MoffKalast/vizanti/tree/ros2</url>
 
