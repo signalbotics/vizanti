@@ -412,7 +412,7 @@ export class TouchShell {
 	openItem(item) {
 		this.openModal(item.name, (inner) => {
 			// a widget's own panel (readouts, controls) comes first
-			const panel = item.constructor.widget ? document.createElement("div") : null;
+			const panel = item.constructor.widget || item.constructor.ownPanel ? document.createElement("div") : null;
 			if (panel) {
 				inner.appendChild(panel);
 				item.attachPanel(panel);

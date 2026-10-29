@@ -390,6 +390,8 @@ export class RvizShell {
 				this.app.registry.remove(item.id); // closing a panel removes it, as in RViz
 			else if (item.constructor.widget)
 				item.togglePanel(false); // a widget's panel just closes
+			else if (typeof item.onPanelClosed === "function")
+				item.onPanelClosed(); // a display that keeps its panel optional (MotionPlanning)
 			else
 				this.app.registry.setEnabled(item.id, false); // an image panel belongs to the display
 		}

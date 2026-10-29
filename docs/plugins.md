@@ -82,6 +82,14 @@ Write them like the built-in ones (`docs/ui.md`, "Add a display"):
 The base class subscribes to `props.topic`, places `this.root` at frames, and keeps the status.
 Widgets (a live toolbar icon plus a panel) extend `WidgetDisplay`.
 
+A display can also have a dock panel of its own, as RViz's MotionPlanning display does
+(`vizanti_moveit/vizanti/displays/motion_planning.js`). To do this:
+- set `static ownPanel = true`;
+- have `get wantsPanel()` return true while the panel should be open;
+- in `attachPanel(host)`, put the panel's element into `host`, and remove it in `detachPanel()`;
+- `onPanelClosed()` runs when the user closes the dock panel. Without it, closing the panel
+  disables the display.
+
 ### Panels
 
 ```js

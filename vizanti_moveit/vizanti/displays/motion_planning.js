@@ -62,7 +62,12 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 		show_path: { type: "bool", label: "Show Planned Path", default: true },
 		path_alpha: { type: "float", label: "Planned Path Alpha", default: 0.5, min: 0, max: 1, step: 0.05, slider: true },
 		loop_path: { type: "bool", label: "Loop Animation", default: false },
+		show_panel: { type: "bool", label: "Motion Planning Panel", default: true, help: "Shows the Motion Planning panel (Plan, Execute, Stop, the query and the goal's joints), as RViz does." },
 	};
+
+	// the shells give it a panel of its own: a dock panel in the RViz UI, the top of its
+	// settings in the touch UI
+	static ownPanel = true;
 
 	static fromRviz(entry) {
 		const props = PlanningSceneDisplay.fromRviz(entry);
@@ -376,15 +381,30 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 		return { ...this.current, ...(this.srdf?.states?.[this.props.group]?.[choice] ?? {}) };
 	}
 
-	buildCustomEditor(container) {
-		const details = el("details", "mp_panel");
-		details.open = true;
-		details.append(el("summary", "", "Motion Planning"));
-		const body = el("div", "mp_body");
-		details.appendChild(body);
-		container.appendChild(details);
-		this.panel = { body };
+	// ---- its panel (RViz's MotionPlanning frame) ----
+
+	get wantsPanel() {
+		return !!this.props.show_panel;
+	}
+
+	attachPanel(host) {
+		if (!this.panelElement) {
+			this.panelElement = el("div", "widget_panel mp_panel"); // laid out like a widget's panel
+			this.panel = { body: this.panelElement, tab: "planning" };
+		}
+		this.panelHost = host;
+		host.appendChild(this.panelElement);
 		this.renderPanel();
+	}
+
+	detachPanel() {
+		this.panelElement?.remove();
+		this.panelHost = null;
+	}
+
+	// its dock panel was closed: it stays closed until "Motion Planning Panel" is ticked again
+	onPanelClosed() {
+		this.setProp("show_panel", false);
 	}
 
 	refreshPanel() {
@@ -393,12 +413,31 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 	}
 
 	renderPanel() {
-		const body = this.panel.body;
-		body.replaceChildren();
+		const root = this.panel.body;
+		root.replaceChildren();
+		const tabs = el("div", "mp_tabs");
+		const body = el("div", "mp_body");
+		root.append(tabs, body);
+		for (const [id, label] of [["planning", "Planning"], ["joints", "Joints"]]) {
+			const t = el("button", "mp_tab" + (this.panel.tab === id ? " mp_tab_on" : ""), label);
+			t.type = "button";
+			t.addEventListener("click", () => {
+				this.panel.tab = id;
+				this.renderPanel();
+			});
+			tabs.appendChild(t);
+		}
+		const section = (title) => {
+			const box = el("fieldset", "mp_section");
+			box.appendChild(el("legend", "", title));
+			body.appendChild(box);
+			return box;
+		};
+		let into = body;
 		const row = (label, input) => {
 			const r = el("label", "mp_row");
 			r.append(el("span", "", label), input);
-			body.appendChild(r);
+			into.appendChild(r);
 			return input;
 		};
 		const select = (options, value, onChange) => {
@@ -424,6 +463,41 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 			body.appendChild(el("p", "mp_note", "Waiting for the robot description and its SRDF…"));
 			return;
 		}
+		const message = () => {
+			this.panel.message = el("p", "mp_message" + (this.messageError ? " mp_error" : ""), this.message);
+			body.appendChild(this.panel.message);
+		};
+
+		if (this.panel.tab === "joints") {
+			body.appendChild(el("p", "mp_note", "The goal state's joints. Drag the goal's end effector in the 3D view, or set them here."));
+			this.panel.joints = el("div", "mp_joints");
+			body.appendChild(this.panel.joints);
+			this.refreshJoints();
+			message();
+			return;
+		}
+		this.panel.joints = null;
+
+		// Commands, as RViz's Planning tab has them
+		const commands = section("Commands");
+		const buttons = el("div", "mp_buttons");
+		const button = (text, onClick, enabled, className = "") => {
+			const b = el("button", className, text);
+			b.type = "button";
+			b.disabled = !enabled;
+			b.addEventListener("click", onClick);
+			buttons.appendChild(b);
+		};
+		const idle = !this.busy;
+		button("Plan", () => this.run("plan"), idle);
+		button("Execute", () => this.run("execute"), idle && !!this.lastPlan);
+		button("Plan & Execute", () => this.run("both"), idle);
+		button("Stop", () => this.stop(), !idle, "mp_stop");
+		commands.appendChild(buttons);
+		this.panel.message = el("p", "mp_message" + (this.messageError ? " mp_error" : ""), this.message);
+		commands.appendChild(this.panel.message);
+
+		into = section("Query");
 		row("Planning Group", select(planningGroups(this.model.robot, this.srdf), this.props.group, (g) => {
 			this.setProp("group", g);
 			this.goal = null;
@@ -446,34 +520,12 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 			this.redrawQuery();
 			this.refreshJoints();
 		}));
-		row("Velocity Scaling", number(this.settings.velocity, 0.01, 1, 0.05, (v) => { this.settings.velocity = v; }));
-		row("Accel. Scaling", number(this.settings.acceleration, 0.01, 1, 0.05, (v) => { this.settings.acceleration = v; }));
+
+		into = section("Options");
 		row("Planning Time (s)", number(this.settings.time, 0.1, 300, 0.5, (v) => { this.settings.time = v; }));
 		row("Planning Attempts", number(this.settings.attempts, 1, 1000, 1, (v) => { this.settings.attempts = Math.round(v); }));
-
-		const buttons = el("div", "mp_buttons");
-		const button = (text, onClick, enabled) => {
-			const b = el("button", "", text);
-			b.type = "button";
-			b.disabled = !enabled;
-			b.addEventListener("click", onClick);
-			buttons.appendChild(b);
-		};
-		const idle = !this.busy;
-		button("Plan", () => this.run("plan"), idle);
-		button("Execute", () => this.run("execute"), idle && !!this.lastPlan);
-		button("Plan & Execute", () => this.run("both"), idle);
-		button("Stop", () => this.stop(), !idle);
-		body.appendChild(buttons);
-		this.panel.message = el("p", "mp_message" + (this.messageError ? " mp_error" : ""), this.message);
-		body.appendChild(this.panel.message);
-
-		const joints = el("details", "mp_joints");
-		joints.append(el("summary", "", "Joints (goal state)"));
-		this.panel.joints = el("div");
-		joints.appendChild(this.panel.joints);
-		body.appendChild(joints);
-		this.refreshJoints();
+		row("Velocity Scaling", number(this.settings.velocity, 0.01, 1, 0.05, (v) => { this.settings.velocity = v; }));
+		row("Accel. Scaling", number(this.settings.acceleration, 0.01, 1, 0.05, (v) => { this.settings.acceleration = v; }));
 	}
 
 	// a slider per joint of the group, for the goal state
@@ -544,20 +596,27 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 	}
 }
 
-// the Motion Planning section's look, once
+// the Motion Planning panel's look, once
 if (!document.querySelector("style[data-vizanti-moveit]")) {
 	const style = document.createElement("style");
 	style.dataset.vizantiMoveit = "";
 	style.textContent = `
-.mp_panel > summary { font-weight: bold; cursor: pointer; margin: 6px 0; }
-.mp_body { display: flex; flex-direction: column; gap: 4px; }
+.mp_panel { display: flex; flex-direction: column; gap: 6px; padding: 6px; box-sizing: border-box; }
+.mp_tabs { display: flex; gap: 2px; border-bottom: 1px solid rgba(128,128,128,0.4); }
+.mp_tab { flex: 1; padding: 5px 8px; border: none; border-bottom: 2px solid transparent; background: none; color: inherit; cursor: pointer; }
+.mp_tab_on { border-bottom-color: #4a9eff; font-weight: bold; }
+.mp_body { display: flex; flex-direction: column; gap: 6px; }
+.mp_section { border: 1px solid rgba(128,128,128,0.35); border-radius: 4px; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.mp_section > legend { padding: 0 4px; font-weight: bold; }
 .mp_row { display: grid; grid-template-columns: 9.5em 1fr auto; gap: 6px; align-items: center; }
 .mp_row > select, .mp_row > input { min-width: 0; width: 100%; box-sizing: border-box; }
-.mp_buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
+.mp_buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.mp_buttons > button { padding: 6px; }
+.mp_buttons > .mp_stop:not(:disabled) { background: #c0392b; color: #fff; }
 .mp_message { margin: 2px 0; min-height: 1.2em; color: #3ecf6e; }
 .mp_message.mp_error { color: #ff6b6b; }
 .mp_value { font-family: monospace; min-width: 4.5em; text-align: right; }
-.mp_joints > summary { cursor: pointer; margin-top: 4px; }
+.mp_joints { display: flex; flex-direction: column; gap: 4px; }
 .mp_note { margin: 0; opacity: 0.8; }
 `;
 	document.head.appendChild(style);

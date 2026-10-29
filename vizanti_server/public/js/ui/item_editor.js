@@ -34,13 +34,31 @@ export function buildItemEditor(item, app) {
 	paintInfo();
 
 	const properties = document.createElement("div");
-	renderProperties(
-		properties,
-		item.constructor.properties,
-		item.props,
-		(key, raw) => app.registry.setProperty(item.id, key, raw),
-		app.envFor(item)
-	);
+	let committing = false;
+	const paintProperties = () => {
+		properties.replaceChildren();
+		renderProperties(
+			properties,
+			item.constructor.properties,
+			item.props,
+			(key, raw) => {
+				committing = true;
+				try {
+					return app.registry.setProperty(item.id, key, raw);
+				} finally {
+					committing = false;
+				}
+			},
+			app.envFor(item)
+		);
+	};
+	paintProperties();
+	// the display changed a setting itself (MotionPlanning unticks its panel when it is closed)
+	const onProperty = (event) => {
+		if (event.detail.item === item && !committing)
+			paintProperties();
+	};
+	app.registry.addEventListener("property", onProperty);
 
 	element.append(status, info, properties);
 
@@ -56,6 +74,7 @@ export function buildItemEditor(item, app) {
 		dispose() {
 			app.registry.removeEventListener("status", onStatus);
 			app.registry.removeEventListener("info", onInfo);
+			app.registry.removeEventListener("property", onProperty);
 		},
 	};
 }
