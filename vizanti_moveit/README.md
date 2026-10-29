@@ -17,6 +17,12 @@ joint values with forward kinematics, at the root link's place in the fixed fram
 
 ## Differences from RViz
 
+- The end-effector handle goes on the SRDF end effector's parent link, else on the tip of the
+  group's chain. When the group is a plain list of joints in one serial chain (ROBOTIS FFW's
+  `arm_l`/`arm_r`), it goes on the last joint's child link, where RViz puts the IK solver's tip.
+- **Use Collision-Aware IK** (Planning tab, Options) is on by default, as in RViz. Turn it off
+  for a robot whose SRDF is missing disabled collision pairs. Such a robot is in collision in
+  every pose, so collision-aware IK finds no solution and the handle snaps back after each drag.
 - Closing the MotionPlanning dock panel unticks the display's "Motion Planning Panel" setting;
   tick it to open the panel again (RViz reopens it from its Panels menu). In the touch UI the
   panel is at the top of the display's settings.

@@ -95,7 +95,7 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 		this.goal = null;
 		this.startChoice = CURRENT;
 		this.goalChoice = CURRENT;
-		this.settings = { velocity: 0.1, acceleration: 0.1, time: 5, attempts: 10 };
+		this.settings = { velocity: 0.1, acceleration: 0.1, time: 5, attempts: 10, collisionAwareIk: true };
 		this.message = "";
 		this.busy = null; // the running action: { kind, handle }
 		this.lastPlan = null; // moveit_msgs/RobotTrajectory of the last plan
@@ -261,6 +261,7 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 		try {
 			const response = await this.ctx.callService("/compute_ik", "moveit_msgs/srv/GetPositionIK", ikRequest({
 				group: this.props.group, positions: this.goal, joints: this.joints, link: this.eeLink, frame: this.model.robot.root, pose,
+				avoidCollisions: this.settings.collisionAwareIk,
 			}), 3000);
 			const solved = ikSolution(response, this.goal);
 			if (solved) {
@@ -270,7 +271,9 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 				this.redrawQuery();
 				this.refreshJoints();
 			} else {
-				this.setMessage(`No IK solution (${errorName(response?.error_code?.val)})`, true);
+				// a robot whose SRDF misses some disabled collisions is "in collision" everywhere
+				this.setMessage(`No IK solution (${errorName(response?.error_code?.val)})`
+					+ (this.settings.collisionAwareIk ? ". If the robot is in collision everywhere, untick Use Collision-Aware IK." : ""), true);
 			}
 		} catch (e) {
 			this.setMessage(`compute_ik: ${e.message}`, true);
@@ -526,6 +529,10 @@ export class MotionPlanningDisplay extends PlanningSceneDisplay {
 		row("Planning Attempts", number(this.settings.attempts, 1, 1000, 1, (v) => { this.settings.attempts = Math.round(v); }));
 		row("Velocity Scaling", number(this.settings.velocity, 0.01, 1, 0.05, (v) => { this.settings.velocity = v; }));
 		row("Accel. Scaling", number(this.settings.acceleration, 0.01, 1, 0.05, (v) => { this.settings.acceleration = v; }));
+		const aware = el("input");
+		Object.assign(aware, { type: "checkbox", checked: this.settings.collisionAwareIk });
+		aware.addEventListener("change", () => { this.settings.collisionAwareIk = aware.checked; });
+		row("Use Collision-Aware IK", aware);
 	}
 
 	// a slider per joint of the group, for the goal state

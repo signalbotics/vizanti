@@ -31,6 +31,29 @@ test('the end-effector handle sits on the end effector parent link', () => {
 	assert.equal(endEffectorLink(robot, srdf, 'hand'), null);
 });
 
+test('a group of plain joints (no chain, no end effector) gets the handle on its tip link', () => {
+	// like ROBOTIS FFW's arm_l / arm_r: <joint> lists only, with fixed links after the last joint
+	const joint = (name, type, parent, child) => `<joint name="${name}" type="${type}"><parent link="${parent}"/><child link="${child}"/><axis xyz="0 0 1"/><limit lower="-1" upper="1" effort="1" velocity="1"/></joint>`;
+	const links = ['base', 'torso', 'l1', 'l2', 'l3', 'l_tip', 'l_tool', 'n1', 'n2'];
+	const twoArms = parseUrdf(`<robot name="r">${links.map((l) => `<link name="${l}"/>`).join('')}
+		${joint('lift', 'prismatic', 'base', 'torso')}
+		${joint('arm_l_joint1', 'revolute', 'torso', 'l1')}${joint('arm_l_joint2', 'revolute', 'l1', 'l2')}
+		${joint('arm_l_joint3', 'revolute', 'l2', 'l3')}${joint('arm_l_joint4', 'revolute', 'l3', 'l_tip')}
+		${joint('l_tool_fixed', 'fixed', 'l_tip', 'l_tool')}
+		${joint('neck_joint1', 'revolute', 'torso', 'n1')}${joint('neck_joint2', 'revolute', 'n1', 'n2')}</robot>`);
+	const groups = parseSrdf(`<robot name="r">
+		<group name="arm_l"><joint name="arm_l_joint1"/><joint name="arm_l_joint2"/><joint name="arm_l_joint3"/><joint name="arm_l_joint4"/></group>
+		<group name="arm_l_shuffled"><joint name="arm_l_joint3"/><joint name="arm_l_joint1"/><joint name="arm_l_joint4"/><joint name="arm_l_joint2"/></group>
+		<group name="neck"><joint name="neck_joint1"/><joint name="neck_joint2"/></group>
+		<group name="body"><joint name="lift"/></group>
+		<group name="split"><joint name="arm_l_joint1"/><joint name="neck_joint1"/></group></robot>`);
+	assert.equal(endEffectorLink(twoArms, groups, 'arm_l'), 'l_tip');
+	assert.equal(endEffectorLink(twoArms, groups, 'arm_l_shuffled'), 'l_tip');
+	assert.equal(endEffectorLink(twoArms, groups, 'neck'), 'n2');
+	assert.equal(endEffectorLink(twoArms, groups, 'body'), null); // one joint: nothing to solve
+	assert.equal(endEffectorLink(twoArms, groups, 'split'), null); // two branches: no single tip
+});
+
 test('IK request and solution', () => {
 	const pose = { position: { x: 0.3, y: 0, z: 0.5 }, orientation: { x: 1, y: 0, z: 0, w: 0 } };
 	const r = ikRequest({ group: 'panda_arm', positions: { panda_joint1: 0.1 }, joints: ARM, link: 'panda_link8', frame: 'panda_link0', pose });

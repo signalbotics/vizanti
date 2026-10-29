@@ -99,14 +99,40 @@ export function groupJoints(robot, srdf, groupName, seen = new Set()) {
 }
 
 // Where a group's end-effector handle goes: the parent link of an end effector of this group
-// (RViz's robot_interaction), else the tip of its chain; null when the group has neither.
+// (RViz's robot_interaction), else the tip of its chain, else the tip of its joints when they
+// form one serial chain (a group listed joint by joint, where RViz uses the IK solver's tip);
+// null when there is none.
 export function endEffectorLink(robot, srdf, groupName) {
 	const ee = srdf.endEffectors.find((e) => e.parentGroup === groupName)
 		?? srdf.endEffectors.find((e) => e.link && groupJoints(robot, srdf, groupName).some((j) => robot.joints[j].child === e.link));
 	if (ee?.link)
 		return ee.link;
 	const chain = srdf.groups[groupName]?.chains.at(-1);
-	return chain ? chain[1] : null;
+	if (chain)
+		return chain[1];
+	return serialTip(robot, groupJoints(robot, srdf, groupName));
+}
+
+// the child link of the last of `joints` when they lie one after another on a single path from
+// the root (fixed joints between them allowed); null for fewer than two joints or for branches
+function serialTip(robot, joints) {
+	if (joints.length < 2)
+		return null;
+	const parentJoint = {};
+	for (const [name, j] of Object.entries(robot.joints))
+		parentJoint[j.child] = name;
+	const inGroup = new Set(joints);
+	// the tip is the group joint whose path to the root passes through all the others
+	for (const tip of joints) {
+		let found = 0;
+		for (let link = robot.joints[tip].child; parentJoint[link]; link = robot.joints[parentJoint[link]].parent) {
+			if (inGroup.has(parentJoint[link]))
+				found++;
+		}
+		if (found === joints.length)
+			return robot.joints[tip].child;
+	}
+	return null;
 }
 
 // the planning groups the panel offers (those that move something), in SRDF order
