@@ -1,10 +1,6 @@
-import * as THREE from '../lib/three.module.min.js';
 import { Display } from '../core/display.js';
-import { parseUrdf, rpyToQuat, meshUrl } from '../geometry/urdf.js';
-import { getMeshLoaders } from '../core/mesh_loader.js';
-
-const DEFAULT_COLOR = [0.7, 0.7, 0.7, 1];
-const COLLISION_COLOR = [0.9, 0.5, 0.1, 0.45];
+import { parseUrdf } from '../geometry/urdf.js';
+import { RobotMesh } from '../core/robot_mesh.js';
 
 // The robot built from its URDF: every link's shapes and meshes, placed at the link's TF frame.
 export class UrdfDisplay extends Display {
@@ -32,24 +28,10 @@ export class UrdfDisplay extends Display {
 	}
 
 	onCreate() {
-		this.links = new Map(); // link name -> { group, visual, collision }
+		this.mesh = null; // RobotMesh
+		this.links = new Map(); // link name -> { group, visual, collision } (the mesh's)
 		this.robot = null;
-		this.loaders = null;
-		this.pendingMeshes = 0;
-		this.failedMeshes = [];
 		this.editor = null;
-	}
-
-	// the mesh loaders are only fetched when a robot actually uses meshes
-	async getLoaders() {
-		return getMeshLoaders();
-	}
-
-	material(color) {
-		const [r, g, b, a] = color;
-		const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(r, g, b), side: THREE.DoubleSide });
-		material.userData.alpha = a;
-		return material;
 	}
 
 	onMessage(msg) {
@@ -67,105 +49,21 @@ export class UrdfDisplay extends Display {
 		this.lastText = text;
 		this.clear();
 		this.robot = robot;
-		this.generation = (this.generation ?? 0) + 1;
-
-		for (const [name, link] of Object.entries(robot.links)) {
-			const entry = { group: new THREE.Group(), visual: new THREE.Group(), collision: new THREE.Group() };
-			entry.group.name = name;
-			entry.group.userData.selectLabel = `Link: ${name}`;
-			entry.group.add(entry.visual, entry.collision);
-			for (const part of link.visuals)
-				this.addPart(entry.visual, part, part.color ?? DEFAULT_COLOR);
-			for (const part of link.collisions)
-				this.addPart(entry.collision, part, COLLISION_COLOR);
-			this.add(entry.group);
-			this.links.set(name, entry);
-		}
-
-		this.root.traverse((object) => { object.renderOrder = this.order; });
+		this.mesh = new RobotMesh(robot, {
+			order: this.order,
+			onChange: () => {
+				this.report();
+				this.requestRender();
+			},
+		});
+		this.links = this.mesh.links;
+		this.add(this.mesh.group);
+		this.mesh.setOrder(this.order);
 		this.applyVisibility();
 		this.applyOpacity();
 		this.place();
 		this.refreshEditor();
 		this.report();
-	}
-
-	addPart(parent, part, color) {
-		const holder = new THREE.Group();
-		holder.position.fromArray(part.origin.xyz);
-		const q = rpyToQuat(part.origin.rpy);
-		holder.quaternion.set(q.x, q.y, q.z, q.w);
-		parent.add(holder);
-
-		const shape = part.geometry;
-		if (shape.type === "box") {
-			holder.add(new THREE.Mesh(new THREE.BoxGeometry(...shape.size), this.material(color)));
-		} else if (shape.type === "cylinder") {
-			// URDF cylinders run along z, three.js cylinders along y
-			holder.add(new THREE.Mesh(new THREE.CylinderGeometry(shape.radius, shape.radius, shape.length, 32).rotateX(Math.PI / 2), this.material(color)));
-		} else if (shape.type === "sphere") {
-			holder.add(new THREE.Mesh(new THREE.SphereGeometry(shape.radius, 32, 16), this.material(color)));
-		} else if (shape.type === "mesh") {
-			this.loadMesh(holder, shape, color, part.color !== null);
-		}
-	}
-
-	async loadMesh(holder, shape, color, hasUrdfColor) {
-		const source = meshUrl(shape.filename, base_url);
-		if (!source) {
-			this.failedMeshes.push(shape.filename);
-			return;
-		}
-		const generation = this.generation;
-		this.pendingMeshes++;
-		try {
-			const loaders = await this.getLoaders();
-			const loaded = await loaders[source.format].loadAsync(source.url);
-			if (generation !== this.generation || !this._alive)
-				return; // a newer description replaced this one while the mesh was loading
-
-			let object;
-			if (source.format === "stl") {
-				if (!loaded.attributes.normal)
-					loaded.computeVertexNormals();
-				object = new THREE.Mesh(loaded, this.material(color));
-			} else if (source.format === "dae") {
-				object = loaded.scene;
-				// the loader turns Z-up files to three.js's Y-up; this scene is Z-up like the file
-				object.rotation.set(0, 0, 0);
-			} else {
-				object = loaded;
-			}
-
-			// meshes that bring no materials of their own, or a URDF colour override, use the URDF colour
-			object.traverse((child) => {
-				if (!child.isMesh)
-					return;
-				if (source.format === "obj" || (source.format === "dae" && hasUrdfColor))
-					child.material = this.material(color);
-				const materials = Array.isArray(child.material) ? child.material : [child.material];
-				for (const material of materials) {
-					material.userData.alpha ??= material.opacity ?? 1;
-					material.side = THREE.DoubleSide;
-				}
-			});
-
-			const scaled = new THREE.Group();
-			scaled.scale.fromArray(shape.scale);
-			scaled.add(object);
-			holder.add(scaled);
-			holder.traverse((child) => { child.renderOrder = this.order; });
-			this.applyOpacity();
-		} catch (e) {
-			if (generation === this.generation)
-				this.failedMeshes.push(shape.filename);
-		} finally {
-			if (generation === this.generation) {
-				this.pendingMeshes--;
-				this.report();
-				this.requestRender();
-			}
-		}
 	}
 
 	// moves every link to its TF frame; links with no transform yet are hidden
@@ -195,10 +93,11 @@ export class UrdfDisplay extends Display {
 		this.setInfo({
 			"Robot": this.robot.name || "(unnamed)",
 			"Links": total,
-			"Meshes loading": this.pendingMeshes,
+			"Meshes loading": this.mesh?.pendingMeshes ?? 0,
 		});
-		if (this.failedMeshes.length)
-			this.status.error(`${this.failedMeshes.length} mesh(es) could not be loaded, first: ${this.failedMeshes[0]}`);
+		const failed = this.mesh?.failedMeshes ?? [];
+		if (failed.length)
+			this.status.error(`${failed.length} mesh(es) could not be loaded, first: ${failed[0]}`);
 		else if (this.missing === total && total > 0)
 			this.status.warn("No TF for any link of this robot yet. Is robot_state_publisher running, and is the TF prefix right?");
 		else if (this.missing > 0)
@@ -210,47 +109,18 @@ export class UrdfDisplay extends Display {
 	}
 
 	applyVisibility() {
-		for (const entry of this.links.values()) {
-			entry.visual.visible = this.props.show_visual;
-			entry.collision.visible = this.props.show_collision;
-		}
+		this.mesh?.setVisibility(this.props.show_visual, this.props.show_collision);
 	}
 
 	applyOpacity() {
-		const opacity = this.props.opacity;
-		this.root.traverse((object) => {
-			if (!object.isMesh)
-				return;
-			for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-				const value = (material.userData.alpha ?? 1) * opacity;
-				material.opacity = value;
-				const transparent = value < 1;
-				if (material.transparent !== transparent) {
-					material.transparent = transparent;
-					material.needsUpdate = true;
-				}
-			}
-		});
+		this.mesh?.setOpacity(this.props.opacity);
 	}
 
 	clear() {
-		for (const entry of this.links.values()) {
-			entry.group.removeFromParent();
-			entry.group.traverse((object) => {
-				if (object.geometry)
-					object.geometry.dispose();
-				for (const material of object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : []) {
-					if (material.map)
-						material.map.dispose();
-					material.dispose();
-				}
-			});
-		}
-		this.links.clear();
+		this.mesh?.dispose();
+		this.mesh = null;
+		this.links = new Map();
 		this.robot = null;
-		this.failedMeshes = [];
-		this.pendingMeshes = 0;
-		this.generation = (this.generation ?? 0) + 1;
 	}
 
 	onTfChange() {

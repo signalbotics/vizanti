@@ -104,6 +104,12 @@ test('meshUrl maps package URIs to the server route and refuses anything else', 
 	assert.deepEqual(meshUrl("package://p/a/b.dae", ""), { url: "/package/p/a/b.dae", format: "dae" });
 	assert.equal(meshUrl("package://p/x.obj", "").format, "obj");
 	assert.equal(meshUrl("file:///etc/passwd", ""), null);
+	// a file in a package's share folder (xacro $(find)), as MoveIt's Panda description has them
+	assert.deepEqual(meshUrl("file:///opt/ros/lyrical/share/moveit_resources_panda_description/meshes/visual/link0.dae", ""),
+		{ url: "/package/moveit_resources_panda_description/meshes/visual/link0.dae", format: "dae" });
+	assert.equal(meshUrl("file:///home/u/ws/install/bot/share/bot/meshes/a.stl", "/v").url, "/v/package/bot/meshes/a.stl");
+	assert.equal(meshUrl("file:///opt/ros/share/p/../../../etc/shadow.stl", ""), null);
+	assert.equal(meshUrl("file:///etc/share/x", ""), null); // not a mesh
 	assert.equal(meshUrl("package://p/../../etc/passwd.stl", ""), null);
 	assert.equal(meshUrl("package://p/model.fbx", ""), null);
 	assert.equal(meshUrl(undefined, ""), null);

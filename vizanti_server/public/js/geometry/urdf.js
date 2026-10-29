@@ -181,11 +181,13 @@ export function rpyToQuat([roll, pitch, yaw]) {
 const MESH_FORMATS = { stl: "stl", dae: "dae", obj: "obj" };
 
 // Where the server serves a mesh from, and which loader reads it. Only package:// URIs
-// without parent-directory steps are served; anything else gives null.
+// without parent-directory steps are served; anything else gives null. A file:// path inside a
+// package's share folder (<prefix>/share/<package>/..., what xacro's $(find) gives) is read as
+// that package's file, so it goes through the same package route.
 export function meshUrl(filename, baseUrl) {
 	if (typeof filename !== "string")
 		return null;
-	const match = /^package:\/\/([\w.-]+)\/(.+)$/.exec(filename);
+	const match = /^package:\/\/([\w.-]+)\/(.+)$/.exec(filename) ?? /^file:\/\/\/.*\/share\/([\w.-]+)\/(.+)$/.exec(filename);
 	if (!match)
 		return null;
 	const [, pkg, path] = match;
