@@ -151,11 +151,29 @@ export class RobotMesh {
 		this.applyLook();
 	}
 
+	// one link in its own colour (MoveIt's highlighted links), or null to undo it
+	setLinkColor(link, rgb) {
+		this.linkColors ??= new Map();
+		if (rgb)
+			this.linkColors.set(link, rgb);
+		else
+			this.linkColors.delete(link);
+		this.applyLook();
+	}
+
 	applyLook() {
-		const override = this.color ? new THREE.Color(...this.color) : null;
+		const whole = this.color ? new THREE.Color(...this.color) : null;
+		const perLink = new Map([...(this.linkColors ?? new Map())].map(([link, rgb]) => [link, new THREE.Color(...rgb)]));
+		const linkOf = (object) => {
+			for (let o = object; o && o !== this.group; o = o.parent)
+				if (this.links.has(o.name) && this.links.get(o.name).group === o)
+					return o.name;
+			return null;
+		};
 		this.group.traverse((object) => {
 			if (!object.isMesh)
 				return;
+			const override = perLink.size ? perLink.get(linkOf(object)) ?? whole : whole;
 			for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
 				if (material.color)
 					material.color.copy(override ?? material.userData.color ?? material.color);

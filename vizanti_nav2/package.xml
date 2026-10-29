@@ -3,7 +3,7 @@
 <package format="3">
   <name>vizanti_nav2</name>
   <version>0.3.1</version>
-  <description>Nav2 plugins for Vizanti, ported from nav2_rviz_plugins: the Navigation 2 panel and the Nav2 goal tool.</description>
+  <description>Nav2 plugins for Vizanti, ported from nav2_rviz_plugins: every class it has (Navigation 2, Goal tool, Selector, Docking, Costmap Cost, ParticleCloud, Route Tool).</description>
   <maintainer email="bruk@signalbotics.com">Bruk Gebregziabher</maintainer>
   <maintainer email="vid.rijavec@gmail.com">Vid Rijavec (MoffKalast)</maintainer>
   <license>BSD-3-Clause</license>

@@ -35,7 +35,7 @@ jobs:
         working-directory: vizanti_server
         run: node --test "test/js/*.test.mjs"
       - name: Nav2 plugin unit tests
-        run: node --test "vizanti_nav2/test/*.test.mjs"
+        run: node --test "vizanti_nav2/test/*.test.mjs" "vizanti_moveit/test/*.test.mjs"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"

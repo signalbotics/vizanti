@@ -26,7 +26,7 @@ apt-get update -qq
 rosdep update -q >/dev/null
 rosdep install -y -q --from-paths src --ignore-src >/dev/null
 source /opt/ros/${DISTRO}/setup.bash
-colcon build --packages-up-to vizanti_server vizanti_cpp vizanti_demos vizanti_nav2 --event-handlers console_cohesion- >/dev/null
+colcon build --packages-up-to vizanti_server vizanti_cpp vizanti_demos vizanti_nav2 vizanti_moveit --event-handlers console_cohesion- >/dev/null
 source install/setup.bash
 exec ros2 launch vizanti_server vizanti_server.launch.py port:=${PORT} port_rosbridge:=${ROSBRIDGE_PORT}
 " >/dev/null

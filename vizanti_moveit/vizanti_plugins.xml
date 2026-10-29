@@ -1,0 +1,8 @@
+<!-- Vizanti versions of moveit_ros_visualization's RViz displays. rviz_class: .rviz configs that
+     used the RViz plugin load these instead. -->
+<library path="vizanti_moveit">
+  <class name="vizanti_moveit/RobotState" type="displays/robot_state.js#RobotStateDisplay" base_class_type="vizanti::Display"
+         rviz_class="moveit_rviz_plugin/RobotState">
+    <description>The robot in the state a moveit_msgs/DisplayRobotState gives, with its highlighted links.</description>
+  </class>
+</library>
