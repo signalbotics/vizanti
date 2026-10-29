@@ -13,4 +13,8 @@
          rviz_class="moveit_rviz_plugin/PlanningScene">
     <description>MoveIt's planning scene: the collision objects, their colours, and the scene's robot with its attached objects.</description>
   </class>
+  <class name="vizanti_moveit/MotionPlanning" type="displays/motion_planning.js#MotionPlanningDisplay" base_class_type="vizanti::Display"
+         rviz_class="moveit_rviz_plugin/MotionPlanning">
+    <description>Plan and execute with MoveIt: drag the goal's end effector (solved with IK), pick start and goal states, Plan / Execute, with the planning scene and the planned path.</description>
+  </class>
 </library>

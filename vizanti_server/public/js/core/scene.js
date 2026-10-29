@@ -506,8 +506,9 @@ export class Scene3D {
 		return { origin: this._raycaster.ray.origin.clone(), direction: this._raycaster.ray.direction.clone() };
 	}
 
-	// The nearest visible solid object under the pointer that carries userData.interactive,
-	// as { object, point, interactive }, or null.
+	// The nearest visible solid object under the pointer that carries userData.interactive (on
+	// itself or a parent, so a whole group can be grabbed: MoveIt's end-effector links), as
+	// { object, point, interactive }, or null.
 	pickInteractive(clientX, clientY) {
 		const ray = this.ray(clientX, clientY);
 		this._raycaster.set(ray.origin, ray.direction);
@@ -529,7 +530,10 @@ export class Scene3D {
 			if (!visible)
 				continue;
 			// the first solid thing in the way decides: an ordinary object blocks what is behind it
-			return o.userData.interactive ? { object: o, point: hit.point, interactive: o.userData.interactive } : null;
+			let interactive = null;
+			for (let p = o; p && !interactive; p = p.parent)
+				interactive = p.userData.interactive ?? null;
+			return interactive ? { object: o, point: hit.point, interactive } : null;
 		}
 		return null;
 	}
