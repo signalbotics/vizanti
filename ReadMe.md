@@ -59,6 +59,19 @@ If you're using a mobile device connected to a robot's hotspot that doesn't have
 
 ####  Check [the wiki](https://moffkalast.github.io/vizanti_docs) for usage and configuration instructions, as well as feature and compatibility info.
 
+### Zenoh (rmw_zenoh)
+
+Vizanti works on `rmw_zenoh_cpp` with its default backend, rosbridge. As with any Zenoh setup, start the router first (`ros2 run rmw_zenoh_cpp rmw_zenohd`) and export `RMW_IMPLEMENTATION=rmw_zenoh_cpp` for Vizanti and the robot alike. The RWS backend below does not work on Zenoh.
+
+Checked on Lyrical (rmw_zenoh_cpp 0.10.6) on 2026-11-03, with Vizanti and the robot nodes in one Zenoh graph:
+- The browser test suite passes.
+- The topic list shows its types, and parameters and Vizanti's services work.
+- A late page subscriber gets latched topics (an OccupancyGrid).
+- Static transforms come from several `/tf_static` publishers, including one started after Vizanti. Every fresh page load had all of them.
+- Large messages arrive at full rate: a 1.6 MB PointCloud2 at 5 Hz and a 0.9 MB Image at 10 Hz.
+- Publishing from the browser works.
+- Actions work: send, feedback, result and cancel (MoveIt's `/move_action`).
+
 ## Recommended - RWS Backend
 
 With rosbridge being a Tornado python based package and rclpy being overly CPU heavy, this cpp drop-in replacement server should result in a ~5x lower overhead and faster response times. It works with CycloneDDS out of the box, for FastDDS it requires the `rmw_fastrtps_dynamic_cpp` version which includes interface introspection. Zenoh does not support topic introspection at all, so it's not supported at the moment.
