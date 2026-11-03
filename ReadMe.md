@@ -6,7 +6,7 @@ Vizanti is a web-based visualization and control tool developed for more conveni
 
 <img src="docs/images/vizanti-rviz-ui.jpg" alt="Vizanti's RViz-style interface: a robot arm on a map with a lidar trail coloured by intensity"/>
 
-See [docs/ui.md](docs/ui.md) for the interfaces and every display. 
+See [docs/ui.md](docs/ui.md) for the interfaces and every display, and [docs/plot.md](docs/plot.md) for the Plot panel: PlotJuggler-style time series and XY plots of any topic field, with tabs, split plots and PlotJuggler layout import.
 
 ## Installation
 

@@ -89,6 +89,8 @@ A display can also have a dock panel of its own, as RViz's MotionPlanning displa
 - in `attachPanel(host)`, put the panel's element into `host`, and remove it in `detachPanel()`;
 - `onPanelClosed()` runs when the user closes the dock panel. Without it, closing the panel
   disables the display.
+- `static panelDirection = "below"` docks the panel under the 3D view rather than to its
+  right (the Plot panel does this).
 
 ### Panels
 
@@ -147,6 +149,9 @@ Displays and panels have `this.ctx`, and tools have `this.api` with the same cal
 | `callService(name, type, request, timeoutMs = 5000)` | resolves with the response; rejects on failure or timeout |
 | `action(name, type)` | a ROS 2 action client (see below) |
 | `listNodes()`, `listServices(type)`, `listAllTopics()`, `topicInfo(topic)` | what is on the ROS graph (displays and panels) |
+| `subscribe(topic, type, throttleMs, callback, qos, { queueLength })` | an extra subscription, returning its unsubscribe function; `queueLength` (default 1, the latest message only) lets rosbridge queue more, for a plugin that needs every message (displays and panels) |
+| `rosTime()` | ROS time in seconds, following `/clock` in simulation (displays and panels) |
+| `notify(text)` | a short notice at the top of the page (displays and panels) |
 
 A display's or panel's `topic` property is subscribed to by the base class (its `onMessage` gets
 the messages).

@@ -142,8 +142,10 @@ const qosInjector = createQosInjector();
 	rosbridge.ros.callOnConnection = (message) => send(qosInjector.apply(message));
 }
 
-// qos: a rosbridge QoS object, or null to let rosbridge match the publishers
-function subscribe(topic, msgType, throttleMs, callback, qos = null) {
+// qos: a rosbridge QoS object, or null to let rosbridge match the publishers.
+// queueLength: messages rosbridge may hold for this client; 1 (the latest only) suits drawing,
+// a plot that needs every sample asks for more.
+function subscribe(topic, msgType, throttleMs, callback, qos = null, { queueLength = 1 } = {}) {
 	const releaseQos = qosInjector.use(topic, qos);
 	const rosTopic = new ROSLIB.Topic({
 		ros: rosbridge.ros,
@@ -151,7 +153,7 @@ function subscribe(topic, msgType, throttleMs, callback, qos = null) {
 		messageType: msgType,
 		throttle_rate: throttleMs,
 		compression: BINARY_TYPES.has(msgType) ? "cbor" : rosbridge.compression,
-		queue_length: 1,
+		queue_length: queueLength,
 	});
 	rosTopic.subscribe(callback);
 	return () => {
@@ -236,6 +238,10 @@ async function start() {
 			return index === -1 ? null : all.types[index];
 		},
 		setProperty: (id, key, value) => registry.setProperty(id, key, value),
+		// ROS time in seconds (follows /clock in simulation)
+		rosTime: () => app.time.now(),
+		// a short notice at the top of the page
+		notify: (text) => notify(text),
 	};
 	const registry = new Registry({ types, context });
 	const storage = createStorage(resolveBackend(() => window.localStorage), STORAGE_KEY);

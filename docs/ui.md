@@ -123,6 +123,9 @@ frontend changes only need a page reload. If `rosbridge_websocket` dies at launc
   Checked on 2026-10-06 with a 5 Hz test camera: the panel opened and survived a reload; rename,
   close, enable, switching to the corner and removal behaved as described; the touch UI used
   the corner.
+- **Plot** (Main menu → Add panel…): PlotJuggler-style plots of any numeric field of any
+  topic. You get time series sharing a zoomable time axis, XY plots, tabs, split plots,
+  transforms, CSV export and PlotJuggler layout import. See [plot.md](plot.md).
 - **Waypoints** (native 3D, replaces the old 2D widget; saved missions carry over):
   - **Edit positions:** click the ground to add a waypoint. Near the path, it is inserted into
     that leg. Drag a waypoint to move it (Shift snaps to 0.5 m); tap one to delete it. Dragging
@@ -427,6 +430,7 @@ the toolbar's "+". See [plugins.md](plugins.md). `vizanti_demos` has an example 
 | Path (under `vizanti_server/public/js/`) | What |
 |---|---|
 | `core/app.js` | Startup and wiring |
+| `plot/`, `displays/plot_panel.js` | The Plot panel ([plot.md](plot.md)) |
 | `core/registry.js` | The list of widgets, global options, save/load |
 | `core/display.js` | `Display` base class |
 | `core/scene.js` | Renderer, cameras, lights, render loop |

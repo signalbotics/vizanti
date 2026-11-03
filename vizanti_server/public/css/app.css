@@ -1136,3 +1136,538 @@ button.status_segment:disabled {
 	cursor: pointer;
 	color: #8d9aab;
 }
+
+/* ---- Plot panel (displays/plot_panel.js, js/plot/) ---- */
+
+.display_panel_host:has(> .plot_widget) {
+	overflow: hidden;
+}
+
+.widget_panel.plot_widget {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 260px;
+	padding: 0;
+	font-size: 0.82rem;
+	color: #dfe6ee;
+	overflow: hidden;
+}
+
+.modal_inner .widget_panel.plot_widget {
+	height: 70vh;
+}
+
+.plot_widget button {
+	margin: 0;
+	border: 1px solid #3a4655;
+	border-radius: 3px;
+	background: #222b35;
+	color: #dfe6ee;
+	font-family: inherit;
+	font-size: 0.8rem;
+	padding: 2px 8px;
+	line-height: 1.4;
+	transform: none;
+	animation: none;
+}
+
+.plot_widget button:hover:not(:disabled) {
+	border-color: #6c8ebf;
+	transform: none;
+}
+
+.plot_widget input[type=number],
+.plot_widget input[type=search],
+.plot_widget select {
+	min-width: 0;
+	height: 22px;
+	margin: 0;
+	font-family: inherit;
+	font-size: 0.8rem;
+	border: 1px solid #3a4655;
+	border-radius: 3px;
+	background: #1b222b;
+	color: #dfe6ee;
+	box-sizing: border-box;
+}
+
+.plot_widget input[type=number] {
+	width: 4.5em;
+}
+
+.plot_toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	padding: 4px 6px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot_toolbar_field {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: #8d9aab;
+	white-space: nowrap;
+}
+
+.plot_widget .plot_follow.plot_paused {
+	border-color: #f5c542;
+	color: #f5c542;
+}
+
+.plot_widget .plot_icon_button {
+	padding: 0 5px;
+	min-width: 22px;
+	height: 20px;
+	line-height: 1;
+	background: transparent;
+	border-color: transparent;
+	color: #b8c4d2;
+}
+
+.plot_widget .plot_icon_button:hover:not(:disabled) {
+	background: #222b35;
+	border-color: #3a4655;
+	color: #ffffff;
+}
+
+.plot_main {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+/* the series list */
+.plot_sidebar {
+	display: flex;
+	flex-direction: column;
+	flex: none;
+	min-width: 0;
+	border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot_sidebar_handle {
+	flex: none;
+	width: 5px;
+	margin-left: -3px;
+	cursor: col-resize;
+	touch-action: none;
+}
+
+.plot_sidebar_handle:hover {
+	background: rgba(108, 142, 191, 0.35);
+}
+
+.plot_sidebar_top {
+	display: flex;
+	gap: 4px;
+	padding: 4px;
+}
+
+.plot_sidebar_top .plot_search {
+	flex: 1;
+	width: auto;
+}
+
+.plot_series_list {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	user-select: none;
+}
+
+.plot_sidebar_footer {
+	padding: 3px 6px;
+	color: #8d9aab;
+	font-size: 0.75rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot_series_row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 20px;
+	padding: 0 4px;
+	white-space: nowrap;
+	cursor: default;
+}
+
+.plot_series_row:hover {
+	background: rgba(108, 142, 191, 0.12);
+}
+
+.plot_topic_row {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.plot_widget .plot_twisty {
+	flex: none;
+	width: 14px;
+	padding: 0;
+	border: none;
+	background: none;
+	color: #8d9aab;
+	text-align: center;
+}
+
+/* a plain small box, not the page's 50 px toggle switch */
+.plot_widget input[type="checkbox"].plot_record {
+	appearance: auto;
+	flex: none;
+	width: 13px;
+	height: 13px;
+	margin: 0;
+	border-radius: 0;
+	background: none;
+}
+
+.plot_widget input[type="checkbox"].plot_record:before {
+	content: none;
+}
+
+.plot_topic_name,
+.plot_field_name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.plot_topic_name {
+	flex: 0 1 auto;
+}
+
+/* the type (or rate) gives way to the topic name: it shrinks first */
+.plot_topic_meta {
+	flex: 0 1000 auto;
+	margin-left: auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: #8d9aab;
+	font-weight: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.plot_field_value {
+	flex: none;
+	color: #8d9aab;
+	font-weight: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.plot_leaf_row {
+	cursor: grab;
+}
+
+.plot_leaf_row.plot_selected {
+	background: rgba(78, 156, 245, 0.28);
+}
+
+.plot_group_row {
+	cursor: pointer;
+	color: #b8c4d2;
+}
+
+.plot_series_note {
+	padding: 1px 6px 1px 26px;
+	color: #8d9aab;
+	font-size: 0.75rem;
+	white-space: normal;
+}
+
+/* tabs and the split plots */
+.plot_area {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.plot_tabs {
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	padding: 2px 4px 0;
+	overflow-x: auto;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot_tab {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 4px 2px 10px;
+	border-bottom: 2px solid transparent;
+	color: #8d9aab;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.plot_tab.plot_tab_on {
+	border-bottom-color: #4e9cf5;
+	color: #dfe6ee;
+}
+
+.plot_widget .plot_tab_close {
+	padding: 0 4px;
+	border-color: transparent;
+	background: none;
+	color: #8d9aab;
+	line-height: 1;
+}
+
+.plot_widget .plot_tab_close.plot_tab_close_armed {
+	color: #ff6b6b;
+	border-color: #ff6b6b;
+}
+
+.plot_widget .plot_tab_add {
+	padding: 0 8px;
+	border-color: transparent;
+	background: none;
+	font-size: 1rem;
+}
+
+.plot_widget .plot_tab_rename {
+	width: 10em;
+	height: 20px;
+	font: inherit;
+	color: #dfe6ee;
+	background: #1b222b;
+	border: 1px solid #6c8ebf;
+}
+
+.plot_tab_body {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+.plot_tab_body > * {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.plot_split {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+}
+
+.plot_split_row { flex-direction: row; }
+.plot_split_column { flex-direction: column; }
+
+.plot_split_child {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+}
+
+.plot_split_child > * {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.plot_divider {
+	flex: none;
+	background: rgba(255, 255, 255, 0.06);
+	touch-action: none;
+}
+
+.plot_divider:hover { background: rgba(108, 142, 191, 0.45); }
+.plot_divider_row { width: 4px; cursor: col-resize; }
+.plot_divider_column { height: 4px; cursor: row-resize; }
+
+.plot_cell {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	border: 1px solid transparent;
+}
+
+.plot_cell.plot_cell_active {
+	border-color: rgba(78, 156, 245, 0.45);
+}
+
+.plot_cell.plot_drop_target {
+	border-color: #4fd68a;
+	background: rgba(79, 214, 138, 0.06);
+}
+
+/* narrow (phone, thin dock column): the series list above the plots */
+.plot_widget.plot_narrow .plot_main {
+	flex-direction: column;
+}
+
+.plot_widget.plot_narrow .plot_sidebar {
+	width: auto !important;
+	max-height: 38%;
+	border-right: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot_widget.plot_narrow .plot_sidebar_handle {
+	display: none;
+}
+
+.plot_widget.plot_narrow .plot_area {
+	min-height: 0;
+	flex: 1;
+}
+
+.plot_cell_header {
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 1px;
+	height: 20px;
+	padding: 0 2px;
+	opacity: 0.55;
+}
+
+.plot_cell:hover .plot_cell_header,
+.plot_cell.plot_cell_active .plot_cell_header {
+	opacity: 1;
+}
+
+.plot_cell_title {
+	margin-right: auto;
+	padding-left: 4px;
+	color: #8d9aab;
+	font-size: 0.75rem;
+}
+
+.plot_cell_body {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.plot_canvas {
+	position: absolute;
+	inset: 0;
+	display: block;
+	touch-action: none;
+	cursor: crosshair;
+}
+
+.plot_legend {
+	position: absolute;
+	top: 8px;
+	right: 14px;
+	max-width: 70%;
+	max-height: calc(100% - 34px);
+	overflow: auto;
+	padding: 2px 4px;
+	border-radius: 3px;
+	background: rgba(17, 22, 28, 0.78);
+	font-size: 0.75rem;
+}
+
+.plot_legend.plot_legend_left {
+	right: auto;
+	left: 52px;
+}
+
+.plot_legend:empty,
+.plot_legend[hidden] {
+	display: none;
+}
+
+.plot_legend_row {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	white-space: nowrap;
+}
+
+.plot_legend_row.plot_legend_hidden {
+	opacity: 0.4;
+}
+
+.plot_swatch {
+	flex: none;
+	width: 12px;
+	height: 3px;
+	border-radius: 1px;
+	cursor: pointer;
+}
+
+.plot_legend_name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+
+.plot_legend_value {
+	margin-left: auto;
+	padding-left: 6px;
+	min-width: 4em;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.plot_widget .plot_legend_more {
+	padding: 0 3px;
+	border-color: transparent;
+	background: none;
+	color: #8d9aab;
+	line-height: 1;
+}
+
+.plot_hint {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	max-width: 80%;
+	color: #8d9aab;
+	text-align: center;
+	pointer-events: none;
+}
+
+.plot_menu {
+	position: absolute;
+	z-index: 5;
+	width: 210px;
+	padding: 6px;
+	border: 1px solid #3a4655;
+	border-radius: 4px;
+	background: #1b222b;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.plot_menu_row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	color: #b8c4d2;
+}
+
+.plot_menu_params {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.plot_widget .plot_menu input[type=color] {
+	min-width: 0;
+	width: 48px;
+	height: 22px;
+	padding: 0;
+}
