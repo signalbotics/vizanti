@@ -219,6 +219,8 @@ export class RvizShell {
 		for (const name of ["added", "removed", "property", "enabled", "loaded", "renamed"])
 			this.listen(name, () => this.syncDisplayPanels());
 		this.syncDisplayPanels();
+		if (!restored)
+			this.api.getPanel("view")?.api.setActive(); // the default Plot tab sits behind the 3D view
 
 		// the first box selection opens the Selection panel; later ones just repaint it
 		this.onSelectionChanged = (event) => {

@@ -1,10 +1,11 @@
 # Plots
 
 The **Plot** panel plots any numeric field of any topic over time, or one field against another,
-the way PlotJuggler does. It is built into `vizanti_server`: Main menu → **Add panel…** → Plot
-(touch UI: the + button). In the RViz UI it opens as a tab next to **3D View**, so it gets the
-whole view area; click the tabs to switch between them, or drag the Plot tab to the side to see
-both at once. Add more than one if you like; they share their data.
+the way PlotJuggler does. It is built into `vizanti_server`, and every new browser has a **Plot**
+tab next to **3D View**: click the tab to open it, or drag it to the side to see both at once. It
+subscribes to nothing until you plot something. More plot panels: Main menu → **Add panel…** →
+Plot (touch UI: the + button); they open as tabs in the same place and share their data. A
+layout saved before this version keeps its panels; add a Plot panel to it from Add panel….
 
 ## Using it
 

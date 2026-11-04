@@ -53,7 +53,7 @@ test('a plugin panel opens as a dock panel, shows its data, and closing it remov
 	await expect(page.locator('.panel_settings .prop_row', { hasText: 'Lines kept' })).toBeVisible();
 	await tab.locator('.dv-default-tab-action, [class*="close"]').first().click();
 	await expect(tab).toHaveCount(0);
-	expect(await page.evaluate(() => window.vizanti.registry.items.some((i) => i.constructor.isPanel))).toBe(false);
+	expect(await page.evaluate(() => window.vizanti.registry.items.some((i) => i.constructor.isPanel && i.constructor.type !== 'plot'))).toBe(false); // the default Plot tab stays
 });
 
 test('a plugin tool is added with "+", gets the pointer, and can be removed', async ({ page }) => {

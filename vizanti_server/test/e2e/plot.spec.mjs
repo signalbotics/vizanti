@@ -14,19 +14,17 @@ test.afterEach(async ({ page }) => {
 	expect(page.errors, 'uncaught errors in the page').toEqual([]);
 });
 
-async function addPlotPanel(page) {
-	await page.locator('.rviz_toolbar button').first().click();
-	await page.getByText('Add panel…').click();
-	await page.locator('.add_search').fill('Plot');
-	await page.locator('.widget_entry', { hasText: 'Plot' }).first().click();
-	await expect(page.locator('.plot_widget .plot_cell')).toHaveCount(1);
-	// it opens as a tab beside the 3D view, in the same dock group, and is the shown tab
-	const dock = await page.evaluate(() => {
+// A fresh browser gets a Plot tab next to the 3D view, behind it; clicking the tab shows it.
+async function openPlotTab(page) {
+	const dock = () => page.evaluate(() => {
 		const api = window.vizanti.shell.api;
 		const plot = api.panels.find((p) => p.id.startsWith('display:plot'));
-		return { sameGroup: plot.group.id === api.getPanel('view').group.id, active: plot.api.isActive };
+		return { sameGroup: plot?.group.id === api.getPanel('view').group.id, active: plot?.api.isActive };
 	});
-	expect(dock).toEqual({ sameGroup: true, active: true });
+	expect(await dock()).toEqual({ sameGroup: true, active: false });
+	await page.locator('.dv-tab', { hasText: /^Plot/ }).click();
+	await expect(page.locator('.plot_widget .plot_cell')).toHaveCount(1);
+	expect(await dock()).toEqual({ sameGroup: true, active: true });
 }
 
 async function publishSignal(page) {
@@ -47,7 +45,7 @@ const plot = (page) => page.evaluate(() => {
 
 test('plot: record a topic, drag its fields onto plots, split, and keep it all after a reload', async ({ page }) => {
 	await publishSignal(page);
-	await addPlotPanel(page);
+	await openPlotTab(page);
 	const topic = page.locator('.plot_topic_name', { hasText: /^\/e2e_plot_signal$/ });
 	await expect(async () => {
 		await page.locator('.plot_sidebar_top button').click(); // refresh the topic list
@@ -114,7 +112,7 @@ test('plot: record a topic, drag its fields onto plots, split, and keep it all a
 
 test('plot: a PlotJuggler layout file brings its tabs and curves, which then fill with data', async ({ page }) => {
 	await publishSignal(page);
-	await addPlotPanel(page);
+	await openPlotTab(page);
 	const xml = `<?xml version='1.0' encoding='UTF-8'?>
 <root><tabbed_widget name="Main Window" parent="main_window">
  <Tab containers="1" tab_name="From PlotJuggler"><Container>
@@ -135,4 +133,15 @@ test('plot: a PlotJuggler layout file brings its tabs and curves, which then fil
 	await page.locator('.plot_toolbar input[type=file]').setInputFiles({ name: 'other.xml', mimeType: 'text/xml', buffer: Buffer.from('<launch/>') });
 	await expect(page.locator('.notice').last()).toContainText('not a PlotJuggler layout');
 	await expect(page.locator('.plot_tab')).toHaveCount(2);
+
+	// another Plot panel from Add panel… opens as a tab in the same place, and is shown
+	await page.locator('.rviz_toolbar button').first().click();
+	await page.getByText('Add panel…').click();
+	await page.locator('.add_search').fill('Plot');
+	await page.locator('.widget_entry', { hasText: 'Plot' }).first().click();
+	expect(await page.evaluate(() => {
+		const api = window.vizanti.shell.api;
+		const plots = api.panels.filter((p) => p.id.startsWith('display:plot'));
+		return plots.length === 2 && plots.every((p) => p.group.id === api.getPanel('view').group.id) && plots[1].api.isActive;
+	})).toBe(true);
 });

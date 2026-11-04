@@ -43,6 +43,10 @@ const DEFAULT_LAYOUT = {
 	],
 };
 
+// a Plot tab next to the 3D view in every fresh browser; it subscribes to nothing until
+// something is plotted
+const PLOT_DEFAULT = { id: "plot_default", type: "plot", name: "Plot", enabled: true, props: {} };
+
 function notify(text, { sticky = false } = {}) {
 	const box = document.getElementById("notices");
 	const notice = document.createElement("div");
@@ -461,6 +465,9 @@ async function start() {
 				console.warn("The default config could not be read, using the built-in default:", e);
 			}
 		}
+		// a fresh browser gets a Plot tab next to the 3D view, whichever default it started from
+		if (!initial.items?.some((item) => item.type === "plot"))
+			initial = { ...initial, items: [...(initial.items ?? []), PLOT_DEFAULT] };
 	}
 	if (stored.corrupt)
 		notify("The saved layout could not be read, so the default layout was loaded. "
