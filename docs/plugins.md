@@ -89,8 +89,9 @@ A display can also have a dock panel of its own, as RViz's MotionPlanning displa
 - in `attachPanel(host)`, put the panel's element into `host`, and remove it in `detachPanel()`;
 - `onPanelClosed()` runs when the user closes the dock panel. Without it, closing the panel
   disables the display.
-- `static panelDirection = "below"` docks the panel under the 3D view rather than to its
-  right (the Plot panel does this).
+- `static panelDirection` says where the panel first opens next to the 3D view: `"right"` (the
+  default), `"below"`, or `"tab"`, as a tab beside it (the Plot panel does this). Panels with the
+  same placement open as tabs of one another.
 
 ### Panels
 

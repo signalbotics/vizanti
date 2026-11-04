@@ -362,16 +362,19 @@ export class RvizShell {
 					item.attachPanel(host);
 				continue;
 			}
-			// beside another display panel of the same placement as a tab, or next to the 3D view:
-			// to its right, or below it for a class with panelDirection "below" (plots)
-			const below = item.constructor.panelDirection === "below";
-			const placedBelow = (panel) => this.app.registry.get(panel.id.slice("display:".length))?.constructor.panelDirection === "below";
-			const sibling = this.api.panels.find((panel) => panel.id.startsWith("display:") && panel.id !== panelId && placedBelow(panel) === below);
+			// beside another display panel of the same placement as a tab; otherwise next to the
+			// 3D view: to its right, below it (panelDirection "below"), or as a tab beside it
+			// (panelDirection "tab", the Plot panel)
+			const placement = (cls) => cls?.panelDirection ?? "right";
+			const mine = placement(item.constructor);
+			const sibling = this.api.panels.find((panel) => panel.id.startsWith("display:") && panel.id !== panelId
+				&& placement(this.app.registry.get(panel.id.slice("display:".length))?.constructor) === mine);
+			const direction = mine === "tab" ? "within" : mine;
 			const position = sibling ? { referencePanel: sibling.id }
-				: (this.api.getPanel("view") ? { referencePanel: "view", direction: below ? "below" : "right" } : undefined);
+				: (this.api.getPanel("view") ? { referencePanel: "view", direction } : undefined);
 			this.api.addPanel({ id: panelId, component: "display", title: item.name, position });
-			if (!sibling)
-				this.api.getPanel(panelId)?.api.setSize(below ? { height: Math.max(340, Math.round((this.api.height || 0) * 0.45)) } : { width: 420 });
+			if (!sibling && mine !== "tab")
+				this.api.getPanel(panelId)?.api.setSize(mine === "below" ? { height: Math.max(340, Math.round((this.api.height || 0) * 0.45)) } : { width: 420 });
 		}
 	}
 

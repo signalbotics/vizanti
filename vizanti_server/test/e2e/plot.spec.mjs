@@ -20,6 +20,13 @@ async function addPlotPanel(page) {
 	await page.locator('.add_search').fill('Plot');
 	await page.locator('.widget_entry', { hasText: 'Plot' }).first().click();
 	await expect(page.locator('.plot_widget .plot_cell')).toHaveCount(1);
+	// it opens as a tab beside the 3D view, in the same dock group, and is the shown tab
+	const dock = await page.evaluate(() => {
+		const api = window.vizanti.shell.api;
+		const plot = api.panels.find((p) => p.id.startsWith('display:plot'));
+		return { sameGroup: plot.group.id === api.getPanel('view').group.id, active: plot.api.isActive };
+	});
+	expect(dock).toEqual({ sameGroup: true, active: true });
 }
 
 async function publishSignal(page) {
@@ -85,6 +92,14 @@ test('plot: record a topic, drag its fields onto plots, split, and keep it all a
 	expect((await plot(page)).follow).toBe(false);
 	await page.locator('.plot_follow').click();
 	expect((await plot(page)).follow).toBe(true);
+
+	// switching to the 3D view tab and back keeps the plots drawing
+	await page.locator('.dv-tab', { hasText: '3D View' }).click();
+	await expect(page.locator('.plot_widget')).toBeHidden();
+	expect(await page.evaluate(() => window.vizanti.sceneElement.isConnected && window.vizanti.sceneElement.offsetWidth > 0)).toBe(true);
+	await page.locator('.dv-tab', { hasText: /^Plot/ }).click();
+	const before = (await plot(page)).views[0].points[0];
+	await expect.poll(async () => (await plot(page)).views[0].points[0] !== before, { timeout: 5000 }).toBe(true);
 
 	// saved with the layout
 	await page.waitForTimeout(800);

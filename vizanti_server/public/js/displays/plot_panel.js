@@ -51,7 +51,7 @@ export class PlotPanel extends PanelPlugin {
 	static icon = "assets/plot.svg";
 	static category = "Data";
 	static description = "Time series and XY plots of any numeric field of any topic, as in PlotJuggler: tabs, split plots, a shared zoomable time axis, transforms, CSV export.";
-	static panelDirection = "below"; // a wide strip under the 3D view, rather than a column beside it
+	static panelDirection = "tab"; // a tab beside the 3D view, with the whole view area to itself
 
 	static properties = {
 		plot: { type: "object", default: null, hidden: true }, // see plot/layout.js
