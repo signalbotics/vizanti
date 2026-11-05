@@ -185,7 +185,7 @@ building a release, or apt will see the new build as the same version as the old
 
 ## Releases
 
-**Automatic (CI):** `.github/workflows/ci.yml` runs the unit tests on every push to `ros2` and
+**Automatic (CI):** `.github/workflows/ci.yml` runs the unit tests on every push to `main` and
 on every pull request. Pushing a version tag (`v*`) also builds the packages for Humble, Jazzy
 and Lyrical on amd64 and arm64 (arm64 under QEMU, so allow a few hours) and attaches all of
 them to that tag's GitHub release, creating the release if needed:
@@ -204,14 +204,14 @@ Built packages are published as GitHub release assets on the public repository
 https://github.com/signalbotics/vizanti (git remote `signalbotics`; `origin` is still upstream
 MoffKalast/vizanti). Release `v0.1.1` holds the Lyrical and Jazzy packages.
 
-To publish a new release from `ros2`:
+To publish a new release from `main`:
 
 ```bash
 # bump <version> in the package.xml files first
 packaging/build_debs.sh                   # this machine's distro -> packaging/debs/<distro>/
 packaging/build_debs_docker.sh jazzy      # -> packaging/debs/jazzy/
 git tag -a vX.Y.Z -m "..." && git push signalbotics vX.Y.Z
-gh release create vX.Y.Z --repo signalbotics/vizanti --target ros2 \
+gh release create vX.Y.Z --repo signalbotics/vizanti --target main \
     --title "Vizanti X.Y.Z" --notes "..." packaging/debs/*/*.deb
 ```
 

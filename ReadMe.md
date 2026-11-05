@@ -21,7 +21,7 @@ As a field tool, Vizanti is designed to operate just as well without internet ac
 
 ```bash
 cd ~/colcon_ws/src
-git clone -b ros2 https://github.com/MoffKalast/vizanti.git
+git clone https://github.com/signalbotics/vizanti.git
 
 cd ..
 rosdep install -i --from-path src/vizanti -y
@@ -39,7 +39,7 @@ Alternatively, you can also containerize Vizanti. For that you need to [install 
 In case you're building on a system with a different version of ROS or it's not installed, replace `$ROS_DISTRO` with either humble or jazzy.
 
 ```bash
-git clone -b ros2 https://github.com/MoffKalast/vizanti.git
+git clone https://github.com/signalbotics/vizanti.git
 cd vizanti
 docker build -f docker/Dockerfile -t vizanti:2.0 . --build-arg ROS_VERSION=$ROS_DISTRO
 ```

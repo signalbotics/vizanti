@@ -4,7 +4,7 @@ name: CI
 
 on:
   push:
-    branches: [ros2]
+    branches: [main]
     tags: ["v*"]
   pull_request:
   workflow_dispatch: # build packages for one distro/arch as run artifacts, without a release
