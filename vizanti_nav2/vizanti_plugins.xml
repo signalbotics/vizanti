@@ -29,4 +29,7 @@
          rviz_class="nav2_rviz_plugins/Route Tool">
     <description>Build and edit a Nav2 route graph: add, move and remove nodes and edges, load and save nav2_route GeoJSON.</description>
   </class>
+  <class name="vizanti_nav2/Nav2 Tools" type="panels/nav2_tools.js#Nav2ToolsPanel" base_class_type="vizanti::Panel">
+    <description>Clear the costmaps, run a recovery behaviour (spin, back up, drive on heading, wait, assisted teleop), and see the state of every Nav2 lifecycle node. Not in RViz.</description>
+  </class>
 </library>

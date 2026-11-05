@@ -34,3 +34,13 @@
 .nav2_route .nav2_tabpage[hidden] { display: none; }
 .nav2_route .nav2_route_kind { gap: 16px; }
 .nav2_panel .nav2_note.nav2_error { color: #ff6b6b; }
+.nav2_tools .nav2_box { min-width: 0; min-inline-size: 0; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; padding: 8px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.nav2_tools legend { padding: 0 4px; font-weight: bold; }
+.nav2_tools .nav2_tools_behavior > .nav2_button { flex: 0 0 9.5em; width: auto; text-align: left; }
+.nav2_tools .nav2_tools_behavior > input { flex: 1; min-width: 0; width: 0; }
+.nav2_tools .nav2_tools_unit { flex: 0 0 2.6em; opacity: 0.7; }
+.nav2_tools .nav2_tools_line { margin: 0; }
+.nav2_tools .nav2_tools_line[hidden] { display: none; }
+.nav2_tools .nav2_tools_nodes td { padding: 1px 8px 1px 0; }
+.nav2_tools .nav2_tools_nodes .nav2_tools_manager td { padding-top: 6px; font-weight: bold; }
+.nav2_tools .nav2_tools_nodes tr:first-child td { padding-top: 0; }

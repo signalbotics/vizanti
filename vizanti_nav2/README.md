@@ -31,6 +31,25 @@ The Navigation 2 panel's "Lifecycle manager" setting is empty by default: it fin
 itself. With two (Humble, Jazzy) it shows a Localization row and sends Startup, Pause, Resume and
 Reset to both, as the Jazzy panel does.
 
+## Beyond RViz: Nav2 Tools
+
+Panel *Nav2 Tools* (Main menu → Add panel…) does what a Nav2 user otherwise does from a terminal:
+
+- **Costmaps:** clear the global, the local or both (`/<costmap>/clear_entirely_<costmap>`).
+- **Behaviours:** behavior_server's recovery behaviours, each with its settings: Spin (angle),
+  Back up and Drive on heading (distance, speed), Wait (time), Assisted teleop (time). It shows
+  the progress and how each ended (done, cancelled, or why Nav2 stopped it, e.g. "collision
+  ahead"); Cancel stops it. Spin, back up and drive on heading get the panel's time limit (10 s by
+  default). Collision checking stays on.
+- **Lifecycle nodes:** every lifecycle manager on the graph, the nodes it runs (its
+  `node_names`) and each node's state (`get_state`), refreshed every 2 s while the panel is shown.
+  A node that does not answer shows "not answering".
+
+Checked live on 2026-11-05 on Jazzy and on Lyrical (`tb3_loopback_simulation`): both costmaps
+cleared (Nav2 logged both requests); a 90° spin, a 0.3 m back up and a 0.3 m drive on heading
+finished and moved the robot as asked (odometry); a wait was cancelled; pausing navigation from a
+terminal showed every node inactive within a few seconds.
+
 ## Differences from RViz
 
 - Actions and services go through rosbridge. Vizanti's rosbridge waits 5 s for an action
