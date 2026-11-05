@@ -28,6 +28,8 @@
     <buildtool_depend>ament_cmake_python</buildtool_depend>
 
     <exec_depend>ros2launch</exec_depend>
+    <!-- the launch files start vizanti_cpp's tf_consolidator -->
+    <exec_depend>vizanti_cpp</exec_depend>
 
     <export>
     <build_type>ament_cmake</build_type>
