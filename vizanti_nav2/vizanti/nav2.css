@@ -44,3 +44,8 @@
 .nav2_tools .nav2_tools_nodes td { padding: 1px 8px 1px 0; }
 .nav2_tools .nav2_tools_nodes .nav2_tools_manager td { padding-top: 6px; font-weight: bold; }
 .nav2_tools .nav2_tools_nodes tr:first-child td { padding-top: 0; }
+.nav2_route .nav2_tabpage > .nav2_grid[hidden] { display: none; }
+.nav2_route .nav2_route_line { margin: 0; }
+.nav2_route .nav2_route_line[hidden] { display: none; }
+.nav2_route .nav2_route_line.nav2_error { color: #ff6b6b; }
+.nav2_route .nav2_route_hint { margin: 0; opacity: 0.7; font-size: 0.85em; }

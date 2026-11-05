@@ -50,6 +50,31 @@ cleared (Nav2 logged both requests); a 90° spin, a 0.3 m back up and a 0.3 m dr
 finished and moved the robot as asked (odometry); a wait was cancelled; pausing navigation from a
 terminal showed every node inactive within a few seconds.
 
+## Beyond RViz: routes
+
+Route Tool's **Route** tab asks Nav2's route server for a route over the graph *it* has loaded
+(the launch file's `graph`, or one set with `/route_server/set_route_graph`), not the graph being
+edited in the panel:
+
+- **From** two node ids, or **from the robot** to a point (Publish Point fills X and Y).
+- **Compute** shows the route's nodes, cost and length, and publishes its path on
+  `/route_tool/path` (add a Path display to see it). The robot does not move.
+- **Drive** computes the route and drives through its nodes with NavigateThroughPoses, so Nav2's
+  planner first brings the robot onto the route; **Cancel** stops it. (Handing the route's path
+  straight to the controller with FollowPath failed when the robot was not at the first node, and
+  Jazzy has no route behaviour tree.) Edge operations and speed limits of the graph are not
+  applied this way.
+- Why a route was refused is said in words; Nav2's "unordered_map::at" means a node id is not in
+  the graph.
+
+Checked live on 2026-11-06:
+- Lyrical, `turtlebot3_graph` (the launch default): route 4 → 7 → 8 computed and published; an
+  unknown id explained; a drive from the robot to (0.6, −0.6) went 8 → 9 → 10 → 6 and arrived; a
+  second drive was cancelled and the robot stopped.
+- Jazzy: `turtlebot3_graph` does not fit the map Jazzy's loopback simulation loads (its route
+  server rejects most routes, and Nav2 could not drive the one it gave). With a graph made in
+  Route Tool along free space, drives by node ids and from the robot to a point arrived.
+
 ## Differences from RViz
 
 - Actions and services go through rosbridge. Vizanti's rosbridge waits 5 s for an action
