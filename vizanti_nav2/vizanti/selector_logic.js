@@ -22,6 +22,13 @@ export function pluginNames(response) {
 	return [...(value.string_array_value ?? [])];
 }
 
+// The server answered, but has no such parameter: that Nav2 has no plugins of this kind
+// (path_handler_plugins is new in Kilted; Humble and Jazzy have no Path Handler).
+export function parameterUnset(response) {
+	const value = response?.values?.[0];
+	return !value || value.type === 0; // PARAMETER_NOT_SET
+}
+
 // the items a drop-down shows once loaded (pluginLoader: "Default" first, selected)
 export function initialItems(names) {
 	return ["Default", ...names];

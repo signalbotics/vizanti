@@ -2,6 +2,8 @@
 // the same states, button texts, tooltips, enabled flags, transitions and side effects. No DOM
 // and no ROS here: the controller talks to ROS through `io` and to the page through onChange.
 
+import { ntpGoal } from './nav2_compat.js';
+
 const STARTUP = "Configure and activate all nav2 lifecycle nodes";
 const SHUTDOWN = "Deactivate and cleanup all nav2 lifecycle nodes";
 const CANCEL = "Cancel navigation";
@@ -124,7 +126,9 @@ export function goalStatusLabel(status, title = "Feedback") {
 const seconds = (d) => (d ? d.sec + d.nanosec / 1e9 : 0);
 
 // The feedback table rows (toLabel); NavigateThroughPoses adds "Poses remaining" first.
-export function feedbackRows(fb, throughPoses = false) {
+// tracking: show the position / heading tracking errors (Kilted and later; Jazzy's feedback has
+// no such fields, and its panel no such rows).
+export function feedbackRows(fb, throughPoses = false, tracking = true) {
 	if (!fb)
 		fb = { estimated_time_remaining: null, distance_remaining: 0, position_tracking_error: 0, heading_tracking_error: 0, navigation_time: null, number_of_recoveries: 0, number_of_poses_remaining: 0 };
 	const rows = [];
@@ -133,8 +137,13 @@ export function feedbackRows(fb, throughPoses = false) {
 	rows.push(
 		["ETA:", `${seconds(fb.estimated_time_remaining).toFixed(0)} s`],
 		["Distance remaining:", `${(fb.distance_remaining ?? 0).toFixed(2)} m`],
-		["Position error:", `${(fb.position_tracking_error ?? 0).toFixed(2)} m`],
-		["Heading error:", `${(fb.heading_tracking_error ?? 0).toFixed(2)} rad`],
+	);
+	if (tracking)
+		rows.push(
+			["Position error:", `${(fb.position_tracking_error ?? 0).toFixed(2)} m`],
+			["Heading error:", `${(fb.heading_tracking_error ?? 0).toFixed(2)} rad`],
+		);
+	rows.push(
 		["Time taken:", `${seconds(fb.navigation_time).toFixed(0)} s`],
 		["Recoveries:", String(fb.number_of_recoveries ?? 0)],
 	);
@@ -213,7 +222,8 @@ export function waypointsFromYaml(text) {
 //   action(name, type) -> { send(goal, { onFeedback }) -> { result, cancel() } },
 //   callService(name, type, request, timeoutMs) -> Promise,
 //   publishMarkers(markerArray), lookupBasePose(frame) -> {x, y, z, orientation} | null,
-//   now() -> {sec, nanosec}, managerName(), baseFrame(), notify(text) }
+//   now() -> {sec, nanosec}, managers() -> Promise<[node names]> (the first is "Navigation:"),
+//   ntpPosesIsArray() -> Promise<bool> (see nav2_compat.js), baseFrame(), notify(text) }
 export class Nav2PanelController {
 
 	constructor(io, onChange = () => {}) {
@@ -233,16 +243,20 @@ export class Nav2PanelController {
 		this.navToPose = { frame: "map", x: 0, y: 0, yaw: 0 };
 		this.tabs = { navToPose: false, waypoints: false, current: "navToPose" };
 		this.navigation = "unknown"; // Navigation: active | inactive | unknown
+		this.localization = null; // Localization: shown when a second manager runs it (Jazzy)
+		this.managers = [];
+		this.tracking = true; // the feedback has tracking errors (cleared by one that has not)
 		this.goalStatus = goalStatusLabel(-1);
-		this.feedback = feedbackRows(null, true);
+		this.feedback = feedbackRows(null, true, this.tracking);
 		this.waypointNote = "";
 		this.goals = { nav: null, wp: null, ntp: null };
+		this.cancelled = new Set(); // goals cancelled from the panel, until their result arrives
 		this.applyUi("pre_initial");
 	}
 
 	snapshot() {
 		return {
-			state: this.state, ui: this.ui, navigation: this.navigation, goalStatus: this.goalStatus,
+			state: this.state, ui: this.ui, navigation: this.navigation, localization: this.localization, goalStatus: this.goalStatus,
 			feedback: this.feedback, waypointNote: this.waypointNote, accumulated: this.accumulated,
 			tabs: this.tabs, navToPose: this.navToPose, bt: this.bt, storeInitialPose: this.storeInitialPose,
 		};
@@ -276,8 +290,11 @@ export class Nav2PanelController {
 		while (!this.stopped && this.state === "pre_initial") {
 			let active = null;
 			try {
-				const response = await this.io.callService(`/${this.io.managerName()}/is_active`, "std_srvs/srv/Trigger", {}, 1500);
-				active = !!response.success;
+				this.managers = await this.io.managers();
+				const [navigation, localization] = await Promise.all(this.managers.map((m) => this.isActive(m)));
+				active = navigation;
+				if (this.managers.length > 1)
+					this.localization = localization === null ? "unknown" : (localization ? "active" : "inactive");
 			} catch (e) {
 				active = null; // not answering yet: ask again, as the RViz panel does
 			}
@@ -290,9 +307,18 @@ export class Nav2PanelController {
 			this.navigation = active ? "active" : "inactive";
 			if (!active) {
 				this.goalStatus = goalStatusLabel(-1);
-				this.feedback = feedbackRows(null, true);
+				this.feedback = feedbackRows(null, true, this.tracking);
 			}
 			this.enter(active ? "idle" : "initial");
+		}
+	}
+
+	async isActive(manager) {
+		try {
+			const response = await this.io.callService(`/${manager}/is_active`, "std_srvs/srv/Trigger", {}, 1500);
+			return !!response.success;
+		} catch (e) {
+			return null;
 		}
 	}
 
@@ -353,16 +379,23 @@ export class Nav2PanelController {
 			this.enter("idle");
 	}
 
+	// every manager gets the command, as the Jazzy panel sends it to navigation and localization
 	async lifecycle(command) {
-		try {
-			const response = await this.io.callService(`/${this.io.managerName()}/manage_nodes`, "nav2_msgs/srv/ManageLifecycleNodes", { command }, 30000);
-			if (command === LIFECYCLE.STARTUP || command === LIFECYCLE.RESUME)
-				this.navigation = response.success ? "active" : this.navigation;
-			else if (command === LIFECYCLE.RESET || command === LIFECYCLE.PAUSE)
-				this.navigation = response.success ? "inactive" : this.navigation;
-		} catch (e) {
-			this.io.notify?.(`The Nav2 lifecycle manager did not answer: ${e.message}`);
-		}
+		const managers = this.managers.length > 0 ? this.managers : await this.io.managers();
+		const results = await Promise.all(managers.map(async (manager) => {
+			try {
+				const response = await this.io.callService(`/${manager}/manage_nodes`, "nav2_msgs/srv/ManageLifecycleNodes", { command }, 30000);
+				return !!response.success;
+			} catch (e) {
+				this.io.notify?.(`The Nav2 lifecycle manager ${manager} did not answer: ${e.message}`);
+				return null;
+			}
+		}));
+		const up = command === LIFECYCLE.STARTUP || command === LIFECYCLE.RESUME;
+		const label = (ok, before) => (ok ? (up ? "active" : "inactive") : before);
+		this.navigation = label(results[0], this.navigation);
+		if (managers.length > 1)
+			this.localization = label(results[1], this.localization);
 		this.changed();
 	}
 
@@ -441,7 +474,10 @@ export class Nav2PanelController {
 
 	cancelGoals() {
 		for (const key of Object.keys(this.goals)) {
-			this.goals[key]?.cancel();
+			if (this.goals[key]) {
+				this.cancelled.add(this.goals[key]);
+				this.goals[key].cancel();
+			}
 			this.goals[key] = null;
 		}
 	}
@@ -478,10 +514,17 @@ export class Nav2PanelController {
 		this.actionEvent(true);
 		this.changed();
 		handle.result.then(({ status, values, ok }) => {
-			if (this.goals[key] !== handle)
-				return; // replaced by a newer goal
-			this.goals[key] = null;
 			const code = { succeeded: 4, canceled: 5, aborted: 6 }[status] ?? (ok ? -1 : 0);
+			if (this.goals[key] !== handle) {
+				// cancelled from the panel: the state moved on already, the status still shows it
+				if (this.cancelled.delete(handle)) {
+					this.goalStatus = goalStatusLabel(code);
+					this.feedback = feedbackRows(null, key === "ntp", this.tracking);
+					this.changed();
+				}
+				return; // or replaced by a newer goal
+			}
+			this.goals[key] = null;
 			this.goalStatus = goalStatusLabel(code);
 			if (!ok)
 				this.io.notify?.(`${name}: ${values}`);
@@ -498,7 +541,7 @@ export class Nav2PanelController {
 				this.loopNo = "0";
 				this.loopCount = 0;
 			}
-			this.feedback = feedbackRows(null, key === "ntp");
+			this.feedback = feedbackRows(null, key === "ntp", this.tracking);
 			this.actionEvent(false);
 			this.changed();
 		});
@@ -520,19 +563,31 @@ export class Nav2PanelController {
 			});
 	}
 
-	startNavThroughPoses(poses) {
+	async startNavThroughPoses(poses) {
 		const stamp = this.io.now();
+		let posesIsArray = false;
+		try {
+			posesIsArray = await this.io.ntpPosesIsArray();
+		} catch (e) {
+			// rosapi did not answer: the newer form, as before
+		}
 		this.run("ntp", "/navigate_through_poses", "nav2_msgs/action/NavigateThroughPoses",
-			{ poses: { header: { frame_id: poses[0]?.frame ?? "map", stamp }, goals: poses.map((p) => poseStamped(p, stamp)) }, behavior_tree: this.bt },
+			ntpGoal(poses.map((p) => poseStamped(p, stamp)), poses[0]?.frame ?? "map", stamp, this.bt, posesIsArray),
 			(fb) => {
-				this.feedback = feedbackRows(fb, true);
+				this.feedback = feedbackRows(fb, true, this.hasTracking(fb));
 				this.changed();
 			});
 	}
 
+	hasTracking(fb) {
+		if (fb && !("position_tracking_error" in fb))
+			this.tracking = false;
+		return this.tracking;
+	}
+
 	// NavigateToPose feedback, also while following waypoints (the follower drives it)
 	onNavFeedback(fb) {
-		const rows = feedbackRows(fb);
+		const rows = feedbackRows(fb, false, this.hasTracking(fb));
 		if (Number(this.ui.loops.text) > 0) {
 			if (this.goalIndex === 0 && !this.loopCounterStop) {
 				this.loopCount++;

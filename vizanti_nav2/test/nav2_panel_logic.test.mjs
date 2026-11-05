@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { Nav2PanelController, checkLoops, goalStatusLabel, feedbackRows, waypointMarkers, waypointsToYaml, waypointsFromYaml, LIFECYCLE } from '../vizanti/nav2_panel_logic.js';
 
 // a fake ROS: services answer from `answers`, goals stay pending until finished by hand
-function fakeIo({ active = true } = {}) {
+function fakeIo({ active = true, managers = ["lifecycle_manager_nav2"], posesIsArray = false } = {}) {
 	const io = {
 		calls: [], goals: [], markers: [], notes: [],
-		managerName: () => "lifecycle_manager_nav2", baseFrame: () => "base_footprint",
+		managers: async () => managers, ntpPosesIsArray: async () => posesIsArray, baseFrame: () => "base_footprint",
 		now: () => ({ sec: 1, nanosec: 0 }),
 		notify: (t) => io.notes.push(t),
 		publishMarkers: (m) => io.markers.push(m),
@@ -153,6 +153,7 @@ test('navigate through poses sends nav_msgs/Goals and shows poses remaining', as
 	panel.addPose();
 	panel.editPose(0, "x", 3);
 	panel.press("pause_resume"); // Start NavigateThroughPoses
+	await tick();
 	assert.equal(panel.state, "accumulated_nav_through_poses");
 	assert.equal(io.goals[0].name, "/navigate_through_poses");
 	assert.equal(io.goals[0].goal.poses.goals[0].pose.position.x, 3);
@@ -181,4 +182,54 @@ test('helpers: loops, labels, YAML round trip in the RViz panel format', () => {
 	const flow = waypointsFromYaml("waypoints:\n  waypoint0: {pose: [1, 2, 0], orientation: [1, 0, 0, 0]}\n");
 	assert.deepEqual([flow[0].x, flow[0].y, flow[0].yaw], [1, 2, 0]);
 	assert.equal(waypointMarkers([])[0].markers[0].action, 3);
+});
+
+test('Humble / Jazzy: two lifecycle managers, poses as an array, no tracking errors', async () => {
+	const io = fakeIo({ managers: ["lifecycle_manager_navigation", "lifecycle_manager_localization"], posesIsArray: true });
+	const panel = new Nav2PanelController(io);
+	await panel.start();
+	assert.equal(panel.state, "idle");
+	assert.equal(panel.navigation, "active");
+	assert.equal(panel.localization, "active");
+	assert.ok(io.calls.some(([name]) => name === "/lifecycle_manager_localization/is_active"));
+	// Pause and Resume go to both managers, as the Jazzy panel sends them
+	panel.press("pause_resume");
+	await tick(); await tick();
+	assert.deepEqual(io.calls.filter(([n]) => n.endsWith("/manage_nodes")).map(([n, r]) => [n, r.command]),
+		[["/lifecycle_manager_navigation/manage_nodes", LIFECYCLE.PAUSE], ["/lifecycle_manager_localization/manage_nodes", LIFECYCLE.PAUSE]]);
+	assert.equal(panel.navigation, "inactive");
+	assert.equal(panel.localization, "inactive");
+	panel.press("pause_resume");
+	await tick(); await tick();
+	assert.equal(panel.navigation, "active");
+	assert.equal(panel.localization, "active");
+	// NavigateThroughPoses: poses is a PoseStamped[]
+	panel.press("nav_mode");
+	panel.addPose();
+	panel.editPose(0, "x", 3);
+	panel.press("pause_resume");
+	await tick();
+	const goal = io.goals[0].goal;
+	assert.ok(Array.isArray(goal.poses));
+	assert.equal(goal.poses[0].pose.position.x, 3);
+	assert.equal(goal.poses[0].header.frame_id, "map");
+	// Jazzy's feedback has no tracking errors: their rows go
+	io.goals[0].onFeedback({ number_of_poses_remaining: 1, distance_remaining: 2 });
+	assert.deepEqual(panel.feedback.map(([label]) => label), ["Poses remaining:", "ETA:", "Distance remaining:", "Time taken:", "Recoveries:"]);
+});
+
+test('Cancel: the goal status shows the result Nav2 sends for the cancelled goal', async () => {
+	const io = fakeIo();
+	const panel = new Nav2PanelController(io);
+	await panel.start();
+	panel.navToPose = { frame: "map", x: 2, y: 3, yaw: 0 };
+	panel.sendNavToPose();
+	assert.equal(panel.goalStatus.text, "active");
+	panel.press("start_reset"); // Cancel
+	assert.equal(io.goals[0].cancelled, true);
+	assert.equal(panel.state, "idle");
+	io.goals[0].finish("canceled");
+	await tick();
+	assert.equal(panel.goalStatus.text, "canceled");
+	assert.equal(panel.feedback.find(([l]) => l === "Distance remaining:")[1], "0.00 m");
 });

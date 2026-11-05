@@ -2,7 +2,7 @@
 // goal checker, smoother, progress checker and path handler Nav2 uses, as in RViz. The lists come
 // from the servers' parameters; a choice is published on <name>_selector (transient local).
 import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
-import { SELECTORS, pluginNames, initialItems, choose } from '../selector_logic.js';
+import { SELECTORS, pluginNames, parameterUnset, initialItems, choose } from '../selector_logic.js';
 
 if (!document.querySelector("link[data-vizanti-nav2]")) {
 	const link = document.createElement("link");
@@ -20,6 +20,7 @@ export class SelectorPanel extends PanelPlugin {
 
 	onCreate() {
 		this.items = Object.fromEntries(SELECTORS.map((s) => [s.key, []]));
+		this.absent = new Set(); // kinds this Nav2 does not have: their drop-downs are hidden
 		this.status.ok("Loading the Nav2 plugin lists…");
 		this.load();
 	}
@@ -31,13 +32,15 @@ export class SelectorPanel extends PanelPlugin {
 
 	async load() {
 		for (const selector of SELECTORS) {
-			if (this.items[selector.key].length > 0)
+			if (this.items[selector.key].length > 0 || this.absent.has(selector.key))
 				continue;
 			try {
 				const response = await this.ctx.callService(`/${selector.server}/get_parameters`, "rcl_interfaces/srv/GetParameters", { names: [selector.parameter] }, 3000);
 				const names = pluginNames(response);
 				if (names)
 					this.items[selector.key] = initialItems(names);
+				else if (parameterUnset(response))
+					this.absent.add(selector.key);
 			} catch (e) {
 				// that server is not up yet: the next round asks again
 			}
@@ -45,7 +48,7 @@ export class SelectorPanel extends PanelPlugin {
 				return;
 		}
 		this.render();
-		const missing = SELECTORS.filter((s) => this.items[s.key].length === 0);
+		const missing = SELECTORS.filter((s) => this.items[s.key].length === 0 && !this.absent.has(s.key));
 		if (missing.length === 0) {
 			this.status.ok("Plugin lists loaded.");
 			return;
@@ -69,6 +72,8 @@ export class SelectorPanel extends PanelPlugin {
 				const select = document.createElement("select");
 				select.addEventListener("change", () => this.select(selector, select.value));
 				this.selects[selector.key] = select;
+				this.cells ??= {};
+				this.cells[selector.key] = cell;
 				cell.append(title, select);
 				row.appendChild(cell);
 			}
@@ -95,6 +100,7 @@ export class SelectorPanel extends PanelPlugin {
 			if (select.options.length !== items.length || [...select.options].some((o, i) => o.value !== items[i]))
 				select.replaceChildren(...items.map((name) => new Option(name, name)));
 			select.disabled = items.length === 0;
+			this.cells[selector.key].hidden = this.absent.has(selector.key);
 			if (items.includes(current))
 				select.value = current;
 		}

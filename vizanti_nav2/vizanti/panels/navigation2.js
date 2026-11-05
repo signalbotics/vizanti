@@ -3,6 +3,7 @@
 import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
 import { Nav2PanelController, quaternionToYaw } from '../nav2_panel_logic.js';
 import { nav2Bus } from '../nav2_bus.js';
+import { managersFrom, managerNodes, ntpPosesIsArray } from '../nav2_compat.js';
 
 // the panel's styles, loaded once
 if (!document.querySelector("link[data-vizanti-nav2]")) {
@@ -25,7 +26,7 @@ const el = (tag, className = "", text = "") => {
 export class Navigation2Panel extends PanelPlugin {
 
 	static properties = {
-		manager: { type: "string", label: "Lifecycle manager", default: "lifecycle_manager_nav2", help: "The Nav2 lifecycle manager node the RViz panel talks to." },
+		manager: { type: "string", label: "Lifecycle manager", default: "", help: "The Nav2 lifecycle manager node to talk to. Empty: found on the graph (lifecycle_manager_nav2, or lifecycle_manager_navigation and lifecycle_manager_localization as on Humble and Jazzy)." },
 		base_frame: { type: "frame", label: "Base frame", default: "base_footprint", noDefault: true, help: "Used by \"Store initial_pose\"." },
 		...WIDGET_PROPERTIES,
 	};
@@ -48,7 +49,8 @@ export class Navigation2Panel extends PanelPlugin {
 				const t = Date.now();
 				return { sec: Math.floor(t / 1000), nanosec: (t % 1000) * 1e6 };
 			},
-			managerName: () => this.props.manager.replace(/^\//, ""),
+			managers: async () => managersFrom(this.props.manager, managerNodes(await ctx.listServices("nav2_msgs/srv/ManageLifecycleNodes"))),
+			ntpPosesIsArray: () => ntpPosesIsArray(ctx),
 			baseFrame: () => this.props.base_frame,
 			notify: (text) => this.status.warn(text),
 		}, (snapshot) => this.render(snapshot));
@@ -62,6 +64,8 @@ export class Navigation2Panel extends PanelPlugin {
 	}
 
 	onPropertyChange(key) {
+		if (key === "manager")
+			this.controller.managers = []; // looked up again before the next command
 		if (key === "manager" && this.controller.state === "pre_initial") {
 			this.controller.stop();
 			this.controller.start();
@@ -197,7 +201,11 @@ export class Navigation2Panel extends PanelPlugin {
 			return;
 		// status: "Navigation: active" and the goal status
 		const navColor = s.navigation === "active" ? "green" : null;
-		this.statusTable.replaceChildren(this.row("Navigation:", s.navigation, navColor, true), this.row(`${s.goalStatus.title}:`, s.goalStatus.text, s.goalStatus.color, true));
+		const rows = [this.row("Navigation:", s.navigation, navColor, true)];
+		if (s.localization !== null)
+			rows.push(this.row("Localization:", s.localization, s.localization === "active" ? "green" : null, true));
+		rows.push(this.row(`${s.goalStatus.title}:`, s.goalStatus.text, s.goalStatus.color, true));
+		this.statusTable.replaceChildren(...rows);
 		this.feedbackTable.replaceChildren(...s.feedback.map(([label, value]) => this.row(label, value)));
 		this.note.textContent = s.waypointNote ? `Note: ${s.waypointNote}` : "";
 		this.note.hidden = !s.waypointNote;

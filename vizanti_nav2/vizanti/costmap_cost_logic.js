@@ -1,14 +1,15 @@
 // The Costmap Cost tool (nav2_rviz_plugins/CostmapCostTool) without the page. Pure.
 
-// the costmaps asked, as RViz asks them: [label, service]
+// the costmaps asked, as RViz asks them: [label, cost service, costmap node (for its frame)]
 export const COSTMAPS = [
-	["Local", "/local_costmap/get_cost_local_costmap"],
-	["Global", "/global_costmap/get_cost_global_costmap"],
+	["Local", "/local_costmap/get_cost_local_costmap", "/local_costmap/local_costmap"],
+	["Global", "/global_costmap/get_cost_global_costmap", "/global_costmap/global_costmap"],
 ];
 
-// nav2_msgs/srv/GetCosts request for one point (use_footprint off, as in RViz). The stamp is 0,
-// "the latest transform": the browser's clock is not the robot's (simulation time, clock skew),
-// and a point stamped ahead of the costmap's TF fails with success: false.
+// Kilted and later: nav2_msgs/srv/GetCosts, stamped poses, one point here (use_footprint off, as
+// in RViz). The stamp is 0, "the latest transform": the browser's clock is not the robot's
+// (simulation time, clock skew), and a point stamped ahead of the costmap's TF fails with
+// success: false.
 export function costRequest(point, header) {
 	return {
 		use_footprint: false,
@@ -16,13 +17,25 @@ export function costRequest(point, header) {
 	};
 }
 
-// "Local costmap cost: 253.0" (RViz logs the same line). success false: the point is outside that
-// costmap or could not be transformed into it (RViz prints the meaningless cost anyway).
+// Humble and Jazzy: nav2_msgs/srv/GetCost, one x, y already in the costmap's own frame
+export function singleCostRequest(point) {
+	return { use_footprint: false, x: point.x, y: point.y, theta: 0 };
+}
+
+// "Local costmap cost: 253.0" (RViz logs the same line), from either response. A point outside
+// the costmap, or one that could not be transformed into it, reads "no cost here": GetCosts says
+// success: false, GetCost answers -1 (RViz prints both numbers as they are).
 export function costText(label, response) {
-	const cost = response?.costs?.[0];
+	const cost = Array.isArray(response?.costs) ? response.costs[0] : response?.cost;
 	if (typeof cost !== "number")
 		return null;
-	if (response.success === false)
+	if (response.success === false || cost < 0)
 		return `${label} costmap: no cost here`;
 	return `${label} costmap cost: ${cost.toFixed(1)}`;
+}
+
+// rcl_interfaces/srv/GetParameters response for ["global_frame"] -> the frame, or null
+export function frameFrom(response) {
+	const value = response?.values?.[0];
+	return value?.type === 4 && value.string_value ? value.string_value : null; // 4: PARAMETER_STRING
 }

@@ -14,10 +14,32 @@ plugins opens in Vizanti with these in their place.
 | `nav2_rviz_plugins/ParticleCloud` | display *ParticleCloud* | Add display | `nav2_msgs/ParticleCloud` as flat arrows, 3D arrows or axes, arrow length from the particle weight |
 | `nav2_rviz_plugins/Route Tool` | panel *Route Tool* | Add panel… | Builds and edits a Nav2 route graph: add / edit / remove nodes and edges, load and save nav2_route GeoJSON, graph drawn on `/route_graph` (add a MarkerArray display for it). Publish Point fills X / Y |
 
+## Nav2 versions
+
+One Vizanti works with the Nav2 of Humble, Jazzy and later releases (`vizanti/nav2_compat.js`).
+Where Nav2's interfaces differ, Vizanti asks the robot (rosapi) which one it has:
+
+| | Humble, Jazzy | Kilted and later (Lyrical) |
+|---|---|---|
+| NavigateThroughPoses goal | `poses: PoseStamped[]` | `poses: nav_msgs/Goals` |
+| Costmap cost service | `GetCost` (x, y in the costmap's frame) | `GetCosts` (stamped poses) |
+| Lifecycle managers | `lifecycle_manager_navigation` and `lifecycle_manager_localization` | `lifecycle_manager_nav2` |
+| Selector's Path Handler | none (the drop-down is hidden) | yes |
+| Position / heading tracking error in the feedback | none (the rows are hidden) | yes |
+
+The Navigation 2 panel's "Lifecycle manager" setting is empty by default: it finds the managers
+itself. With two (Humble, Jazzy) it shows a Localization row and sends Startup, Pause, Resume and
+Reset to both, as the Jazzy panel does.
+
 ## Differences from RViz
 
 - Actions and services go through rosbridge. Vizanti's rosbridge waits 5 s for an action
   server (rosbridge's own 1 s is too short for Nav2), and service calls pass their timeout on.
+- Vizanti's rosbridge keeps one client per service instead of making a new one for every call.
+  A client that is moments old can have its request dropped before DDS has matched it to the
+  server; on Jazzy every other Pause / Resume never reached Nav2's lifecycle manager.
+- Costmap Cost on Humble / Jazzy transforms the point into each costmap's frame (`odom` for the
+  local one); the RViz tool sends the fixed-frame x, y to both.
 - Costmap Cost asks for the point at the latest transform (stamp 0): the browser's clock is not
   the robot's (simulation time), and a future stamp makes Nav2 answer `success: false`. A point
   outside a costmap reads "no cost here" instead of a meaningless number.
@@ -36,3 +58,16 @@ plugin lists and published the choice; Docking reported Nav2's errors and cancel
 Cost read real costs; ParticleCloud drew all three shapes; a graph saved from Route Tool was
 accepted by Nav2's route server (`/route_server/set_route_graph`). The live setup is in
 `vizanti_server/test/e2e/run_server_docker.sh` (set `IMAGE` to an image with Nav2).
+
+Checked live on 2026-11-05 against Nav2 1.3.13 on Jazzy (`tb3_loopback_simulation.launch.py`), and
+again on Lyrical with the same changes:
+- the Navigation 2 panel found the lifecycle manager by itself; NavigateToPose, waypoint
+  following and NavigateThroughPoses reached their goals; live feedback; Cancel showed
+  "canceled"; Pause and Resume, three times each, reached Nav2;
+- Selector loaded its lists (no Path Handler on Jazzy) and its choice reached the bt_navigator;
+- Docking reported "dock not in database"; Costmap Cost read costs inside and outside each
+  costmap; ParticleCloud drew a published cloud; Route Tool's graph was accepted by the route
+  server.
+
+Not checked live: Humble (its forms are the Jazzy ones above, covered by the unit tests only),
+the Nav2 Goal tool by pointer (it sends the same NavigateToPose goal), and the touch UI.

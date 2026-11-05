@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SELECTORS, pluginNames, initialItems, choose } from '../vizanti/selector_logic.js';
+import { parameterUnset } from '../vizanti/selector_logic.js';
 
 test('the six selectors read the RViz panel parameters and publish on its topics', () => {
 	assert.deepEqual(SELECTORS.map((s) => `${s.server}:${s.parameter}->${s.topic}`), [
@@ -27,4 +28,10 @@ test('a choice drops "Default" and publishes the plugin', () => {
 	assert.deepEqual(choose(['Default', 'A', 'B'], 'Default'), { items: ['A', 'B'], selected: 'A', publish: 'A' });
 	assert.deepEqual(choose(['A', 'B'], 'A'), { items: ['A', 'B'], selected: 'A', publish: 'A' });
 	assert.deepEqual(choose(['Default'], 'Default'), { items: [], selected: null, publish: null });
+});
+
+test('a parameter the server does not have (Path Handler on Humble / Jazzy) is told apart from no answer', () => {
+	assert.equal(parameterUnset({ values: [{ type: 0 }] }), true);
+	assert.equal(parameterUnset({ values: [{ type: 9, string_array_value: ['FollowPath'] }] }), false);
+	assert.equal(parameterUnset({ values: [] }), true);
 });
