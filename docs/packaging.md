@@ -148,9 +148,9 @@ signed repository, served over HTTP, and `apt install ros-jazzy-vizanti` in a cl
 `ros:jazzy-ros-base` container installed it with the signature verified; with a different key
 apt refused the repository (NO_PUBKEY).
 
-**Hosting is not decided yet.** The GitHub repository is private, so GitHub Pages or release
-URLs would need authentication or a public mirror. Options: a public `gh-pages` branch on a
-separate public repository, an S3 / Cloudflare R2 bucket, or a server on the robots' network.
+**Hosting is not decided yet.** The GitHub repository is public (since 2026-11-05), so the apt
+repository could be served from GitHub Pages (a `gh-pages` branch) or release assets; other
+options are an S3 / Cloudflare R2 bucket or a server on the robots' network.
 
 ## Authors and maintainers in the packages
 
@@ -200,7 +200,7 @@ the packages are attached to the run as artifacts.
 
 **By hand:**
 
-Built packages are published as GitHub release assets on the private repository
+Built packages are published as GitHub release assets on the public repository
 https://github.com/signalbotics/vizanti (git remote `signalbotics`; `origin` is still upstream
 MoffKalast/vizanti). Release `v0.1.1` holds the Lyrical and Jazzy packages.
 
