@@ -145,6 +145,13 @@ Checked live on 2026-11-06:
   server rejects most routes, and Nav2 could not drive the one it gave). With a graph made in
   Route Tool along free space, drives by node ids and from the robot to a point arrived.
 
+## Touch UI
+
+Every Nav2 panel was opened in the touch UI on a phone-sized screen (390 × 844) on 2026-11-06:
+nothing is wider than the panel, no field is squeezed, and rows wrap (a behaviour's fields go
+under its button). This found the Navigation 2 panel showing both of its tab pages at once, in
+both UIs (fixed). Not tried on a real phone.
+
 ## Differences from RViz
 
 - Actions and services go through rosbridge. Vizanti's rosbridge waits 5 s for an action

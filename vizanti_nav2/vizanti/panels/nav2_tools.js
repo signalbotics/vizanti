@@ -106,7 +106,10 @@ export class Nav2ToolsPanel extends PanelPlugin {
 				input.title = `${label} (${unit})`;
 				input.setAttribute("aria-label", `${b.label} ${label.toLowerCase()} in ${unit}`);
 				input.addEventListener("change", () => { this.values[b.key][field] = Number(input.value); });
-				row.append(input, el("span", "nav2_tools_unit", unit));
+				// a number and its unit stay together; on a narrow panel they wrap under the button
+				const field = el("span", "nav2_tools_field");
+				field.append(input, el("span", "nav2_tools_unit", unit));
+				row.append(field);
 			}
 			behaviours.appendChild(row);
 		}
