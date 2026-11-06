@@ -60,6 +60,9 @@ any plot shows the values at that time in every plot's legend.
   instead. Shift + wheel zooms the value axis.
 - A double-click fits the values again (and, when paused, the time range to all the data).
 - Times are in seconds since the first recorded sample.
+- Receive time is ROS time, so it follows `/clock` in simulation. When ROS time jumps back (a
+  simulation clock that starts at 0 arrives after the page opened, or a simulation restarts),
+  the plots start over and a notice says so, as RViz resets its displays.
 
 **XY plots.** Drop two fields: the first is X, the second Y. You can drop them both at once, or
 one after the other (the plot says it is waiting for Y). The curve shows the time range the time

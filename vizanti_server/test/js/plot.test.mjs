@@ -231,6 +231,7 @@ function fakeRos() {
 		subs,
 		timers,
 		tick: (dt) => { now += dt; },
+		setNow: (t) => { now = t; },
 		options: {
 			subscribe: (topic, type, throttle, callback, qos, options) => {
 				const sub = { topic, type, callback, options, active: true };
@@ -292,6 +293,37 @@ test('store: header time source, buffer trimming, settings and clear', () => {
 	assert.equal(series.length, 0);
 	assert.ok(Number.isNaN(store.t0));
 	assert.deepEqual(store.fieldsOf('/s'), ['header/stamp', 'v']);
+});
+
+test('store: ROS time jumping back (a simulation clock arriving) starts the plots over', () => {
+	const ros = fakeRos();
+	const notes = [];
+	const store = new PlotStore({ ...ros.options, notify: (t) => notes.push(t) });
+	const events = [];
+	store.on((e) => events.push(e.kind));
+	store.want('p', { '/s': 'x/msg/Y' });
+	// before /clock arrives, ROS time is the computer's clock
+	ros.setNow(1793923797);
+	ros.send('/s', { v: 1 });
+	ros.tick(0.5);
+	ros.send('/s', { v: 2 });
+	// then the simulation's clock, which started at 0
+	ros.setNow(8);
+	ros.send('/s', { v: 3 });
+	const series = store.series('/s', 'v');
+	assert.equal(series.length, 1, 'only the sample on the new clock is kept');
+	assert.equal(series.lastValue, 3);
+	assert.equal(store.t0, 8);
+	assert.equal(store.latest, 8, 'the plots follow the new clock');
+	assert.ok(events.includes('cleared'));
+	assert.match(notes[0], /jumped back/);
+	// jitter and the clock moving on are not a jump
+	ros.setNow(7.5);
+	ros.send('/s', { v: 4 });
+	ros.setNow(9);
+	ros.send('/s', { v: 5 });
+	assert.equal(series.length, 3);
+	assert.equal(notes.length, 1);
 });
 
 test('store: a topic with no type yet is looked up, and an idle subscription is renewed', async () => {

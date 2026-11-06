@@ -16,17 +16,23 @@ const NO_DATA_RETRY_MS = 5000;        // subscribe again while nothing arrives (
 const NO_DATA_RETRY_MAX_MS = 60000;
 const TYPE_RETRY_MS = 3000;           // a topic nobody publishes yet has no type to subscribe with
 const RATE_WINDOW = 50;               // receive times kept per topic for its rate
+// The receive clock going back further than this is a new clock, not jitter: /clock from a
+// simulation that starts at 0 (until it arrives, ROS time is the computer's), or a simulation
+// restarted. RViz resets its displays on a jump back in time; the plots start over.
+const CLOCK_JUMP_BACK_S = 1;
 
 export class PlotStore {
 
 	// subscribe(topic, type, throttleMs, callback, qos, options) -> unsubscribe (the app's subscribe)
 	// now() -> ROS time in seconds; resolveType(topic) -> Promise<type | null>
 	// (the timer defaults are wrapped: a browser's setTimeout called as a method of the store throws)
-	constructor({ subscribe, now = () => Date.now() / 1000, resolveType = async () => null,
+	constructor({ subscribe, now = () => Date.now() / 1000, resolveType = async () => null, notify = () => {},
 		setTimer = (fn, ms) => setTimeout(fn, ms), clearTimer = (id) => clearTimeout(id),
 		setRepeat = (fn, ms) => setInterval(fn, ms), clearRepeat = (id) => clearInterval(id) }) {
 		this._subscribe = subscribe;
 		this._now = now;
+		this._notify = notify;
+		this._lastReceived = NaN;  // the receive clock at the last sample, to see it jump back
 		this._resolveType = resolveType;
 		this._setTimer = setTimer;
 		this._clearTimer = clearTimer;
@@ -153,6 +159,11 @@ export class PlotStore {
 		if (!record.active)
 			return;
 		const received = this._now();
+		if (received < this._lastReceived - CLOCK_JUMP_BACK_S) {
+			this.clear();
+			this._notify("ROS time jumped back (a simulation clock started or restarted): the plots start over.");
+		}
+		this._lastReceived = received;
 		let t = received;
 		if (this.settings.timeSource === "header") {
 			const stamp = stampSeconds(msg);
@@ -346,6 +357,7 @@ export function plotStoreFor(ctx) {
 			subscribe: ctx.subscribe,
 			now: ctx.rosTime ?? (() => Date.now() / 1000),
 			resolveType: ctx.resolveType ?? (async () => null),
+			notify: ctx.notify ?? (() => {}),
 		});
 		stores.set(ctx, store);
 	}
