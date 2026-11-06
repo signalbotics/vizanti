@@ -35,4 +35,7 @@
   <class name="vizanti_nav2/Collision Monitor" type="displays/collision_monitor.js#CollisionMonitorDisplay" base_class_type="vizanti::Display">
     <description>Nav2's collision monitor zones around the robot, coloured by action (stop, slow down, approach, limit), the acting one filled. Read from the node's parameters, so they show without visualize: true. Not in RViz.</description>
   </class>
+  <class name="vizanti_nav2/Costmap Zones" type="panels/costmap_zones.js#CostmapZonesPanel" base_class_type="vizanti::Panel">
+    <description>Draw keepout and speed zones for Nav2's costmap filters: publish the mask to the filter at once, or save it as the .pgm and .yaml its mask server loads. Not in RViz.</description>
+  </class>
 </library>

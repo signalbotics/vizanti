@@ -96,6 +96,30 @@ approach zone: all three drawn; driving into obstacles, "Slow down: SlowCircle" 
 PolygonStop" (as Nav2 logged) filled the acting zone. On Lyrical and Jazzy with nav2_bringup's
 defaults: the footprint approach zone.
 
+## Beyond RViz: keepout and speed zones
+
+Panel *Costmap Zones* (Add panel…) draws zones for Nav2's costmap filters:
+
+- It finds the filters on the graph (their `nav2_msgs/CostmapFilterInfo` topics, from
+  `costmap_filter_info_server`): keepout, speed limit in % or m/s, binary.
+- Click a zone's corners with Publish Point, then **Finish zone**. A speed zone takes its limit;
+  the mask value is worked out from the filter's base and multiplier (limit = base + multiplier
+  × value).
+- The zones go into the mask the filter uses now (from its mask server or published earlier), or
+  into an empty mask the size of the map when there is none. "Keep the zones already in the mask"
+  can be turned off.
+- **Publish mask** sends it to the filter's mask topic, latched: the costmap uses it at once.
+  **Save .pgm + .yaml** downloads it as map_server loads a mask (`mode: raw`), for the filter's
+  mask server (`yaml_filename`) on the robot.
+- The zones being drawn are on `/costmap_zones/markers` (a MarkerArray display); the mask on the
+  filter's topic (a Map display).
+
+Checked live on 2026-11-06 on Jazzy with a keepout and a speed filter (costmap_filter_info_server,
+filters in the global costmap, no mask server): a keepout square made the global costmap's cost
+there 254 (147 next to it, unchanged), and removing it brought 147 back; a 40 % zone around the
+robot made the speed filter publish `/speed_limit` 40 % (0, no limit, before); the saved .pgm was
+384 × 384 with the zone's 144 cells at 60 (100 − 40).
+
 ## Beyond RViz: routes
 
 Route Tool's **Route** tab asks Nav2's route server for a route over the graph *it* has loaded

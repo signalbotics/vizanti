@@ -54,3 +54,12 @@
 .nav2_tools .nav2_grid > select { width: 100%; min-width: 0; }
 .nav2_tools .nav2_tools_wrap { flex-wrap: wrap; }
 .nav2_tools .nav2_tools_wrap > .nav2_button { flex: 1 1 8em; }
+.nav2_zones .nav2_grid > select { width: 100%; min-width: 0; }
+.nav2_zones .nav2_zone_list { display: flex; flex-direction: column; gap: 2px; }
+.nav2_zones .nav2_zone_list .nav2_row > span { flex: 1; }
+.nav2_zones .nav2_zone_remove { flex: 0 0 2em !important; width: 2em; }
+.nav2_zones .nav2_tools_line { margin: 0; }
+.nav2_zones .nav2_tools_line[hidden] { display: none; }
+.nav2_zones .nav2_tools_line.nav2_error { color: #ff6b6b; }
+.nav2_zones .nav2_tools_hint { margin: 0; opacity: 0.7; font-size: 0.85em; }
+.nav2_zones .nav2_grid > [hidden] { display: none; }
