@@ -7,11 +7,6 @@
 // - ClearEntireCostmap: Kilted+ takes plugins[] and answers success; Jazzy takes and answers
 //   nothing (an empty request clears every layer in both).
 
-export const CLEAR_COSTMAPS = [
-	["global", "Global", "/global_costmap/clear_entirely_global_costmap"],
-	["local", "Local", "/local_costmap/clear_entirely_local_costmap"],
-].map(([key, label, service]) => ({ key, label, service }));
-
 export const CLEAR_TYPE = "nav2_msgs/srv/ClearEntireCostmap";
 
 // "Global costmap cleared." from a ClearEntireCostmap response (Jazzy's has no success field)
@@ -127,13 +122,92 @@ export function stateLabel(response) {
 	return { text, color };
 }
 
-// a node name as a service prefix: "controller_server" -> "/controller_server"
-export function nodePath(name) {
-	return name.startsWith("/") ? name : `/${name}`;
-}
-
 // one line per manager: "lifecycle_manager_navigation: 10 of 11 active"
 export function managerSummary(manager, states) {
 	const active = states.filter((s) => s.text === "active").length;
 	return `${manager}: ${active} of ${states.length} active`;
+}
+
+// ---- plan without driving ----
+
+export const COMPUTE_PATH = { action: "/compute_path_to_pose", type: "nav2_msgs/action/ComputePathToPose" };
+export const FOLLOW_PATH = { action: "/follow_path", type: "nav2_msgs/action/FollowPath" };
+export const PLAN_TOPIC = "/nav2_tools/plan";
+
+// The ComputePathToPose goal from the robot (use_start false: the planner finds it in TF) to
+// x, y, yaw (degrees) in `frame`. Kilted+ also takes viapoints; left out, there are none.
+export function planGoal({ x, y, yaw = 0, plannerId = "" }, frame = "map", stamp = { sec: 0, nanosec: 0 }) {
+	const nx = Number(x);
+	const ny = Number(y);
+	if (String(x ?? "").trim() === "" || String(y ?? "").trim() === "" || !Number.isFinite(nx) || !Number.isFinite(ny))
+		return { error: "The goal needs an X and a Y (Publish Point fills them)." };
+	const a = ((Number(yaw) || 0) * Math.PI) / 180;
+	const pose = { header: { frame_id: frame, stamp }, pose: { position: { x: nx, y: ny, z: 0 }, orientation: { x: 0, y: 0, z: Math.sin(a / 2), w: Math.cos(a / 2) } } };
+	return { goal: { goal: pose, planner_id: plannerId, use_start: false } };
+}
+
+function pathLength(path) {
+	const poses = path?.poses ?? [];
+	let length = 0;
+	for (let i = 1; i < poses.length; i++) {
+		const a = poses[i - 1].pose.position;
+		const b = poses[i].pose.position;
+		length += Math.hypot(b.x - a.x, b.y - a.y);
+	}
+	return length;
+}
+
+// "Path: 3.21 m, 64 poses, planned in 0.05 s"
+export function planSummary(values) {
+	const poses = values?.path?.poses?.length ?? 0;
+	return `Path: ${pathLength(values?.path).toFixed(2)} m, ${poses} poses, planned in ${seconds(values?.planning_time).toFixed(2)} s`;
+}
+
+const PLAN_ERRORS = {
+	1: "the planner rejected the goal", 2: "the goal could not be sent",
+	200: "unknown error", 201: "no such planner", 202: "the robot or the goal could not be found in TF",
+	203: "the robot is outside the map", 204: "the goal is outside the map", 205: "the robot is in an occupied cell",
+	206: "the goal is in an occupied cell", 207: "the planner ran out of time", 208: "there is no valid path",
+};
+
+// the plain words for a known code (Kilted+ also sends a long technical error_msg); Nav2's own
+// message only for codes not known here
+export function planErrorText(values) {
+	const known = values?.error_code !== 200 ? PLAN_ERRORS[values?.error_code] : null;
+	return known || values?.error_msg || PLAN_ERRORS[values?.error_code] || `error ${values?.error_code ?? "?"}`;
+}
+
+// ---- save the map ----
+
+export const SAVE_MAP = { service: "/map_saver/save_map", type: "nav2_msgs/srv/SaveMap" };
+
+// nav2_msgs/srv/SaveMap request: the map on `topic` to <path>.<format> and <path>.yaml on the
+// robot (the map saver's own defaults for the rest)
+export function saveMapRequest({ path, format = "pgm", mode = "trinary", topic = "/map" }) {
+	const url = String(path ?? "").trim().replace(/\.(pgm|png|bmp|yaml)$/i, "");
+	if (!url)
+		return { error: "Give the path to save to, on the robot (without an extension)." };
+	return { request: { map_topic: topic, map_url: url, image_format: format, map_mode: mode, free_thresh: 0.25, occupied_thresh: 0.65 } };
+}
+
+export function saveMapText(response, request) {
+	if (response?.result)
+		return `Saved ${request.map_url}.${request.image_format} and ${request.map_url}.yaml on the robot.`;
+	return `The map saver could not save ${request.map_url} (is ${request.map_topic} published, and the folder writable?).`;
+}
+
+// the service is missing: the map saver runs with SLAM (nav2_bringup slam:=True) or on its own
+export const NO_MAP_SAVER = "No map saver is running. It runs with SLAM (nav2_bringup slam:=True), or start it: ros2 run nav2_map_server map_saver_server, then configure and activate it.";
+
+const FOLLOW_ERRORS = {
+	1: "the controller rejected the path", 2: "the path could not be sent",
+	100: "unknown error", 101: "no such controller", 102: "transform error", 103: "the path is invalid",
+	104: "patience exceeded", 105: "the robot made no progress", 106: "no valid control command",
+	107: "the controller timed out", 108: "it took too long",
+};
+
+// FollowPath's result, in words (Jazzy leaves error_msg empty)
+export function followErrorText(values) {
+	const known = values?.error_code !== 100 ? FOLLOW_ERRORS[values?.error_code] : null;
+	return known || values?.error_msg || FOLLOW_ERRORS[values?.error_code] || `error ${values?.error_code ?? "?"}`;
 }

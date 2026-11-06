@@ -638,6 +638,7 @@ async function start() {
 				publish: (topic, type, msg) => publish(topic, type, msg, false),
 				callService: context.callService,
 				action: context.action,
+				listServices: context.listServices,
 				pick: (x, y) => scene.pick(x, y),
 				ground: (x, y) => scene.groundPoint(x, y),
 				scene,

@@ -223,7 +223,8 @@ export function waypointsFromYaml(text) {
 //   callService(name, type, request, timeoutMs) -> Promise,
 //   publishMarkers(markerArray), lookupBasePose(frame) -> {x, y, z, orientation} | null,
 //   now() -> {sec, nanosec}, managers() -> Promise<[node names]> (the first is "Navigation:"),
-//   ntpPosesIsArray() -> Promise<bool> (see nav2_compat.js), baseFrame(), notify(text) }
+//   ntpPosesIsArray() -> Promise<bool> (see nav2_compat.js), baseFrame(), notify(text),
+//   name(n) -> n in the Nav2 namespace (optional) }
 export class Nav2PanelController {
 
 	constructor(io, onChange = () => {}) {
@@ -311,6 +312,11 @@ export class Nav2PanelController {
 			}
 			this.enter(active ? "idle" : "initial");
 		}
+	}
+
+	// a Nav2 name in the panel's namespace (io.name; none: as given)
+	name(n) {
+		return this.io.name ? this.io.name(n) : n;
 	}
 
 	async isActive(manager) {
@@ -549,14 +555,14 @@ export class Nav2PanelController {
 	}
 
 	startNavigation(pose) {
-		this.run("nav", "/navigate_to_pose", "nav2_msgs/action/NavigateToPose",
+		this.run("nav", this.name("/navigate_to_pose"), "nav2_msgs/action/NavigateToPose",
 			{ pose: poseStamped(pose, this.io.now()), behavior_tree: this.bt },
 			(fb) => this.onNavFeedback(fb));
 	}
 
 	startWaypointFollowing(poses) {
 		const stamp = this.io.now();
-		this.run("wp", "/follow_waypoints", "nav2_msgs/action/FollowWaypoints",
+		this.run("wp", this.name("/follow_waypoints"), "nav2_msgs/action/FollowWaypoints",
 			{ poses: poses.map((p) => poseStamped(p, stamp)), goal_index: this.goalIndex, number_of_loops: Number(this.loopNo) },
 			(fb) => {
 				this.goalIndex = fb.current_waypoint;
@@ -571,7 +577,7 @@ export class Nav2PanelController {
 		} catch (e) {
 			// rosapi did not answer: the newer form, as before
 		}
-		this.run("ntp", "/navigate_through_poses", "nav2_msgs/action/NavigateThroughPoses",
+		this.run("ntp", this.name("/navigate_through_poses"), "nav2_msgs/action/NavigateThroughPoses",
 			ntpGoal(poses.map((p) => poseStamped(p, stamp)), poses[0]?.frame ?? "map", stamp, this.bt, posesIsArray),
 			(fb) => {
 				this.feedback = feedbackRows(fb, true, this.hasTracking(fb));

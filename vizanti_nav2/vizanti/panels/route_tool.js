@@ -8,6 +8,7 @@ import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
 import { RouteGraph, parseNumber, parseId } from '../route_graph_logic.js';
 import { COMPUTE_ROUTE, NAVIGATE_THROUGH, PATH_TOPIC, routeGoal, routeSummary, routeErrorText, routeWaypoints, driveFeedbackText, driveErrorText } from '../route_logic.js';
 import { ntpGoal, ntpPosesIsArray } from '../nav2_compat.js';
+import { NAMESPACE_PROPERTY, inNamespace } from '../nav2_names.js';
 
 if (!document.querySelector("link[data-vizanti-nav2]")) {
 	const link = document.createElement("link");
@@ -31,7 +32,7 @@ const LABELS = { node: ["Position:", "X:", "Y:"], edge: ["Connections:", "Start 
 
 export class RouteToolPanel extends PanelPlugin {
 
-	static properties = { ...WIDGET_PROPERTIES };
+	static properties = { namespace: NAMESPACE_PROPERTY, ...WIDGET_PROPERTIES };
 
 	onCreate() {
 		this.graph = new RouteGraph();
@@ -181,7 +182,7 @@ export class RouteToolPanel extends PanelPlugin {
 		const { goal, error } = routeGoal({ mode: r.kind.value, start: r.start.value, goal: r.goal.value, x: r.x.value, y: r.y.value }, r.frame, stamp);
 		if (error)
 			return this.setRouteLine(error, true);
-		const computing = this.ctx.action(COMPUTE_ROUTE.action, COMPUTE_ROUTE.type).send(goal);
+		const computing = this.ctx.action(inNamespace(this.props.namespace, COMPUTE_ROUTE.action), COMPUTE_ROUTE.type).send(goal);
 		this.routing = { cancel: () => computing.cancel() };
 		this.setRouteLine("Computing the route…");
 		const { status, values, ok } = await computing.result;
@@ -206,7 +207,7 @@ export class RouteToolPanel extends PanelPlugin {
 		} catch (e) {
 			// rosapi did not answer: the newer form
 		}
-		const driving = this.ctx.action(NAVIGATE_THROUGH.action, NAVIGATE_THROUGH.type).send(
+		const driving = this.ctx.action(inNamespace(this.props.namespace, NAVIGATE_THROUGH.action), NAVIGATE_THROUGH.type).send(
 			ntpGoal(waypoints, waypoints[0].header.frame_id, stamp, "", posesIsArray), {
 				onFeedback: (fb) => this.setRouteLine(`${summary}. Driving: ${driveFeedbackText(fb)}`),
 			});

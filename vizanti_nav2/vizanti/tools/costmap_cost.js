@@ -1,9 +1,10 @@
 // The Costmap Cost tool (nav2_rviz_plugins/CostmapCostTool): click a point to read its cost in
-// Nav2's local and global costmaps. RViz writes the costs to its log; here they are shown as a
-// notification (a browser has no log to read). Works with both cost services (nav2_compat.js).
+// Nav2's costmaps. RViz writes the costs to its log; here they are shown as a notification (a
+// browser has no log to read). Every costmap's cost service on the graph is asked, found by type,
+// so a namespaced or renamed Nav2 works too; both cost services work (nav2_compat.js).
 import { ToolPlugin } from '@vizanti/plugin_api.js';
-import { COSTMAPS, costRequest, singleCostRequest, costText, frameFrom } from '../costmap_cost_logic.js';
-import { costServiceType } from '../nav2_compat.js';
+import { COST_TYPES, costRequest, singleCostRequest, costText, frameFrom } from '../costmap_cost_logic.js';
+import { costmapsToAsk } from '../nav2_names.js';
 
 export class CostmapCostTool extends ToolPlugin {
 
@@ -22,12 +23,27 @@ export class CostmapCostTool extends ToolPlugin {
 		this.api.done(); // "Single click": back to Move Camera after one point, as RViz does by default
 	}
 
-	async ask(point) {
-		const lines = await Promise.all(COSTMAPS.map(async ([label, service, node]) => {
+	// every cost service, with its type: [{ service, node, label, type }]
+	async costmaps() {
+		const found = [];
+		for (const type of COST_TYPES) {
 			try {
-				return costText(label, await this.cost(service, node, point));
+				for (const c of costmapsToAsk(await this.api.listServices(type)))
+					found.push({ ...c, type });
 			} catch (e) {
-				return null; // that costmap is not running (RViz skips it too)
+				// rosapi did not answer for this type
+			}
+		}
+		return found;
+	}
+
+	async ask(point) {
+		const costmaps = await this.costmaps();
+		const lines = await Promise.all(costmaps.map(async (c) => {
+			try {
+				return costText(c.label.replace(/ costmap$/i, ""), await this.cost(c, point));
+			} catch (e) {
+				return null; // that costmap is not answering (RViz skips it too)
 			}
 		}));
 		const found = lines.filter(Boolean);
@@ -36,16 +52,11 @@ export class CostmapCostTool extends ToolPlugin {
 	}
 
 	// one costmap's answer for a point in the fixed frame
-	async cost(service, node, point) {
-		this.types ??= {};
-		this.types[service] ??= await costServiceType(this.api, service);
-		const type = this.types[service];
-		if (!type)
-			throw new Error(`${service} is not running`);
-		if (type.endsWith("/GetCosts"))
-			return this.api.callService(service, type, costRequest(point, this.api.header()));
+	async cost(c, point) {
+		if (c.type.endsWith("/GetCosts"))
+			return this.api.callService(c.service, c.type, costRequest(point, this.api.header()));
 		// GetCost takes the point in the costmap's own frame (odom for the local one)
-		return this.api.callService(service, type, singleCostRequest(await this.inFrameOf(node, point)));
+		return this.api.callService(c.service, c.type, singleCostRequest(await this.inFrameOf(c.node, point)));
 	}
 
 	async inFrameOf(node, point) {

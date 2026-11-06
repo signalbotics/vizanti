@@ -3,6 +3,7 @@
 // from the servers' parameters; a choice is published on <name>_selector (transient local).
 import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
 import { SELECTORS, pluginNames, parameterUnset, initialItems, choose } from '../selector_logic.js';
+import { NAMESPACE_PROPERTY, inNamespace } from '../nav2_names.js';
 
 if (!document.querySelector("link[data-vizanti-nav2]")) {
 	const link = document.createElement("link");
@@ -16,7 +17,7 @@ const RETRY_MS = 5000; // the RViz panel tries again at 0.2 Hz until every list 
 
 export class SelectorPanel extends PanelPlugin {
 
-	static properties = { ...WIDGET_PROPERTIES };
+	static properties = { namespace: NAMESPACE_PROPERTY, ...WIDGET_PROPERTIES };
 
 	onCreate() {
 		this.items = Object.fromEntries(SELECTORS.map((s) => [s.key, []]));
@@ -30,12 +31,23 @@ export class SelectorPanel extends PanelPlugin {
 		this.destroyed = true;
 	}
 
+	onPropertyChange(key) {
+		if (key !== "namespace")
+			return;
+		clearTimeout(this.retry);
+		this.items = Object.fromEntries(SELECTORS.map((s) => [s.key, []]));
+		this.absent = new Set();
+		this.status.ok("Loading the Nav2 plugin lists…");
+		this.render();
+		this.load();
+	}
+
 	async load() {
 		for (const selector of SELECTORS) {
 			if (this.items[selector.key].length > 0 || this.absent.has(selector.key))
 				continue;
 			try {
-				const response = await this.ctx.callService(`/${selector.server}/get_parameters`, "rcl_interfaces/srv/GetParameters", { names: [selector.parameter] }, 3000);
+				const response = await this.ctx.callService(inNamespace(this.props.namespace, `${selector.server}/get_parameters`), "rcl_interfaces/srv/GetParameters", { names: [selector.parameter] }, 3000);
 				const names = pluginNames(response);
 				if (names)
 					this.items[selector.key] = initialItems(names);
@@ -86,7 +98,7 @@ export class SelectorPanel extends PanelPlugin {
 		const { items, selected, publish } = choose(this.items[selector.key], chosen);
 		this.items[selector.key] = items;
 		if (publish !== null)
-			this.ctx.publish(`/${selector.topic}`, "std_msgs/msg/String", { data: publish }, { latched: true });
+			this.ctx.publish(inNamespace(this.props.namespace, selector.topic), "std_msgs/msg/String", { data: publish }, { latched: true });
 		this.render(selected === null ? {} : { [selector.key]: selected });
 	}
 

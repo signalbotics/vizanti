@@ -3,6 +3,7 @@
 import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
 import { goalStatusLabel } from '../nav2_panel_logic.js';
 import { pluginNames, initialItems } from '../selector_logic.js';
+import { NAMESPACE_PROPERTY, inNamespace } from '../nav2_names.js';
 import { DOCK_STATES, TOOLTIPS, inputsEnabled, dockFeedbackRows, dockResultLabel, dropDefault, dockGoal, undockGoal } from '../docking_logic.js';
 
 if (!document.querySelector("link[data-vizanti-nav2]")) {
@@ -26,7 +27,7 @@ const COLORS = { green: "#3ecf6e", orange: "#f5a623", red: "#ff6b6b" };
 
 export class DockingPanel extends PanelPlugin {
 
-	static properties = { ...WIDGET_PROPERTIES };
+	static properties = { namespace: NAMESPACE_PROPERTY, ...WIDGET_PROPERTIES };
 
 	onCreate() {
 		this.state = "pre_initial";
@@ -37,18 +38,39 @@ export class DockingPanel extends PanelPlugin {
 		this.goalStatus = goalStatusLabel(-1);
 		this.feedback = dockFeedbackRows(null);
 		this.result = "";
-		// goals from anywhere show up, as the RViz panel follows the action status topics
-		this.unsubscribe = ["/dock_robot/_action/status", "/undock_robot/_action/status"].map((topic) =>
+		this.follow();
+		this.status.ok("Waiting for the Nav2 docking server…");
+		this.waitForServer();
+	}
+
+	// goals from anywhere show up, as the RViz panel follows the action status topics
+	follow() {
+		for (const off of this.unsubscribe ?? [])
+			off?.();
+		const dockStatus = inNamespace(this.props.namespace, "/dock_robot/_action/status");
+		this.unsubscribe = [dockStatus, inNamespace(this.props.namespace, "/undock_robot/_action/status")].map((topic) =>
 			this.ctx.subscribe(topic, "action_msgs/msg/GoalStatusArray", 0, (msg) => {
 				const last = msg.status_list?.[msg.status_list.length - 1];
 				if (!last)
 					return;
 				this.goalStatus = goalStatusLabel(last.status);
-				if (topic === "/dock_robot/_action/status" && last.status === 4)
+				if (topic === dockStatus && last.status === 4)
 					this.feedback = dockFeedbackRows(null);
 				this.render();
 			}));
+	}
+
+	onPropertyChange(key) {
+		if (key !== "namespace")
+			return;
+		clearTimeout(this.retry);
+		this.goal?.cancel();
+		this.goal = null;
+		this.state = "pre_initial";
+		this.types = [];
+		this.follow();
 		this.status.ok("Waiting for the Nav2 docking server…");
+		this.render();
 		this.waitForServer();
 	}
 
@@ -63,7 +85,7 @@ export class DockingPanel extends PanelPlugin {
 	// InitialDockThread: wait for the docking server, then load its dock types
 	async waitForServer() {
 		try {
-			const response = await this.ctx.callService("/docking_server/get_parameters", "rcl_interfaces/srv/GetParameters", { names: ["dock_plugins"] }, 3000);
+			const response = await this.ctx.callService(inNamespace(this.props.namespace, "/docking_server/get_parameters"), "rcl_interfaces/srv/GetParameters", { names: ["dock_plugins"] }, 3000);
 			if (this.destroyed)
 				return;
 			this.types = initialItems(pluginNames(response) ?? []);
@@ -147,14 +169,14 @@ export class DockingPanel extends PanelPlugin {
 		}, { sec: Math.floor(t / 1000), nanosec: (t % 1000) * 1e6 });
 		if (error)
 			return this.warn(error);
-		this.run("docking", "/dock_robot", "nav2_msgs/action/DockRobot", goal);
+		this.run("docking", inNamespace(this.props.namespace, "/dock_robot"), "nav2_msgs/action/DockRobot", goal);
 	}
 
 	undock() {
 		const dockType = this.takeDockType();
 		if (dockType === null)
 			return this.warn("The docking server has no dock plugins.");
-		this.run("undocking", "/undock_robot", "nav2_msgs/action/UndockRobot", undockGoal(dockType));
+		this.run("undocking", inNamespace(this.props.namespace, "/undock_robot"), "nav2_msgs/action/UndockRobot", undockGoal(dockType));
 	}
 
 	run(state, name, type, goal) {

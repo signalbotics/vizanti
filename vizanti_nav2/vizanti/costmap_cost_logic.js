@@ -1,10 +1,8 @@
 // The Costmap Cost tool (nav2_rviz_plugins/CostmapCostTool) without the page. Pure.
 
-// the costmaps asked, as RViz asks them: [label, cost service, costmap node (for its frame)]
-export const COSTMAPS = [
-	["Local", "/local_costmap/get_cost_local_costmap", "/local_costmap/local_costmap"],
-	["Global", "/global_costmap/get_cost_global_costmap", "/global_costmap/global_costmap"],
-];
+// The costmaps asked are every cost service on the graph, under any name or namespace
+// (nav2_names.js costmapsToAsk): RViz asks just /local_costmap and /global_costmap.
+export const COST_TYPES = ["nav2_msgs/srv/GetCosts", "nav2_msgs/srv/GetCost"];
 
 // Kilted and later: nav2_msgs/srv/GetCosts, stamped poses, one point here (use_footprint off, as
 // in RViz). The stamp is 0, "the latest transform": the browser's clock is not the robot's

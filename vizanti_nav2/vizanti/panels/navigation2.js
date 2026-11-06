@@ -4,6 +4,7 @@ import { PanelPlugin, WIDGET_PROPERTIES } from '@vizanti/plugin_api.js';
 import { Nav2PanelController, quaternionToYaw } from '../nav2_panel_logic.js';
 import { nav2Bus } from '../nav2_bus.js';
 import { managersFrom, managerNodes, ntpPosesIsArray } from '../nav2_compat.js';
+import { NAMESPACE_PROPERTY, inNamespace, normalizeNamespace, servicesIn } from '../nav2_names.js';
 
 // the panel's styles, loaded once
 if (!document.querySelector("link[data-vizanti-nav2]")) {
@@ -27,6 +28,7 @@ export class Navigation2Panel extends PanelPlugin {
 
 	static properties = {
 		manager: { type: "string", label: "Lifecycle manager", default: "", help: "The Nav2 lifecycle manager node to talk to. Empty: found on the graph (lifecycle_manager_nav2, or lifecycle_manager_navigation and lifecycle_manager_localization as on Humble and Jazzy)." },
+		namespace: NAMESPACE_PROPERTY,
 		base_frame: { type: "frame", label: "Base frame", default: "base_footprint", noDefault: true, help: "Used by \"Store initial_pose\"." },
 		...WIDGET_PROPERTIES,
 	};
@@ -36,7 +38,8 @@ export class Navigation2Panel extends PanelPlugin {
 		this.controller = new Nav2PanelController({
 			action: (name, type) => ctx.action(name, type),
 			callService: (name, type, request, timeout) => ctx.callService(name, type, request, timeout),
-			publishMarkers: (array) => ctx.publish("/waypoints", "visualization_msgs/msg/MarkerArray", array, { latched: true }),
+			publishMarkers: (array) => ctx.publish(inNamespace(this.props.namespace, "/waypoints"), "visualization_msgs/msg/MarkerArray", array, { latched: true }),
+			name: (n) => inNamespace(this.props.namespace, n),
 			lookupBasePose: (frame) => {
 				const tf = ctx.tf;
 				if (!tf.absoluteTransforms[this.props.base_frame])
@@ -49,7 +52,12 @@ export class Navigation2Panel extends PanelPlugin {
 				const t = Date.now();
 				return { sec: Math.floor(t / 1000), nanosec: (t % 1000) * 1e6 };
 			},
-			managers: async () => managersFrom(this.props.manager, managerNodes(await ctx.listServices("nav2_msgs/srv/ManageLifecycleNodes"))),
+			// found in the namespace; the names given back carry it ("robot1/lifecycle_manager_navigation")
+			managers: async () => {
+				const ns = normalizeNamespace(this.props.namespace);
+				const inNs = servicesIn(ns, await ctx.listServices("nav2_msgs/srv/ManageLifecycleNodes")).map((s) => s.slice(ns.length));
+				return managersFrom(this.props.manager, managerNodes(inNs)).map((m) => inNamespace(ns, m).slice(1));
+			},
 			ntpPosesIsArray: () => ntpPosesIsArray(ctx),
 			baseFrame: () => this.props.base_frame,
 			notify: (text) => this.status.warn(text),
@@ -64,9 +72,9 @@ export class Navigation2Panel extends PanelPlugin {
 	}
 
 	onPropertyChange(key) {
-		if (key === "manager")
+		if (key === "manager" || key === "namespace")
 			this.controller.managers = []; // looked up again before the next command
-		if (key === "manager" && this.controller.state === "pre_initial") {
+		if ((key === "manager" || key === "namespace") && this.controller.state === "pre_initial") {
 			this.controller.stop();
 			this.controller.start();
 		}

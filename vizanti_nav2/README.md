@@ -31,16 +31,42 @@ The Navigation 2 panel's "Lifecycle manager" setting is empty by default: it fin
 itself. With two (Humble, Jazzy) it shows a Localization row and sends Startup, Pause, Resume and
 Reset to both, as the Jazzy panel does.
 
+## Nav2 namespaces and names
+
+Nothing is tied to one robot's names. Every panel (Navigation 2, Selector, Docking, Route Tool,
+Nav2 Tools) has a **Nav2 namespace** setting: for Nav2 launched with `namespace:=robot1`, set
+`robot1` and every action, service and topic is looked up under `/robot1`. What can be found on
+the graph is found, not assumed:
+- lifecycle managers (`ManageLifecycleNodes` services) and the nodes they run (`node_names`);
+- costmaps, by their service type (`ClearEntireCostmap`, `GetCost` / `GetCosts`), under any name;
+- the map saver (`SaveMap`); Nav2's interface versions (rosapi); the Collision Monitor's zones,
+  frame and state topic (its parameters).
+
+The rest are Nav2's standard names (`spin`, `compute_path_to_pose`, `navigate_to_pose`, ...), in
+the namespace. The Nav2 Goal tool sends to an open Navigation 2 panel; with none open, to
+`/navigate_to_pose`. Publish Point's `/clicked_point` fills the X / Y fields, as in RViz.
+
+Checked on Jazzy with Nav2 under `robot1`: the panels found `robot1/lifecycle_manager_navigation`
+(and left out the root map server's), started navigation, cleared both `/robot1` costmaps, and
+their goals reached `robot1.behavior_server` and `robot1.planner_server` (Nav2's log). Nav2's own
+loopback simulation launch is only half namespaced (the simulator, map server and `/tf` stay at
+the root), so driving there was not checked.
+
 ## Beyond RViz: Nav2 Tools
 
 Panel *Nav2 Tools* (Main menu → Add panel…) does what a Nav2 user otherwise does from a terminal:
 
-- **Costmaps:** clear the global, the local or both (`/<costmap>/clear_entirely_<costmap>`).
+- **Costmaps:** one button per costmap found, and Clear all.
 - **Behaviours:** behavior_server's recovery behaviours, each with its settings: Spin (angle),
   Back up and Drive on heading (distance, speed), Wait (time), Assisted teleop (time). It shows
   the progress and how each ended (done, cancelled, or why Nav2 stopped it, e.g. "collision
   ahead"); Cancel stops it. Spin, back up and drive on heading get the panel's time limit (10 s by
   default). Collision checking stays on.
+- **Plan:** a path from the robot to a goal (ComputePathToPose; Publish Point fills X and Y, a
+  planner can be named), its length and pose count, published on `/nav2_tools/plan` (add a Path
+  display). The robot does not move. **Drive plan** follows it (FollowPath); Cancel stops it.
+- **Map:** save the map on the robot (SaveMap: path, pgm / png / bmp, trinary / scale / raw, map
+  topic). The map saver runs with SLAM; without one the panel says how to start it.
 - **Lifecycle nodes:** every lifecycle manager on the graph, the nodes it runs (its
   `node_names`) and each node's state (`get_state`), refreshed every 2 s while the panel is shown.
   A node that does not answer shows "not answering".
@@ -49,6 +75,26 @@ Checked live on 2026-11-05 on Jazzy and on Lyrical (`tb3_loopback_simulation`): 
 cleared (Nav2 logged both requests); a 90° spin, a 0.3 m back up and a 0.3 m drive on heading
 finished and moved the robot as asked (odometry); a wait was cancelled; pausing navigation from a
 terminal showed every node inactive within a few seconds.
+
+Plan and Map were checked live on 2026-11-06 on Jazzy and Lyrical: a 1.02 m plan was published
+and driven ("Arrived"); a goal outside the map was refused in words; without a map saver the panel
+said so; with one started, the map was saved (a 147 KB .pgm and its .yaml).
+
+## Beyond RViz: Collision Monitor display
+
+Display *Collision Monitor* (Add display) draws Nav2's collision_monitor zones around the robot,
+coloured by action (stop red, slow down orange, approach yellow, limit blue), and fills the one
+that is acting (`collision_monitor_state`, or the node's `state_topic`). The shapes come from the
+node's parameters (polygon points, circle radius), so they show although nav2_bringup has
+`visualize: false`; a zone that follows the footprint is drawn from its footprint topic, a
+velocity polygon only from its published outline (`visualize: true`). A parameter the node
+declares without a value (`FootprintApproach.points`) makes ROS answer nothing for the whole
+request, so the parameters are read one by one when that happens.
+
+Checked live on 2026-11-06 on Jazzy with a stop polygon, a slow-down circle and the footprint
+approach zone: all three drawn; driving into obstacles, "Slow down: SlowCircle" and then "Stop:
+PolygonStop" (as Nav2 logged) filled the acting zone. On Lyrical and Jazzy with nav2_bringup's
+defaults: the footprint approach zone.
 
 ## Beyond RViz: routes
 

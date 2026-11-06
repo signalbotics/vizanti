@@ -130,7 +130,7 @@ export class DropPinTool extends ToolPlugin {
 ```
 
 `this.api` gives a tool:
-- `publish`, `callService`;
+- `publish`, `callService`, `action`, `listServices(type)`;
 - `pick(x, y)` (the solid point under the pointer) and `ground(x, y)`;
 - `scene`, `tf`, `fixedFrame()`, `header()`;
 - `requestRender()`, `notify(text)`;
@@ -149,7 +149,7 @@ Displays and panels have `this.ctx`, and tools have `this.api` with the same cal
 | `publish(topic, type, msg)` | publishes one message (the publisher is kept) |
 | `callService(name, type, request, timeoutMs = 5000)` | resolves with the response; rejects on failure or timeout |
 | `action(name, type)` | a ROS 2 action client (see below) |
-| `listNodes()`, `listServices(type)`, `listAllTopics()`, `topicInfo(topic)` | what is on the ROS graph (displays and panels) |
+| `listNodes()`, `listServices(type)`, `listAllTopics()`, `topicInfo(topic)` | what is on the ROS graph (displays and panels; tools have `listServices`) |
 | `subscribe(topic, type, throttleMs, callback, qos, { queueLength })` | an extra subscription, returning its unsubscribe function; `queueLength` (default 1, the latest message only) lets rosbridge queue more, for a plugin that needs every message (displays and panels) |
 | `rosTime()` | ROS time in seconds, following `/clock` in simulation (displays and panels) |
 | `notify(text)` | a short notice at the top of the page (displays and panels) |

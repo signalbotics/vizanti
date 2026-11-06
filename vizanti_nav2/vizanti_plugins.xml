@@ -32,4 +32,7 @@
   <class name="vizanti_nav2/Nav2 Tools" type="panels/nav2_tools.js#Nav2ToolsPanel" base_class_type="vizanti::Panel">
     <description>Clear the costmaps, run a recovery behaviour (spin, back up, drive on heading, wait, assisted teleop), and see the state of every Nav2 lifecycle node. Not in RViz.</description>
   </class>
+  <class name="vizanti_nav2/Collision Monitor" type="displays/collision_monitor.js#CollisionMonitorDisplay" base_class_type="vizanti::Display">
+    <description>Nav2's collision monitor zones around the robot, coloured by action (stop, slow down, approach, limit), the acting one filled. Read from the node's parameters, so they show without visualize: true. Not in RViz.</description>
+  </class>
 </library>

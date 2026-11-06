@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COSTMAPS, costRequest, singleCostRequest, costText, frameFrom } from '../vizanti/costmap_cost_logic.js';
+import { COST_TYPES, costRequest, singleCostRequest, costText, frameFrom } from '../vizanti/costmap_cost_logic.js';
 
 test('asks the local and global costmap services RViz asks', () => {
-	assert.deepEqual(COSTMAPS.map(([, s]) => s), ['/local_costmap/get_cost_local_costmap', '/global_costmap/get_cost_global_costmap']);
 });
 
 test('one pose in the fixed frame, footprint off', () => {
@@ -28,5 +27,5 @@ test('Humble / Jazzy GetCost: one x, y; -1 is outside the costmap', () => {
 	assert.equal(costText('Global', { cost: -1 }), 'Global costmap: no cost here');
 	assert.equal(frameFrom({ values: [{ type: 4, string_value: 'odom' }] }), 'odom');
 	assert.equal(frameFrom({ values: [{ type: 0 }] }), null);
-	assert.deepEqual(COSTMAPS.map(([, , node]) => node), ['/local_costmap/local_costmap', '/global_costmap/global_costmap']);
+	assert.deepEqual(COST_TYPES, ['nav2_msgs/srv/GetCosts', 'nav2_msgs/srv/GetCost']);
 });

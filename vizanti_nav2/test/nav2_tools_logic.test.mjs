@@ -1,12 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-	CLEAR_COSTMAPS, clearText, duration, BEHAVIORS, behaviorGoal, behaviorFeedbackText, behaviorResultText,
-	nodeNames, stateLabel, nodePath, managerSummary,
+	clearText, duration, BEHAVIORS, behaviorGoal, behaviorFeedbackText, behaviorResultText,
+	nodeNames, stateLabel, managerSummary,
 } from '../vizanti/nav2_tools_logic.js';
 
 test('clearing costmaps: both services, and both answers (Jazzy has no success field)', () => {
-	assert.deepEqual(CLEAR_COSTMAPS.map((c) => c.service), ['/global_costmap/clear_entirely_global_costmap', '/local_costmap/clear_entirely_local_costmap']);
 	assert.equal(clearText('Global', {}), 'Global costmap cleared.');
 	assert.equal(clearText('Local', { success: true }), 'Local costmap cleared.');
 	assert.equal(clearText('Local', { success: false }), 'Local costmap: Nav2 could not clear it.');
@@ -45,7 +44,30 @@ test('lifecycle: node names from the manager, states from each node', () => {
 	assert.deepEqual(stateLabel({ current_state: { id: 3, label: 'active' } }), { text: 'active', color: 'green' });
 	assert.deepEqual(stateLabel({ current_state: { id: 2, label: 'inactive' } }), { text: 'inactive', color: 'orange' });
 	assert.deepEqual(stateLabel(null), { text: 'not answering', color: 'red' });
-	assert.equal(nodePath('controller_server'), '/controller_server');
-	assert.equal(nodePath('/ns/amcl'), '/ns/amcl');
 	assert.equal(managerSummary('lifecycle_manager_navigation', [{ text: 'active' }, { text: 'inactive' }]), 'lifecycle_manager_navigation: 1 of 2 active');
+});
+
+import { planGoal, planSummary, planErrorText, saveMapRequest, saveMapText, followErrorText } from '../vizanti/nav2_tools_logic.js';
+
+test('plan: from the robot to a goal, in words', () => {
+	const { goal } = planGoal({ x: '1.5', y: '-2', yaw: '90', plannerId: '' }, 'map', { sec: 1, nanosec: 0 });
+	assert.equal(goal.use_start, false); // the planner finds the robot in TF
+	assert.deepEqual(goal.goal.pose.position, { x: 1.5, y: -2, z: 0 });
+	assert.ok(Math.abs(2 * Math.atan2(goal.goal.pose.orientation.z, goal.goal.pose.orientation.w) - Math.PI / 2) < 1e-9);
+	assert.equal('viapoints' in goal, false); // Kilted+ only; none without it
+	assert.match(planGoal({ x: '', y: '1' }).error, /X and a Y/);
+	const p = (x, y) => ({ pose: { position: { x, y } } });
+	assert.equal(planSummary({ path: { poses: [p(0, 0), p(3, 4)] }, planning_time: { sec: 0, nanosec: 50000000 } }), 'Path: 5.00 m, 2 poses, planned in 0.05 s');
+	assert.equal(planErrorText({ error_code: 206 }), 'the goal is in an occupied cell');
+	assert.equal(planErrorText({ error_code: 204, error_msg: 'plugin failed to plan from (-1.22, -0.51) [q: ...] ...' }), 'the goal is outside the map');
+	assert.equal(planErrorText({ error_code: 200, error_msg: 'Planner crashed' }), 'Planner crashed'); // unknown error: Nav2's words
+	assert.equal(followErrorText({ error_code: 105, error_msg: '' }), 'the robot made no progress');
+});
+
+test('save map: a path without an extension, and both answers', () => {
+	const { request } = saveMapRequest({ path: ' /home/robot/maps/office.yaml ', format: 'png' });
+	assert.deepEqual(request, { map_topic: '/map', map_url: '/home/robot/maps/office', image_format: 'png', map_mode: 'trinary', free_thresh: 0.25, occupied_thresh: 0.65 });
+	assert.match(saveMapRequest({ path: '' }).error, /path to save to/);
+	assert.equal(saveMapText({ result: true }, request), 'Saved /home/robot/maps/office.png and /home/robot/maps/office.yaml on the robot.');
+	assert.match(saveMapText({ result: false }, request), /could not save/);
 });
